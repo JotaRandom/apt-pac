@@ -1,0 +1,20 @@
+[project]
+name = "apt-pac"
+version = "0.1.0"
+description = "An APT-style wrapper for pacman with beautiful output"
+readme = "README.md"
+authors = [
+    { name = "Arch User", email = "user@archlinux.org" }
+]
+requires-python = ">=3.8"
+dependencies = [
+    "rich>=10.0.0",
+]
+
+[project.scripts]
+apt = "apt_pac.__main__:main"
+apt-pac = "apt_pac.__main__:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
