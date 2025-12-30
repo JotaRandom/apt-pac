@@ -226,6 +226,12 @@ def execute_command(apt_cmd, extra_args):
         elif config_verbosity >= 2:
             verbose = True
     
+    # Show verbose information if enabled
+    if verbose:
+        console.print(f"[dim]Config dir: {config.config_dir}[/dim]")
+        console.print(f"[dim]Cache dir: {config.cache_dir}[/dim]")
+        console.print(f"[dim]Verbosity: {config_verbosity}, Quiet: {quiet_level}, Auto-confirm: {auto_confirm}[/dim]")
+    
     # Check for simulation flag
     is_simulation = "-s" in extra_args or "--simulate" in extra_args or "--dry-run" in extra_args
     if is_simulation:
@@ -462,34 +468,24 @@ def execute_command(apt_cmd, extra_args):
         return
     
     elif apt_cmd == "source":
+        from .sources import handle_apt_source
         if not extra_args:
             print_error("E: No packages specified for source download")
-            return
-        
-        pkg_name = extra_args[0]
-        
-        if subprocess.run(["command", "-v", "asp"], shell=True, capture_output=True).returncode == 0:
-            console.print(f"[info]Downloading source for {pkg_name}...[/info]")
-            result = subprocess.run(["asp", "export", pkg_name])
-            if result.returncode == 0:
-                console.print(f"\nSource downloaded to ./{pkg_name}/")
-                console.print(f"Build with: [command]cd {pkg_name} && makepkg -s[/command]")
-        else:
-            console.print("\nW: 'asp' (Arch Source Package) not installed\n")
-            console.print("[bold]To download package sources:[/bold]")
-            console.print("  1. Install asp: [command]pacman -S asp[/command]")
-            console.print(f"  2. Then run: [command]asp export {pkg_name}[/command]\n")
-            console.print("  [italic]Or visit:[/italic] https://gitlab.archlinux.org/archlinux/packaging/packages/")
-        return
+            print_info("Usage: apt source <package>")
+            sys.exit(1)
+        package_name = extra_args[0]
+        success = handle_apt_source(package_name, extra_args[1:], verbose=verbose)
+        sys.exit(0 if success else 1)
     
     elif apt_cmd == "build-dep":
-        console.print("\n[info]Arch Linux uses PKGBUILD files for build dependencies[/info]\n")
-        console.print("[bold]To install build dependencies:[/bold]")
-        console.print("  1. Get PKGBUILD via: [command]asp export <package>[/command] or from AUR")
-        console.print("  2. Build with: [command]makepkg -seoc[/command]")
-        console.print("     [desc](flag -s installs dependencies automatically)[/desc]\n")
-        console.print("[italic grey70]Note: makepkg automatically resolves and installs makedepends[/italic grey70]")
-        return
+        from .sources import handle_build_dep
+        if not extra_args:
+            print_error("E: No package specified")
+            print_info("Usage: apt build-dep <package>")
+            sys.exit(1)
+        package_name = extra_args[0]
+        success = handle_build_dep(package_name, verbose=verbose)
+        sys.exit(0 if success else 1)
     
     elif apt_cmd == "dotty":
         if not extra_args:
@@ -592,12 +588,14 @@ def execute_command(apt_cmd, extra_args):
         return
     
     elif apt_cmd == "showsrc":
-        console.print("\n[yellow]W: This command requires ABS+AUR support[/yellow]\n")
-        console.print("[bold]Planned for apt-pac v2.0[/bold]")
-        console.print("For now, use:")
-        console.print("  - [command]apt source <package>[/command] to download PKGBUILD")
-        console.print("  - [command]pacman -Si <package>[/command] for package info\n")
-        return
+        from .sources import handle_showsrc
+        if not extra_args:
+            print_error("E: No package specified")
+            print_info("Usage: apt-cache showsrc <package>")
+            sys.exit(1)
+        package_name = extra_args[0]
+        success = handle_showsrc(package_name, verbose=verbose)
+        sys.exit(0 if success else 1)
     
     elif apt_cmd == "edit-sources":
         editor = get_editor()

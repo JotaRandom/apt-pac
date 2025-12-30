@@ -38,6 +38,48 @@ if [ -f "config.toml" ]; then
     echo "Installed config to /etc/apt-pac/config.toml"
 fi
 
+# Install manpage
+echo "Installing manpage..."
+if [ -f "src/man/apt-pac.8" ]; then
+    MAN_DIR="/usr/local/share/man/man8"
+    sudo mkdir -p "$MAN_DIR"
+    sudo install -Dm644 src/man/apt-pac.8 "$MAN_DIR/apt-pac.8"
+    echo "Installed manpage to $MAN_DIR/apt-pac.8"
+    # Update man database if possible
+    if command -v mandb &> /dev/null; then
+        sudo mandb > /dev/null 2>&1 || true
+    fi
+fi
+
+# Install shell completions
+echo "Installing shell completions..."
+# Bash
+if [ -f "src/completions/apt-pac.bash" ]; then
+    BASH_COMP_DIR="/usr/share/bash-completion/completions"
+    if [ -d "$BASH_COMP_DIR" ]; then
+        sudo install -Dm644 src/completions/apt-pac.bash "$BASH_COMP_DIR/apt-pac"
+        echo "Installed bash completion to $BASH_COMP_DIR/apt-pac"
+    fi
+fi
+
+# Zsh
+if [ -f "src/completions/_apt-pac" ]; then
+    ZSH_COMP_DIR="/usr/share/zsh/site-functions"
+    if [ -d "$ZSH_COMP_DIR" ]; then
+        sudo install -Dm644 src/completions/_apt-pac "$ZSH_COMP_DIR/_apt-pac"
+        echo "Installed zsh completion to $ZSH_COMP_DIR/_apt-pac"
+    fi
+fi
+
+# Fish
+if [ -f "src/completions/apt-pac.fish" ]; then
+    FISH_COMP_DIR="/usr/share/fish/vendor_completions.d"
+    if [ -d "$FISH_COMP_DIR" ]; then
+        sudo install -Dm644 src/completions/apt-pac.fish "$FISH_COMP_DIR/apt-pac.fish"
+        echo "Installed fish completion to $FISH_COMP_DIR/apt-pac.fish"
+    fi
+fi
+
 # Create a proper wrapper script to avoid PYTHONPATH issues
 INSTALL_DIR="/usr/local/bin"
 SRC_PATH="$(pwd)/src"
@@ -59,6 +101,8 @@ echo "--------------------------------------------------"
 echo "Installation complete!"
 echo "Installed files:"
 echo "  - /usr/local/bin/apt-pac"
+echo "  - /usr/local/share/man/man8/apt-pac.8 (manpage)"
+echo "  - Shell completions (bash, zsh, fish)"
 echo "  - /etc/apt-pac/config.toml (global config)"
 echo ""
 echo "User config will be auto-created at:"

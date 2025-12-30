@@ -37,4 +37,12 @@ package() {
   
   # Install global configuration
   install -Dm644 config.toml "$pkgdir/etc/apt-pac/config.toml"
+
+  # Install manpage
+  install -Dm644 src/man/apt-pac.8 "$pkgdir/usr/share/man/man8/apt-pac.8"
+
+  # Install shell completions
+  install -Dm644 src/completions/apt-pac.bash "$pkgdir/usr/share/bash-completion/completions/apt-pac"
+  install -Dm644 src/completions/_apt-pac "$pkgdir/usr/share/zsh/site-functions/_apt-pac"
+  install -Dm644 src/completions/apt-pac.fish "$pkgdir/usr/share/fish/vendor_completions.d/apt-pac.fish"
 }

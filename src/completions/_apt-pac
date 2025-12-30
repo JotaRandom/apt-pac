@@ -1,0 +1,97 @@
+#compdef apt-pac
+
+typeset -A opt_args
+
+_apt_pac() {
+    local -a commands
+    commands=(
+        'update:Update package database'
+        'upgrade:Upgrade all installed packages'
+        'full-upgrade:Same as upgrade'
+        'dist-upgrade:Same as upgrade'
+        'install:Install packages'
+        'reinstall:Reinstall packages'
+        'remove:Remove packages'
+        'purge:Remove packages and their configuration'
+        'autoremove:Remove orphaned packages'
+        'search:Search for packages'
+        'show:Show package details'
+        'list:List packages'
+        'depends:Show package dependencies'
+        'rdepends:Show reverse dependencies'
+        'policy:Show package policy'
+        'madison:Show available versions'
+        'source:Download package source'
+        'build-dep:Install build dependencies'
+        'showsrc:Show source package info'
+        'check:Verify database integrity'
+        'clean:Remove cached packages'
+        'autoclean:Remove old cached packages'
+        'stats:Show package statistics'
+        'edit-sources:Edit pacman.conf'
+        'config:Display pacman configuration'
+        'file-search:Search for file in packages'
+        'changelog:View package changelog'
+        'scripts:View package scripts'
+        'apt-mark:Mark packages as auto/manual'
+        'pkgnames:List package names'
+        'dotty:Generate dependency graph'
+        'apt-key:Manage GPG keys'
+        'add-repository:Add repository info'
+        'download:Download packages without installing'
+    )
+
+    local -a opts
+    opts=(
+        '(-y --yes --assume-yes)'{-y,--yes,--assume-yes}'[Automatic yes to prompts]'
+        '(-q --quiet)'{-q,--quiet}'[Quiet output]'
+        '--verbose[Verbose output]'
+        '(-s --simulate --dry-run)'{-s,--simulate,--dry-run}'[Simulation mode]'
+        '--download-only[Download only]'
+        '(-f --fix-broken)'{-f,--fix-broken}'[Fix broken dependencies]'
+        '--no-install-recommends[Skip optional dependencies]'
+        '--only-upgrade[Only upgrade installed packages]'
+        '(-v --version)'{-v,--version}'[Show version]'
+        '(-h --help)'{-h,--help}'[Show help]'
+    )
+
+    _arguments -C \
+        $opts \
+        '1: :->cmd' \
+        '*:: :->args'
+
+    case $state in
+        cmd)
+            _describe -t commands 'apt-pac commands' commands
+            ;;
+        args)
+            case $line[1] in
+                install|reinstall|download|source|build-dep|showsrc|show|depends|rdepends|madison|policy|changelog|scripts|dotty)
+                    _arguments '*:packages:_pacman_completions_all_packages'
+                    ;;
+                remove|purge)
+                    _arguments '*:packages:_pacman_completions_installed_packages'
+                    ;;
+                apt-mark)
+                    _arguments '1:mark:(auto manual)' '*:packages:_pacman_completions_installed_packages'
+                    ;;
+                apt-key)
+                    _arguments '1:action:(add list del delete remove adv)'
+                    ;;
+                search|file-search)
+                    _message 'pattern'
+                    ;;
+                pkgnames)
+                    _message 'prefix'
+                    ;;
+                list)
+                    _arguments '--installed' '--upgradable' '--manual-installed' '--all-versions' '--repo'
+                    ;;
+                *)
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_apt_pac "$@"

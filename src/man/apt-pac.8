@@ -1,0 +1,275 @@
+.TH apt-pac 8 "December 2025" "apt-pac 2026.01.01" "System Administration"
+.SH NAME
+apt-pac \- APT-style wrapper for pacman package manager
+.SH SYNOPSIS
+.B apt-pac
+[\fIOPTIONS\fR]
+.I COMMAND
+[\fIARGS\fR...]
+.SH DESCRIPTION
+.B apt-pac
+is a command-line wrapper for
+.BR pacman (8)
+that provides an APT-like interface for Arch Linux package management. It translates familiar APT commands to their pacman equivalents while adding safety features and improved output formatting.
+
+apt-pac maintains compatibility with APT command syntax while leveraging pacman's capabilities, making it easier for users familiar with Debian-based systems to work with Arch Linux.
+.SH COMMANDS
+.SS Package Management
+.TP
+.B update
+Update package database (pacman -Sy and -Fy)
+.TP
+.B upgrade
+Upgrade all installed packages (pacman -Syu)
+.TP
+.B full\-upgrade, dist\-upgrade
+Same as upgrade
+.TP
+.B install \fIPACKAGES\fR...
+Install one or more packages. Supports local .pkg.tar.zst files
+.TP
+.B reinstall \fIPACKAGES\fR...
+Reinstall packages
+.TP
+.B remove \fIPACKAGES\fR...
+Remove packages
+.TP
+.B purge \fIPACKAGES\fR...
+Remove packages and their configuration files
+.TP
+.B autoremove
+Remove orphaned packages that are no longer required
+.TP
+.B apt\-mark \fI[auto|manual]\fR \fIPACKAGE\fR...
+Mark packages as automatically or manually installed.
+.TP
+.B download \fIPACKAGE\fR...
+Download packages into the cache without installing them (pacman -Sw).
+
+.SS Package Information
+.TP
+.B search \fIQUERY\fR
+Search for packages matching the query
+.TP
+.B show \fIPACKAGE\fR
+Display detailed information about a package
+.TP
+.B list [\fIOPTIONS\fR]
+List packages. Supports --installed, --upgradable, --manual-installed, --all-versions, --repo
+.TP
+.B depends \fIPACKAGE\fR
+Show package dependencies
+.TP
+.B rdepends \fIPACKAGE\fR
+Show reverse dependencies (what depends on this package)
+.TP
+.B policy \fIPACKAGE\fR
+Show package version and repository information
+.TP
+.B madison \fIPACKAGE\fR
+Show available package versions
+.TP
+.B file\-search \fIFILENAME\fR
+Search for packages containing a specific file (pacman -F)
+.TP
+.B changelog \fIPACKAGE\fR
+View the changelog of a package (pacman -Qc)
+.TP
+.B scripts \fIPACKAGE\fR
+Display package install/remove scripts (pacscripts or -Qii)
+.TP
+.B pkgnames \fI[PREFIX]\fR
+List all available package names, optionally filtered by prefix
+.TP
+.B dotty \fIPACKAGE\fR
+Generate a dependency graph in GraphViz format (requires pacman-contrib)
+
+.SS Source Package Management
+.TP
+.B source \fIPACKAGE\fR
+Download package source files using pkgctl (requires devtools)
+.TP
+.B build\-dep \fIPACKAGE\fR
+Install build dependencies for a package
+.TP
+.B showsrc \fIPACKAGE\fR
+Show source package information (apt-cache subcommand)
+
+.SS System Maintenance
+.TP
+.B check
+Check for broken dependencies and verify package database integrity
+.TP
+.B clean
+Remove all cached package files
+.TP
+.B autoclean
+Remove old cached package files
+.TP
+.B stats
+Display package statistics (apt-cache subcommand)
+
+.SS Configuration
+.TP
+.B edit\-sources
+Edit pacman configuration file (/etc/pacman.conf)
+.TP
+.B config
+Display pacman configuration (apt-config subcommand)
+.TP
+.B apt\-key \fI[add|del|list|adv]\fR
+Manage GPG keys for package verification (wrapper for pacman-key)
+.TP
+.B add\-repository
+Display instructions for adding third-party repositories
+
+.SH OPTIONS
+.TP
+.B \-y, \-\-yes, \-\-assume\-yes
+Automatically answer yes to prompts. Skips confirmation for package operations.
+.TP
+.B \-q, \-\-quiet
+Produce less output. Can be specified twice (-qq) for minimal output.
+.TP
+.B \-\-verbose
+Produce more detailed output, including the underlying pacman command being executed.
+.TP
+.B \-s, \-\-simulate, \-\-dry\-run
+Perform a simulation of the action without making actual changes.
+.TP
+.B \-\-download\-only
+Download packages without installing them.
+.TP
+.B \-\-fix\-broken, \-f
+Attempt to fix broken dependencies.
+.TP
+.B \-\-no\-install\-recommends
+Skip optional dependencies (informational in pacman context).
+.TP
+.B \-\-only\-upgrade
+Only upgrade packages that are already installed.
+.TP
+.B \-v, \-\-version [\fITYPE\fR]
+Display version information. Optional TYPE: full, pacman
+.TP
+.B \-h, \-\-help
+Display help message and exit.
+
+.SH FILES
+.TP
+.I /etc/apt-pac/config.toml
+Global configuration file for apt-pac. Installed with the package and contains system-wide defaults.
+.TP
+.I ~/.config/apt-pac/config.toml
+User-specific configuration file. Auto-created on first run with default values. Overrides global settings.
+.TP
+.I ~/.cache/apt-pac/sources/abs/
+Cache directory for downloaded source packages from official repositories.
+
+.SH CONFIGURATION
+apt-pac uses a hierarchical configuration system with TOML format:
+
+.B Global config: 
+/etc/apt-pac/config.toml (system-wide defaults)
+
+.B User config:
+~/.config/apt-pac/config.toml (overrides global settings)
+
+Configuration values include UI preferences, verbosity levels, safeguard thresholds, and cache directory locations. See the config.toml file for available options.
+
+.SH EXAMPLES
+.TP
+Update package database:
+.B apt-pac update
+
+.TP
+Upgrade all packages:
+.B apt-pac upgrade
+
+.TP
+Install a package:
+.B apt-pac install vim
+
+.TP
+Search for packages:
+.B apt-pac search editor
+
+.TP
+Remove a package:
+.B apt-pac remove vim
+
+.TP
+Show package information:
+.B apt-pac show vim
+
+.TP
+List installed packages:
+.B apt-pac list --installed
+
+.TP
+Download package source:
+.B apt-pac source bash
+
+.TP
+Install build dependencies:
+.B apt-pac build-dep bash
+
+.TP
+Install with auto-confirmation:
+.B apt-pac install -y htop
+
+.TP
+Simulate package installation:
+.B apt-pac install --simulate neovim
+
+.SH SAFETY FEATURES
+apt-pac includes several safety mechanisms:
+.IP \(bu 2
+Partial upgrade detection and warnings
+.IP \(bu 2
+Mass removal protection (threshold-based)
+.IP \(bu 2
+Protected package lists (kernel, bootloader)
+.IP \(bu 2
+Confirmation prompts for destructive operations
+.IP \(bu 2
+XDG Base Directory compliance for configuration
+
+.SH ENVIRONMENT
+.TP
+.B XDG_CONFIG_HOME
+Overrides the default configuration directory (~/.config)
+.TP
+.B XDG_CACHE_HOME
+Overrides the default cache directory (~/.cache)
+.TP
+.B XDG_RUNTIME_DIR
+Used for temporary cache when standard cache is unavailable
+
+.SH EXIT STATUS
+.TP
+.B 0
+Success
+.TP
+.B 1
+General error
+.TP
+.B 2
+Command-line syntax error
+
+.SH SEE ALSO
+.BR pacman (8),
+.BR makepkg (8),
+.BR pkgctl (1),
+.BR PKGBUILD (5)
+
+.SH BUGS
+Report bugs to: https://github.com/JotaRandom/apt-pac/issues
+
+.SH AUTHORS
+Written by JotaRandom.
+
+.SH COPYRIGHT
+Copyright \(co 2026 JotaRandom. License MIT.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
