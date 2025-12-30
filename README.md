@@ -30,18 +30,32 @@ This will create symlinks in `/usr/local/bin/apt` and `apt-pac`.
 This installs `apt-pac` as a system package.
 
 ## Usage
-Simply use `apt` or `apt-pac` as you would on a Debian-based system:
+Simply use `apt-pac` as you would use `apt` on a Debian-based system:
+
 ```bash
-apt update
-apt upgrade
-apt install <package>
-apt search <keyword>
-apt show <package>
-apt list --upgradable
+apt-pac update
+apt-pac upgrade
+apt-pac install <package>
+apt-pac search <keyword>
+apt-pac show <package>
+apt-pac list --upgradable
 apt-mark hold <package>
+```
+
+## Version Information
+```bash
+# Show apt-pac version only
+apt --version
+
+# Show both apt-pac and pacman versions
+apt --version full
+
+# Show only pacman version
+apt --version pacman
 ```
 
 ## Dependencies
 - `python >= 3.8`
 - `python-rich`
 - `pacman-contrib` (for advanced dependency mapping)
+- `devtools` (optional, for library link checking)

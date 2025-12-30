@@ -1,0 +1,37 @@
+# apt-pac Configuration File
+# This file controls apt-pac wrapper behavior.
+# System configuration (repos, mirrors, etc.) is still in /etc/pacman.conf
+
+[safeguards]
+# Warn when removing more than this many packages
+mass_removal_threshold = 20
+
+# Warn about partial upgrades (installing packages when updates available)
+warn_partial_upgrades = true
+
+[tools]
+# Privilege escalation tool: "auto", "sudo", "doas", "run0"
+# "auto" tries run0 > doas > sudo in order
+privilege_tool = "auto"
+
+# Editor for edit-sources command (empty = use $EDITOR)
+editor = ""
+
+[ui]
+# Output format: "apt-pac", "apt", or "pacman"
+# - "apt-pac" or "apt": Formatted, colorized APT-style output (default)
+# - "pacman": Show raw pacman output without formatting
+show_output = "apt-pac"
+
+# Force colors even in non-TTY environments
+force_colors = false
+
+# Verbosity level: 0 (quiet), 1 (normal), 2 (verbose), 3 (debug)
+verbosity = 1
+
+# Show the actual pacman command before executing
+show_pacman_command = false
+
+[defaults]
+# Always sync file database (-Fy) during upgrade
+always_sync_files = true

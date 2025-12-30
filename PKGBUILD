@@ -2,7 +2,7 @@
 
 pkgname=apt-pac-git
 _pkgname=apt-pac
-pkgver=0.1.0
+pkgver=2026.01.01
 pkgrel=1
 pkgdesc="An APT-style wrapper for pacman with APT-like output"
 arch=('any')
@@ -10,6 +10,8 @@ url="https://github.com/JotaRandom/apt-pac"
 license=('MIT')
 depends=('python'
          'python-rich'
+         'python-tomli'
+         'devtools'
          'pacman-contrib')
 makedepends=('python-build'
              'python-installer'
@@ -32,4 +34,7 @@ build() {
 package() {
   cd "$srcdir/$_pkgname"
   python -m installer --destdir="$pkgdir" dist/*.whl
+  
+  # Install global configuration
+  install -Dm644 config.toml "$pkgdir/etc/apt-pac/config.toml"
 }

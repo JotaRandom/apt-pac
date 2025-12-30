@@ -1,6 +1,6 @@
 [project]
 name = "apt-pac"
-version = "0.1.0"
+version = "2026.01.01"
 description = "An APT-style wrapper for pacman with beautiful output"
 readme = "README.md"
 authors = [
@@ -12,7 +12,6 @@ dependencies = [
 ]
 
 [project.scripts]
-apt = "apt_pac.__main__:main"
 apt-pac = "apt_pac.__main__:main"
 
 [build-system]
