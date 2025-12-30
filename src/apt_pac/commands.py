@@ -32,7 +32,7 @@ COMMAND_MAP = {
     "pkgnames": ["-Slq"],
     "check": ["-Dk"],
     "stats": ["stats"],  # Custom implementation
-    "source": ["asp", "export"],
+    "source": ["pkgctl", "repo", "clone"],
     "build-dep": ["build-dep"],  # Educational message
     "dotty": ["pactree", "-g"],  # GraphViz dependency graph
     "madison": ["madison"],  # Custom implementation
@@ -607,16 +607,17 @@ def execute_command(apt_cmd, extra_args):
         except subprocess.CalledProcessError:
             sys.exit(1)
 
-    # Handle autoremove specifically
-    if apt_cmd == "autoremove":
-        check_orphans = subprocess.run(["pacman", "-Qdtq"], capture_output=True, text=True)
-        if not check_orphans.stdout.strip():
-            print_info("No orphaned packages to remove.")
-            return
-        orphans = check_orphans.stdout.split()
-        pacman_cmd = ["pacman", "-Rns"] + orphans
-    else:
-        pacman_cmd = ["pacman"] + pacman_args + extra_args
+    # If pacman_cmd was not set by a special handler above, set it now
+    if 'pacman_cmd' not in locals():
+        if apt_cmd == "autoremove":
+            check_orphans = subprocess.run(["pacman", "-Qdtq"], capture_output=True, text=True)
+            if not check_orphans.stdout.strip():
+                print_info("No orphaned packages to remove.")
+                return
+            orphans = check_orphans.stdout.split()
+            pacman_cmd = ["pacman", "-Rns"] + orphans
+        else:
+            pacman_cmd = ["pacman"] + pacman_args + extra_args
 
     # Check if we need to format output (search/show)
     if apt_cmd in ["search", "show"]:

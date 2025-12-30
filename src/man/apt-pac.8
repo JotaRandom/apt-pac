@@ -17,111 +17,253 @@ apt-pac maintains compatibility with APT command syntax while leveraging pacman'
 .SS Package Management
 .TP
 .B update
-Update package database (pacman -Sy and -Fy)
+(pacman -Sy and pacman -Fy)
+.br
+Update package database
+.br
+Synchronizes the package databases with the repositories (pacman -Sy). This also automatically updates the files database (pacman -Fy) to enable file search functionality. This command should always be run before an upgrade or install to ensure you have the latest package metadata.
 .TP
 .B upgrade
-Upgrade all installed packages (pacman -Syu)
+(pacman -Syu)
+.br
+Upgrade all installed packages
+.br
+Performs a full system upgrade (pacman -Syu). It retrieves the latest package lists (if not already up to date) and upgrades all installed packages to their latest available versions. On Arch Linux, partial upgrades are unsupported, so this command upgrades the entire system to maintain consistency.
 .TP
 .B full\-upgrade, dist\-upgrade
+(pacman -Syu)
+.br
 Same as upgrade
+.br
+In the context of Arch Linux, these are aliases for the standard 'upgrade' command (pacman -Syu). Unlike Debian/APT where 'dist-upgrade' handles changing dependencies smartly, 'pacman -Syu' always handles dependency resolution and upgrades the entire system.
 .TP
 .B install \fIPACKAGES\fR...
+(pacman -S or pacman -U)
+.br
 Install one or more packages. Supports local .pkg.tar.zst files
+.br
+Installs the specified packages from the repositories (pacman -S). If a local file path ending in .pkg.tar.zst or .pkg.tar.xz is provided, it installs the local package file using 'pacman -U'. It automatically resolves and installs necessary dependencies.
 .TP
 .B reinstall \fIPACKAGES\fR...
+(pacman -S --force)
+.br
 Reinstall packages
+.br
+Forces the reinstallation of the specified packages (pacman -S --force). This is useful if files have been corrupted or deleted manually. Use with caution as it overwrites existing files.
 .TP
 .B remove \fIPACKAGES\fR...
+(pacman -R)
+.br
 Remove packages
+.br
+Removes the specified packages from the system (pacman -R). This leaves dependencies installed; to remove unused dependencies, use 'autoremove' or 'purge'.
 .TP
 .B purge \fIPACKAGES\fR...
+(pacman -Rns)
+.br
 Remove packages and their configuration files
+.br
+Removes the specified packages along with their configuration files and any unneeded dependencies (pacman -Rns). This is the cleanest way to remove a package on Arch Linux, ensuring no orphan dependencies or config files are left behind.
 .TP
 .B autoremove
+(pacman -Rns $(pacman -Qdtq))
+.br
 Remove orphaned packages that are no longer required
+.br
+Identifies and removes packages that were installed as dependencies but are no longer required by any installed package (pacman -Rns $(pacman -Qdtq)). This helps keep the system clean of unused libraries and tools.
 .TP
 .B apt\-mark \fI[auto|manual]\fR \fIPACKAGE\fR...
+(pacman -D --asdeps or --asexplicit)
+.br
 Mark packages as automatically or manually installed.
+.br
+Modifies the installation reason for the specified packages. 'auto' marks a package as installed as a dependency (pacman -D --asdeps), making it eligible for autoremoval if no other package needs it. 'manual' marks it as explicitly installed (pacman -D --asexplicit), preventing it from being automatically removed.
 .TP
 .B download \fIPACKAGE\fR...
-Download packages into the cache without installing them (pacman -Sw).
+(pacman -Sw)
+.br
+Download packages into the cache without installing them.
+.br
+Retrieves the specified packages from the repositories and saves them to the pacman cache directory (/var/cache/pacman/pkg) without unpacking or installing them (pacman -Sw). Useful for preparing for an offline installation.
 
 .SS Package Information
 .TP
 .B search \fIQUERY\fR
+(pacman -Ss)
+.br
 Search for packages matching the query
+.br
+Searches the package database for packages whose names or descriptions match the given query string (pacman -Ss). Use regex for advanced searching. Output is formatted for readability.
 .TP
 .B show \fIPACKAGE\fR
+(pacman -Si or pacman -Qi)
+.br
 Display detailed information about a package
+.br
+Shows comprehensive details about a package (pacman -Si or -Qi), including version, description, architecture, URL, license, dependencies, and size. It checks both installed and repository packages.
 .TP
 .B list [\fIOPTIONS\fR]
+(pacman -Q, -Qu, -Qe, -Sl)
+.br
 List packages. Supports --installed, --upgradable, --manual-installed, --all-versions, --repo
+.br
+Lists packages based on the provided flag.
+.br
+--installed: List all installed packages (pacman -Q).
+.br
+--upgradable: List packages with available updates (pacman -Qu).
+.br
+--manual-installed: List explicitly installed packages (pacman -Qe).
+.br
+--all-versions: List all available packages in repos (pacman -Sl).
+.br
+--repo: List packages in a specific repository.
 .TP
 .B depends \fIPACKAGE\fR
+(pactree -u or pacman -Qi)
+.br
 Show package dependencies
+.br
+Displays the dependency tree for a package. If 'pactree' is available (from pacman-contrib), it shows a visual tree (pactree -u). Otherwise, it lists direct dependencies using pacman -Qi.
 .TP
 .B rdepends \fIPACKAGE\fR
+(pactree -ru or pacman -Sii)
+.br
 Show reverse dependencies (what depends on this package)
+.br
+Displays packages that depend on the specified package. If 'pactree' is available, it shows the reverse dependency tree (pactree -ru). Otherwise, it uses 'pacman -Sii' to find dependent packages.
 .TP
 .B policy \fIPACKAGE\fR
+(pacman -Si and pacman -Qi)
+.br
 Show package version and repository information
+.br
+Shows the installed version (if any) and the candidate version available in the repositories for a package. Simulates 'apt-cache policy'.
 .TP
 .B madison \fIPACKAGE\fR
+(pacman -Si and pacman -Qi)
+.br
 Show available package versions
+.br
+Displays available versions of a package in a table format, showing the repository and version number. Similar to 'apt-cache madison'.
 .TP
 .B file\-search \fIFILENAME\fR
-Search for packages containing a specific file (pacman -F)
+(pacman -F)
+.br
+Search for packages containing a specific file
+.br
+Searches the file database for packages that own the specified file path or filename (pacman -F). Requires the file database to be populated via 'apt-pac update' (which runs pacman -Fy).
 .TP
 .B changelog \fIPACKAGE\fR
-View the changelog of a package (pacman -Qc)
+(pacman -Qc)
+.br
+View the changelog of a package
+.br
+Displays the changelog for an installed package (pacman -Qc), if available. Note that not all Arch Linux packages currently include changelogs.
 .TP
 .B scripts \fIPACKAGE\fR
-Display package install/remove scripts (pacscripts or -Qii)
+(pacscripts or pacman -Qii)
+.br
+Display package install/remove scripts
+.br
+Shows the pre-install, post-install, pre-remove, or post-remove scripts associated with a package. Uses 'pacscripts' if available, or falls back to 'pacman -Qii'. Useful for auditing package behavior.
 .TP
 .B pkgnames \fI[PREFIX]\fR
+(pacman -Slq)
+.br
 List all available package names, optionally filtered by prefix
+.br
+Lists every single package name available in the repositories (pacman -Slq). If a prefix argument is provided, only packages starting with that prefix are listed.
 .TP
 .B dotty \fIPACKAGE\fR
-Generate a dependency graph in GraphViz format (requires pacman-contrib)
+(pactree -g)
+.br
+Generate a dependency graph in GraphViz format
+.br
+Generates a DOT graph description of the package's dependencies (pactree -g). This output can be piped to graphviz tools to create visual dependency diagrams. Requires 'pacman-contrib'.
 
 .SS Source Package Management
 .TP
 .B source \fIPACKAGE\fR
-Download package source files using pkgctl (requires devtools)
+(pkgctl repo clone)
+.br
+Download package source files using pkgctl
+.br
+Clone the source repository for a package using 'pkgctl repo clone' (from devtools). This downloads the PKGBUILD and related files to the cache directory (~/.cache/apt-pac/sources/abs), ready for building with makepkg.
 .TP
 .B build\-dep \fIPACKAGE\fR
+(pacman -S <makedepends>)
+.br
 Install build dependencies for a package
+.br
+Downloads the PKGBUILD for the specified package and automatically installs all packages listed in its 'makedepends' array. Essential for compiling packages from source.
 .TP
 .B showsrc \fIPACKAGE\fR
-Show source package information (apt-cache subcommand)
+(parses PKGBUILD)
+.br
+Show source package information
+.br
+Parses the PKGBUILD of a package to display build metadata such as build dependencies (makedepends), architecture, license, and description. Downloads the source if not already cached.
 
 .SS System Maintenance
 .TP
 .B check
+(pacman -Dk and -Qk)
+.br
 Check for broken dependencies and verify package database integrity
+.br
+Performs a suite of system health checks. It runs 'pacman -Dk' (database consistency), 'pacman -Qk' (file integrity), and checks for broken library links if 'lddd' is available. Reports any inconsistencies found.
 .TP
 .B clean
+(pacman -Scc)
+.br
 Remove all cached package files
+.br
+Clears the entire pacman package cache (pacman -Scc). This aggressively removes ALL downloaded package files, including those for currently installed packages. Use when disk space is critically low.
 .TP
 .B autoclean
+(paccache -rk3 or pacman -Sc)
+.br
 Remove old cached package files
+.br
+Removes outdated package versions from the cache, keeping only the most recent 3 versions (paccache -rk3) requires 'pacman-contrib'. If 'paccache' is missing, falls back to 'pacman -Sc' which removes all packages not currently installed.
 .TP
 .B stats
-Display package statistics (apt-cache subcommand)
+(custom implementation using pacman queries)
+.br
+Display package statistics
+.br
+Provides a summary of package statistics, including total packages available, installed count, explicit vs. dependency count, orphans, and cache size.
 
 .SS Configuration
 .TP
 .B edit\-sources
-Edit pacman configuration file (/etc/pacman.conf)
+($EDITOR /etc/pacman.conf)
+.br
+Edit pacman configuration file
+.br
+Opens /etc/pacman.conf in the default text editor ($EDITOR). Requires root privileges. This file controls repository mirrors, signature settings, and general pacman options.
 .TP
 .B config
-Display pacman configuration (apt-config subcommand)
+(cat /etc/pacman.conf)
+.br
+Display pacman configuration
+.br
+Outputs the contents of /etc/pacman.conf to stdout. useful for quickly checking enabled repositories or configuration settings.
 .TP
 .B apt\-key \fI[add|del|list|adv]\fR
-Manage GPG keys for package verification (wrapper for pacman-key)
+(pacman-key wrapper)
+.br
+Manage GPG keys for package verification
+.br
+A wrapper for 'pacman-key'. Supports commands 'add' (import key), 'list' (show keys), 'del' (delete key), and 'adv' (pass-through to gpg). Used for managing the web of trust for package signatures.
 .TP
 .B add\-repository
+(Informational)
+.br
 Display instructions for adding third-party repositories
+.br
+Displays an informational guide on how to safely adds third-party repositories to /etc/pacman.conf in Arch Linux, noting the differences from Debian's PPA system.
 
 .SH OPTIONS
 .TP
