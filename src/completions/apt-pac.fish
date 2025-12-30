@@ -88,3 +88,5 @@ complete -f -c apt-pac -n '__fish_apt_pac_using_command download' -a '(__fish_pr
 complete -f -c apt-pac -n '__fish_apt_pac_using_command apt-mark' -a 'auto manual'
 complete -f -c apt-pac -n '__fish_apt_pac_using_command apt-key' -a 'add list del delete remove adv'
 complete -f -c apt-pac -n '__fish_apt_pac_using_command list' -a '--installed --upgradable --manual-installed --all-versions --repo'
+complete -f -c apt-pac -n '__fish_apt_pac_using_command search' -l aur -d 'Search only AUR'
+complete -f -c apt-pac -n '__fish_apt_pac_using_command search' -l official -d 'Search only official repos'

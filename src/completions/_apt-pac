@@ -78,7 +78,10 @@ _apt_pac() {
                 apt-key)
                     _arguments '1:action:(add list del delete remove adv)'
                     ;;
-                search|file-search)
+                search)
+                    _arguments '--aur[Search only AUR]' '--official[Search only official repos]' '*:pattern'
+                    ;;
+                file-search)
                     _message 'pattern'
                     ;;
                 pkgnames)

@@ -40,6 +40,10 @@ _apt_pac_completion() {
             COMPREPLY=( $(compgen -W "--installed --upgradable --manual-installed --all-versions --repo" -- ${cur}) )
             return 0
             ;;
+        search)
+            COMPREPLY=( $(compgen -W "--aur --official" -- ${cur}) )
+            return 0
+            ;;
         *)
             ;;
     esac

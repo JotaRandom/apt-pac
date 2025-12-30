@@ -42,7 +42,13 @@ In the context of Arch Linux, these are aliases for the standard 'upgrade' comma
 .br
 Install one or more packages. Supports local .pkg.tar.zst files
 .br
-Installs the specified packages from the repositories (pacman -S). If a local file path ending in .pkg.tar.zst or .pkg.tar.xz is provided, it installs the local package file using 'pacman -U'. It automatically resolves and installs necessary dependencies.
+Installs the specified packages. It supports hybrid installation from Official Repositories and the Arch User Repository (AUR).
+.br
+- If a package is in the official repos, it is installed via \fBpacman -S\fR.
+.br
+- If a package is in the AUR, it is cloned, built, and installed via \fBmakepkg -si\fR (resolving dependencies automatically).
+.br
+- If a local file path (.pkg.tar.zst) is provided, it installs using \fBpacman -U\fR.
 .TP
 .B reinstall \fIPACKAGES\fR...
 (pacman -S --force)
@@ -93,14 +99,27 @@ Retrieves the specified packages from the repositories and saves them to the pac
 .br
 Search for packages matching the query
 .br
-Searches the package database for packages whose names or descriptions match the given query string (pacman -Ss). Use regex for advanced searching. Output is formatted for readability.
+Searches the package database for packages whose names or descriptions match the given query string (pacman -Ss). By default, it searches both official repositories and the AUR.
+.br
+Use \fB--aur\fR to search only the AUR.
+.br
+Use \fB--official\fR to search only official repositories.
+
 .TP
 .B show \fIPACKAGE\fR
 (pacman -Si or pacman -Qi)
 .br
 Display detailed information about a package
 .br
-Shows comprehensive details about a package (pacman -Si or -Qi), including version, description, architecture, URL, license, dependencies, and size. It checks both installed and repository packages.
+Shows comprehensive details about a package. It attempts to find the package in the following order:
+.br
+1. Official Repositories (\fBpacman -Si\fR)
+.br
+2. Locally Installed Database (\fBpacman -Qi\fR)
+.br
+3. Arch User Repository (AUR RPC)
+.br
+The output fields are remapped to match standard APT output (e.g. 'Name' becomes 'Package', 'URL' becomes 'Homepage').
 .TP
 .B list [\fIOPTIONS\fR]
 (pacman -Q, -Qu, -Qe, -Sl)

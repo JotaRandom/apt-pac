@@ -1,7 +1,8 @@
 import subprocess
 import sys
 import os
-from .ui import print_info, print_command, print_error, console, format_search_results, format_show, show_help
+from .ui import print_info, print_command, print_error, console, format_search_results, format_show, show_help, format_aur_search_results
+from . import aur
 from .config import get_config
 
 COMMAND_MAP = {
@@ -331,6 +332,41 @@ def execute_command(apt_cmd, extra_args):
         if any(a.endswith((".pkg.tar.zst", ".pkg.tar.xz")) for a in extra_args):
             pacman_cmd = ["pacman", "-U"] + extra_args
         else:
+            # Check for AUR packages
+            official_pkgs = []
+            aur_pkgs = []
+            
+            for pkg in extra_args:
+                if aur.is_in_official_repos(pkg):
+                    official_pkgs.append(pkg)
+                elif aur.search_aur(pkg): # Basic check if it exists in AUR
+                    aur_pkgs.append(pkg)
+                else:
+                    # Unknown, assume official so pacman errors out properly or it's a provides
+                    official_pkgs.append(pkg)
+            
+            if aur_pkgs:
+                # If we have official packages, install them first
+                if official_pkgs:
+                    console.print(f"[bold]Installing official packages:[/bold] {' '.join(official_pkgs)}")
+                    cmd = ["pacman", "-S"] + official_pkgs
+                    if auto_confirm:
+                        cmd.append("--noconfirm")
+                    subprocess.run(cmd)
+                
+                # Then install AUR packages
+                installer = aur.AurInstaller()
+                try:
+                    installer.install(aur_pkgs, verbose=verbose)
+                except KeyboardInterrupt:
+                    print_error("\nInterrupted.")
+                    sys.exit(1)
+                except Exception as e:
+                    print_error(f"AUR Installation failed: {e}")
+                    sys.exit(1)
+                return # Exit after AUR install handling
+            
+            # If no AUR packages, just proceed with normal pacman -S
             pacman_cmd = ["pacman", "-S"] + extra_args
     elif apt_cmd == "depends":
         # Check if pactree is installed
@@ -625,19 +661,81 @@ def execute_command(apt_cmd, extra_args):
         config = get_config()
         show_output = config.get("ui", "show_output", "apt-pac")
         
-        result = subprocess.run(pacman_cmd, capture_output=True, text=True)
-        if result.returncode == 0:
-            # Use formatted output unless user prefers raw pacman output
-            if show_output in ["apt-pac", "apt"]:
-                if apt_cmd == "search":
-                    format_search_results(result.stdout)
-                else:
-                    format_show(result.stdout)
-            else:  # show_output == "pacman"
-                # Show raw pacman output
-                print(result.stdout, end="")
-        else:
-            print_error(result.stderr)
+        # Determine Search Scope
+        scope = "both"
+        if "--aur" in extra_args:
+            scope = "aur"
+            extra_args = [a for a in extra_args if a != "--aur"]
+        elif "--official" in extra_args:
+            scope = "official"
+            extra_args = [a for a in extra_args if a != "--official"]
+            
+        pacman_cmd = ["pacman"] + pacman_args + extra_args
+
+        # Official Search
+        if scope in ["both", "official"] and apt_cmd == "search":
+             result = subprocess.run(pacman_cmd, capture_output=True, text=True)
+             if result.returncode == 0 and result.stdout.strip():
+                 if show_output in ["apt-pac", "apt"]:
+                     format_search_results(result.stdout)
+                 else:
+                     print(result.stdout, end="")
+        
+        # AUR Search
+        if scope in ["both", "aur"] and apt_cmd == "search":
+            # Extract query from extra_args (assume arg not starting with - is the query)
+            queries = [arg for arg in extra_args if not arg.startswith("-")]
+            if queries:
+                with console.status("[magenta]Searching AUR...[/magenta]", spinner="dots"):
+                    matches = aur.search_aur(queries[0]) # Search first query arg
+                if matches:
+                    format_aur_search_results(matches)
+
+        # Show Command (Official -> Local -> AUR)
+        if apt_cmd == "show":
+             # 1. Try Official Repos (pacman -Si)
+             result = subprocess.run(pacman_cmd, capture_output=True, text=True)
+             found = False
+             
+             if result.returncode == 0:
+                 found = True
+                 if show_output in ["apt-pac", "apt"]:
+                     format_show(result.stdout)
+                 else:
+                     print(result.stdout, end="")
+             
+             # 2. If not found, try Local Database (pacman -Qi)
+             # Only if user didn't explicitly request official-only (implicit)
+             # But 'show' doesn't strictly support --official flag in our logic yet, 
+             # preventing partial output. Let's assume we want to find it anywhere.
+             
+             if not found:
+                 # Try -Qi
+                 local_cmd = ["pacman", "-Qi"] + extra_args
+                 result_local = subprocess.run(local_cmd, capture_output=True, text=True)
+                 if result_local.returncode == 0:
+                     found = True
+                     if show_output in ["apt-pac", "apt"]:
+                         format_show(result_local.stdout)
+                     else:
+                         print(result_local.stdout, end="")
+            
+             # 3. If still not found, try AUR
+             if not found:
+                 queries = [arg for arg in extra_args if not arg.startswith("-")]
+                 if queries:
+                    with console.status("[magenta]Checking AUR...[/magenta]", spinner="dots"):
+                         # aur.get_aur_info returns detailed info list
+                         aur_info = aur.get_aur_info(queries)
+                    
+                    if aur_info:
+                        found = True
+                        from .ui import format_aur_info
+                        format_aur_info(aur_info)
+            
+             if not found:
+                 print_error(f"Package '{' '.join(extra_args)}' not found in repositories, local database, or AUR.")
+
         return
 
     # Show summary for install/upgrade (unless auto-confirmed or quiet)

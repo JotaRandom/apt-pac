@@ -28,6 +28,22 @@ fi
 if ! command -v pactree &> /dev/null; then
     echo "pacman-contrib is recommended for advanced features. Installing..."
     sudo pacman -S --needed pacman-contrib
+if ! command -v pactree &> /dev/null; then
+    echo "pacman-contrib is recommended for advanced features. Installing..."
+    sudo pacman -S --needed pacman-contrib
+fi
+
+# Check for git (required for AUR cloning)
+if ! command -v git &> /dev/null; then
+    echo "git is required for AUR operations. Installing..."
+    sudo pacman -S --needed git
+fi
+
+# Check for makepkg build tools (base-devel)
+# Difficult to check group install status easily, but we can check a key component like 'gcc' or 'make'
+if ! command -v make &> /dev/null || ! command -v gcc &> /dev/null; then
+    echo "base-devel group is required for building AUR packages. Installing..."
+    sudo pacman -S --needed base-devel
 fi
 
 # Install global configuration
