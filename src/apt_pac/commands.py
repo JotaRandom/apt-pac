@@ -58,12 +58,11 @@ def show_summary(apt_cmd, extra_args):
     """
     Show APT-style installation summary with accurate package sizes.
     """
-    pacman_args = COMMAND_MAP[apt_cmd]
-    # Get list of packages to be installed/upgraded
-    print_cmd = ["pacman"] + pacman_args + extra_args + ["--print"]
+    # Get packages directly from extra_args (user input)
+    # Filter out flags
+    packages = [arg for arg in extra_args if not arg.startswith('-')]
     
-    result = subprocess.run(print_cmd, capture_output=True, text=True)
-    if result.returncode != 0 or not result.stdout.strip():
+    if not packages:
         return
     
     from rich.table import Table
@@ -95,7 +94,6 @@ def show_summary(apt_cmd, extra_args):
         except (ValueError, IndexError):
             return 0
     
-    packages = result.stdout.strip().splitlines()
     new_pkgs = []
     upgraded_pkgs = []
     total_dl_size = 0
@@ -1188,11 +1186,15 @@ def execute_command(apt_cmd, extra_args):
                 console.print("File database: [green]Done[/green]")
             return  # Exit after upgrade handling
         else:
-            # For all commands: use APT-style output with hooks
-            # stdin is now preserved, so interactive prompts work correctly
-            success = run_pacman_with_apt_output(current_cmd, show_hooks=True)
-            if not success:
-                sys.exit(1)
+            # For install/reinstall: use APT-style output with hooks
+            # For remove/purge/autoremove: use normal pacman to preserve full interactivity
+            if apt_cmd in ["install", "reinstall"]:
+                success = run_pacman_with_apt_output(current_cmd, show_hooks=True)
+                if not success:
+                    sys.exit(1)
+            else:
+                # Run with full terminal control - no output capture
+                subprocess.run(current_cmd, check=True)
             
     except subprocess.CalledProcessError:
         sys.exit(1)
