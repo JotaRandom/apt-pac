@@ -23,7 +23,11 @@ sha256sums=('SKIP')
 
 version() {
   cd "$srcdir/$_pkgname"
-  git describe --tags --long
+  if git describe --tags --exact-match 2>/dev/null; then
+    git describe --tags | sed 's/^v//;s/-/+/g'
+  else
+    printf "0.r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+  fi
 }
 
 build() {

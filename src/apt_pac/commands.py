@@ -313,15 +313,19 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
     - Package installation progress in APT style
     - Hooks/triggers in APT trigger format
     Returns True if successful, False otherwise
+    
+    Preserves stdin for interactive prompts (e.g., remove confirmations)
     """
     import re
     
     try:
-        # Run pacman with stdout/stderr captured
+        # Run pacman with stdout/stderr captured, but stdin passed through
+        # This allows user interaction while we parse the output
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            stdin=None,  # stdin not captured - passes through to user
             text=True,
             bufsize=1
         )
@@ -333,6 +337,11 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
                 break
             
             line = line.rstrip()
+            
+            # Show confirmation prompts and user-facing questions as-is
+            if any(prompt in line for prompt in ['[Y/n]', '[y/N]', 'Proceed with', 'Do you want to']):
+                console.print(line)
+                continue
             
             # Detect package installation: "installing package-name..."
             install_match = re.search(r'installing ([a-zA-Z0-9._+-]+)\.\.\.', line, re.IGNORECASE)
@@ -347,6 +356,13 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
             if upgrade_match:
                 pkg_name = upgrade_match.group(1)
                 console.print(f"Setting up {pkg_name} ...")
+                continue
+            
+            # Detect package removal: "removing package-name..."
+            remove_match = re.search(r'removing ([a-zA-Z0-9._+-]+)\.\.\.', line, re.IGNORECASE)
+            if remove_match:
+                pkg_name = remove_match.group(1)
+                console.print(f"Removing {pkg_name} ...")
                 continue
             
             # Detect hooks: "running 'hook-name.hook'..."
@@ -1172,15 +1188,11 @@ def execute_command(apt_cmd, extra_args):
                 console.print("File database: [green]Done[/green]")
             return  # Exit after upgrade handling
         else:
-            # For install/reinstall, use APT-style output with hooks
-            # For remove/purge/etc, use normal pacman to allow interactive prompts
-            if apt_cmd in ["install", "reinstall"]:
-                success = run_pacman_with_apt_output(current_cmd, show_hooks=True)
-                if not success:
-                    sys.exit(1)
-            else:
-                # For remove, purge, autoremove, etc. - run normally to preserve interactivity
-                subprocess.run(current_cmd, check=True)
+            # For all commands: use APT-style output with hooks
+            # stdin is now preserved, so interactive prompts work correctly
+            success = run_pacman_with_apt_output(current_cmd, show_hooks=True)
+            if not success:
+                sys.exit(1)
             
     except subprocess.CalledProcessError:
         sys.exit(1)
