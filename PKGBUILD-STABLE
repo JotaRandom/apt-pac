@@ -1,0 +1,55 @@
+# Maintainer: Your Name <user@archlinux.org>
+
+pkgname=apt-pac
+pkgver=2026.01.01
+pkgrel=1
+pkgdesc="An APT-style wrapper for pacman with APT-like output"
+arch=('any')
+url="https://github.com/JotaRandom/apt-pac"
+license=('MIT')
+depends=('python'
+         'python-rich'
+         'python-tomli'
+         'devtools'
+         'pacman-contrib')
+makedepends=('python-build'
+             'python-installer'
+             'python-setuptools'
+             'python-wheel'
+             'git')
+source=("$_pkgname::git+https://github.com/JotaRandom/$pkgname.git#tag=$pkgver")
+sha256sums=('SKIP')
+
+version() {
+  cd "$srcdir/$pkgname"
+  git describe --tags --long
+}
+
+build() {
+  cd "$srcdir/$pkgname"
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "$srcdir/$pkgname"
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  
+  # Install global configuration
+  install -Dm644 config.toml "$pkgdir/etc/apt-pac/config.toml"
+
+  # Install manpage
+  install -Dm644 src/man/apt-pac.8 "$pkgdir/usr/share/man/man8/apt-pac.8"
+
+  # Install translations
+  for mo_file in locales/*.mo; do
+    if [ -f "$mo_file" ]; then
+      locale=$(basename "$mo_file" .mo)
+      install -Dm644 "$mo_file" "$pkgdir/usr/share/locale/$locale/LC_MESSAGES/apt-pac.mo"
+    fi
+  done
+
+  # Install shell completions
+  install -Dm644 src/completions/apt-pac.bash "$pkgdir/usr/share/bash-completion/completions/apt-pac"
+  install -Dm644 src/completions/_apt-pac "$pkgdir/usr/share/zsh/site-functions/_apt-pac"
+  install -Dm644 src/completions/apt-pac.fish "$pkgdir/usr/share/fish/vendor_completions.d/apt-pac.fish"
+}

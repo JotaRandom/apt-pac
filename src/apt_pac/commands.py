@@ -1038,7 +1038,7 @@ def execute_command(apt_cmd, extra_args):
                     run_official = False
             
             if run_official:
-                subprocess.run(current_cmd)  # Run the upgrade (with user interaction)
+                subprocess.run(current_cmd, capture_output=True)  # Run the upgrade (suppress output to avoid duplication)
             else:
                 console.print("[dim]Skipping official packages upgrade (--aur provided)[/dim]")
             
@@ -1072,9 +1072,10 @@ def execute_command(apt_cmd, extra_args):
                 console.print("\nSyncing file database...")
                 subprocess.run(["pacman", "-Fy"], check=False, capture_output=True)
                 console.print("File database: [green]Done[/green]")
-            else:
-                # For install, remove, etc.
-                subprocess.run(current_cmd, check=True)
+            return  # Exit after upgrade handling
+        else:
+            # For install, remove, etc.
+            subprocess.run(current_cmd, check=True)
             
     except subprocess.CalledProcessError:
         sys.exit(1)
