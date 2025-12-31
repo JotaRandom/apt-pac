@@ -39,7 +39,7 @@
 
 ## Just for Fun / Polish
 
-- [ ] **"Super Cow Powers"**: 
+- [x] **"Super Cow Powers"**: 
     - `apt moo` implementation (like `apt moo` on Debian and Ubuntu's apt).
     - `apt pacman` implementation (like `ILoveCandy` on Arch's Pacman config and output). 
 

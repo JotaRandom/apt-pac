@@ -248,6 +248,33 @@ def check_updates(verbose=False) -> List[Dict]:
                 
     return updates
 
+def get_privilege_command(target_user: str, cmd: List[str]) -> List[str]:
+    """
+    Wrap a command to run as a specific user using the configured tool.
+    Dropped privileges context (root -> user).
+    """
+    config = get_config()
+    tool = config.get("tools", "privilege_tool", "auto")
+    
+    # Auto-detect if auto
+    if tool == "auto":
+        # Check what's available
+        # Prioritize run0 if available (systemd v256+), then doas, then sudo
+        if shutil.which("run0"):
+            tool = "run0"
+        elif shutil.which("doas"):
+            tool = "doas"
+        else:
+            tool = "sudo"
+            
+    if tool == "run0":
+        return ["run0", f"--user={target_user}"] + cmd
+    elif tool == "doas":
+        return ["doas", "-u", target_user] + cmd
+    else:
+        # sudo or fallback
+        return ["sudo", "-u", target_user] + cmd
+
 def download_aur_source(package_name: str, target_dir: Optional[Path] = None, force=False) -> Optional[Path]:
     """
     Clone an AUR package repository.
@@ -405,7 +432,7 @@ class AurInstaller:
         if os.getuid() == 0:
              if real_user:
                  # Drop privileges to build, but allow installing deps (makepkg calls sudo/pacman)
-                 cmd = ["sudo", "-u", real_user] + cmd
+                 cmd = get_privilege_command(real_user, cmd)
              else:
                  print_error("E: Cannot build AUR packages as root without SUDO_USER set.")
                  print_info("Please run as a normal user or via sudo.")
@@ -440,7 +467,7 @@ class AurInstaller:
                         
                         # IMPORTANT: Import key for the REAL USER, not root
                         if os.getuid() == 0 and real_user:
-                             gpg_cmd = ["sudo", "-u", real_user] + gpg_cmd
+                             gpg_cmd = get_privilege_command(real_user, gpg_cmd)
                         
                         subprocess.run(gpg_cmd, check=False)
                     

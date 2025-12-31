@@ -2,6 +2,7 @@ import io
 import unittest
 from unittest.mock import patch, MagicMock
 import sys
+import os
 from pathlib import Path
 
 # Add src to path
@@ -135,7 +136,7 @@ class TestAurFeatures(unittest.TestCase):
                      found = True
              self.assertTrue(found, "makepkg should have been called with --noconfirm")
 
-    @patch('subprocess.run')
+    @patch('apt_pac.commands.subprocess.run')
     @patch('apt_pac.commands.get_editor', return_value='nano')
     @patch('apt_pac.ui.console.input', return_value='y')
     def test_add_repository(self, mock_input, mock_editor, mock_run):
@@ -382,6 +383,145 @@ class TestAurFeatures(unittest.TestCase):
             if cache_file.exists():
                 try: os.remove(cache_file)
                 except: pass
+
+class TestPrivileges(unittest.TestCase):
+    @patch('apt_pac.commands.subprocess.run')
+    @patch('apt_pac.commands.os.getuid', create=True)
+    @patch('apt_pac.ui.console')
+    def test_system_install_no_root(self, mock_console, mock_getuid, mock_run):
+        from apt_pac import commands
+        # Mock user as non-root (1000)
+        mock_getuid.return_value = 1000
+        
+        # Mock subprocess.run for safeguard check (pacman -Qu)
+        mock_run.return_value = MagicMock(returncode=1, stdout="")
+
+        with self.assertRaises(SystemExit) as cm:
+            commands.execute_command("install", ["foo"])
+            
+        # Should exit with specific code (100 or 1)
+        # Our code exits with 100 for permission denied
+        self.assertEqual(cm.exception.code, 100)
+        
+    @patch('apt_pac.aur.get_config')
+    @patch('shutil.which')
+    def test_get_privilege_command(self, mock_which, mock_config):
+        from apt_pac.aur import get_privilege_command
+        
+        # Setup Config Mock
+        mock_conf_obj = MagicMock()
+        mock_config.return_value = mock_conf_obj
+        
+        # 1. Test "sudo" explicit
+        mock_conf_obj.get.side_effect = lambda s, k, d: "sudo" if k == "privilege_tool" else d
+        cmd = get_privilege_command("user", ["cmd"])
+        self.assertEqual(cmd, ["sudo", "-u", "user", "cmd"])
+        
+        # 2. Test "doas" explicit
+        mock_conf_obj.get.side_effect = lambda s, k, d: "doas" if k == "privilege_tool" else d
+        cmd = get_privilege_command("user", ["cmd"])
+        self.assertEqual(cmd, ["doas", "-u", "user", "cmd"])
+
+        # 3. Test "run0" explicit
+        mock_conf_obj.get.side_effect = lambda s, k, d: "run0" if k == "privilege_tool" else d
+        cmd = get_privilege_command("user", ["cmd"])
+        self.assertEqual(cmd, ["run0", "--user=user", "cmd"])
+
+        # 4. Test "auto" with run0 available
+        mock_conf_obj.get.side_effect = lambda s, k, d: "auto" if k == "privilege_tool" else d
+        mock_which.side_effect = lambda cmd: "/bin/run0" if cmd == "run0" else None
+        cmd = get_privilege_command("user", ["cmd"])
+        self.assertEqual(cmd, ["run0", "--user=user", "cmd"])
+
+        # 5. Test "auto" with doas available (no run0)
+        mock_which.side_effect = lambda cmd: "/bin/doas" if cmd == "doas" else None
+        cmd = get_privilege_command("user", ["cmd"])
+        self.assertEqual(cmd, ["doas", "-u", "user", "cmd"])
+    
+    @patch('apt_pac.aur.download_aur_source')
+    @patch('subprocess.run')
+    @patch('os.getuid', create=True)
+    @patch.dict(os.environ, {"SUDO_USER": "testuser"}, clear=True) 
+    def test_aur_build_as_root_with_sudo_user(self, mock_getuid, mock_run, mock_download):
+        from apt_pac.aur import AurInstaller
+        
+        # Mock root
+        mock_getuid.return_value = 0
+        mock_download.return_value = True # Success download
+        
+        installer = AurInstaller()
+        # We need to minimally mock _build_pkg dependencies
+        # But _build_pkg is instance method. We can test it directly.
+        
+        pkg_info = {'Name': 'test-pkg'}
+        
+        # We need to patch get_config inside aur module to return 'sudo' for deterministic test
+        with patch('apt_pac.aur.get_config') as mock_config:
+             mock_conf_obj = MagicMock()
+             mock_conf_obj.get.side_effect = lambda s, k, d: "sudo" if k == "privilege_tool" else d
+             mock_config.return_value = mock_conf_obj
+             
+             installer._build_pkg(pkg_info, verbose=False, auto_confirm=True)
+        
+        # Check that subprocess.run was called with sudo
+        found_sudo = False
+        for call_args in mock_run.call_args_list:
+            cmd = call_args[0][0]
+            if cmd[0] == "sudo" and cmd[1] == "-u" and cmd[2] == "testuser":
+                found_sudo = True
+                break
+        
+        self.assertTrue(found_sudo, "Should have dropped privileges with sudo -u testuser")
+
+    @patch('apt_pac.aur.download_aur_source')
+    @patch('os.getuid', create=True)
+    @patch.dict(os.environ, {}, clear=True) # Ensure NO SUDO_USER
+    def test_aur_build_as_root_no_sudo_user(self, mock_getuid, mock_download):
+        from apt_pac.aur import AurInstaller
+        
+        # Mock root
+        mock_getuid.return_value = 0
+        mock_download.return_value = True
+        
+        installer = AurInstaller()
+        pkg_info = {'Name': 'test-pkg'}
+        
+        with self.assertRaises(SystemExit):
+            # Suppress print error
+            with patch('apt_pac.ui.console.print'):
+                 installer._build_pkg(pkg_info, verbose=False, auto_confirm=True)
+
+class TestEasterEggs(unittest.TestCase):
+    @patch('apt_pac.commands.console')
+    @patch('apt_pac.commands.os.getuid', create=True)
+    def test_moo(self, mock_getuid, mock_console):
+        from apt_pac import commands
+        mock_getuid.return_value = 1000
+        
+        commands.execute_command("moo", [])
+        
+        # Verify call args
+        found_moo = False
+        for call_args in mock_console.print.call_args_list:
+            if "Have you mooed today?" in str(call_args[0][0]):
+                found_moo = True
+                break
+        self.assertTrue(found_moo)
+
+    @patch('apt_pac.commands.console')
+    @patch('apt_pac.commands.os.getuid', create=True)
+    def test_pacman(self, mock_getuid, mock_console):
+        from apt_pac import commands
+        mock_getuid.return_value = 1000
+        
+        commands.execute_command("pacman", [])
+        
+        found_pacman = False
+        for call_args in mock_console.print.call_args_list:
+            if ".--." in str(call_args[0][0]): # Top of head
+                found_pacman = True
+                break
+        self.assertTrue(found_pacman)
 
 if __name__ == '__main__':
     unittest.main()

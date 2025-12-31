@@ -42,6 +42,9 @@ COMMAND_MAP = {
     "key": ["pacman-key"],  # Alias for apt-key
     "add-repository": ["add-repository"],  # Educational message
     "showsrc": ["showsrc"],  # Placeholder for ABS+AUR
+    # Easter Eggs
+    "moo": [], 
+    "pacman": [],
 }
 
 NEED_SUDO = {
@@ -392,7 +395,26 @@ def execute_command(apt_cmd, extra_args):
             extra_args = pkgs_to_upgrade
 
     pacman_args = COMMAND_MAP[apt_cmd]
-    
+
+    # Easter Eggs
+    if apt_cmd == "moo":
+        console.print("         (__)")
+        console.print("         (oo)")
+        console.print("   /------\\/")
+        console.print("  / |    ||")
+        console.print(" *  /\\---/\\")
+        console.print("    ~~   ~~")
+        console.print("....\"Have you mooed today?\"...")
+        return
+        
+    if apt_cmd == "pacman":
+        console.print(" .--.")
+        console.print("/  _ \\")
+        console.print("|  _  |   .  .  .  .  .  .  .")
+        console.print("\\     /")
+        console.print(" '--'")
+        return
+
     # Check safeguards before doing anything destructive
     if not is_simulation:
         check_safeguards(apt_cmd, extra_args)
