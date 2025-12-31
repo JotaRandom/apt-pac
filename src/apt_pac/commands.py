@@ -278,6 +278,71 @@ def simulate_apt_download_output(pacman_cmd, config):
     except Exception:
         pass
 
+def run_pacman_with_apt_output(cmd, show_hooks=True):
+    """
+    Runs pacman command and parses output to show:
+    - Package installation progress in APT style
+    - Hooks/triggers in APT trigger format
+    Returns True if successful, False otherwise
+    """
+    import re
+    
+    try:
+        # Run pacman with stdout/stderr captured
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        
+        installing_packages = []
+        
+        for line in iter(process.stdout.readline, ''):
+            if not line:
+                break
+            
+            line = line.rstrip()
+            
+            # Detect package installation: "installing package-name..."
+            install_match = re.search(r'installing ([a-zA-Z0-9._+-]+)\.\.\.', line, re.IGNORECASE)
+            if install_match:
+                pkg_name = install_match.group(1)
+                installing_packages.append(pkg_name)
+                console.print(f"Setting up {pkg_name} ...")
+                continue
+            
+            # Detect package upgrade: "upgrading package-name..."
+            upgrade_match = re.search(r'upgrading ([a-zA-Z0-9._+-]+)\.\.\.', line, re.IGNORECASE)
+            if upgrade_match:
+                pkg_name = upgrade_match.group(1)
+                console.print(f"Setting up {pkg_name} ...")
+                continue
+            
+            # Detect hooks: "running 'hook-name.hook'..."
+            if show_hooks:
+                hook_match = re.search(r"running ['\"]?([^'\"]+\.hook)['\"]?\.\.\.", line, re.IGNORECASE)
+                if hook_match:
+                    hook_name = hook_match.group(1)
+                    # Convert hook name to trigger-like name
+                    # e.g., "systemd-update.hook" -> "systemd-update"
+                    trigger_name = hook_name.replace('.hook', '')
+                    console.print(f"Processing triggers for {trigger_name} ...")
+                    continue
+            
+            # For any other important output (errors, warnings), show as-is
+            if any(keyword in line.lower() for keyword in ['error', 'warning', 'failed', 'conflict']):
+                console.print(line)
+        
+        process.wait()
+        return process.returncode == 0
+        
+    except Exception as e:
+        print_error(f"Error running pacman: {e}")
+        return False
+
+
 def execute_command(apt_cmd, extra_args):
     if apt_cmd not in COMMAND_MAP:
         import difflib
@@ -1038,7 +1103,11 @@ def execute_command(apt_cmd, extra_args):
                     run_official = False
             
             if run_official:
-                subprocess.run(current_cmd, capture_output=True)  # Run the upgrade (suppress output to avoid duplication)
+                # Run upgrade with APT-style output including hooks/triggers
+                success = run_pacman_with_apt_output(current_cmd, show_hooks=True)
+                if not success:
+                    print_error("Upgrade failed")
+                    sys.exit(1)
             else:
                 console.print("[dim]Skipping official packages upgrade (--aur provided)[/dim]")
             
@@ -1075,7 +1144,9 @@ def execute_command(apt_cmd, extra_args):
             return  # Exit after upgrade handling
         else:
             # For install, remove, etc.
-            subprocess.run(current_cmd, check=True)
+            success = run_pacman_with_apt_output(current_cmd, show_hooks=True)
+            if not success:
+                sys.exit(1)
             
     except subprocess.CalledProcessError:
         sys.exit(1)
