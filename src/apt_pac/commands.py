@@ -3,14 +3,13 @@ import sys
 import os
 from .ui import print_info, print_command, print_error, console, format_search_results, format_show, show_help, format_aur_search_results, print_apt_download_line
 from .config import get_config
-from .aur import search_aur, install_aur, get_aur_info
+from . import aur
 
 def run_pacman(cmd, **kwargs):
     """
     Wrapper for subprocess.run that forces LC_ALL=C for consistent English output.
     Use this instead of subprocess.run when calling pacman to avoid locale issues.
     """
-    import subprocess
     env = kwargs.get('env', os.environ.copy())
     env['LC_ALL'] = 'C'
     kwargs['env'] = env
