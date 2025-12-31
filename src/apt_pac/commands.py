@@ -116,8 +116,13 @@ def show_summary(apt_cmd, extra_args):
         
         # Get package info from repository
         info = subprocess.run(["pacman", "-Si", pkg_name], capture_output=True, text=True)
+        print(f"DEBUG: pacman -Si {pkg_name} returncode: {info.returncode}", file=sys.stderr)
         if info.returncode != 0:
+            print(f"DEBUG: pacman -Si FAILED for {pkg_name}", file=sys.stderr)
+            print(f"DEBUG: stderr: {info.stderr}", file=sys.stderr)
             continue
+        
+        print(f"DEBUG: pacman -Si output has {len(info.stdout.splitlines())} lines", file=sys.stderr)
         
         dl_size = 0
         inst_size = 0
