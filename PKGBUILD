@@ -41,6 +41,14 @@ package() {
   # Install manpage
   install -Dm644 src/man/apt-pac.8 "$pkgdir/usr/share/man/man8/apt-pac.8"
 
+  # Install translations
+  for mo_file in locales/*.mo; do
+    if [ -f "$mo_file" ]; then
+      locale=$(basename "$mo_file" .mo)
+      install -Dm644 "$mo_file" "$pkgdir/usr/share/locale/$locale/LC_MESSAGES/apt-pac.mo"
+    fi
+  done
+
   # Install shell completions
   install -Dm644 src/completions/apt-pac.bash "$pkgdir/usr/share/bash-completion/completions/apt-pac"
   install -Dm644 src/completions/_apt-pac "$pkgdir/usr/share/zsh/site-functions/_apt-pac"

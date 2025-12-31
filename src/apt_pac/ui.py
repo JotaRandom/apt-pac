@@ -2,6 +2,7 @@ from rich.console import Console
 from rich.theme import Theme
 from rich.table import Table
 from rich.panel import Panel
+from .i18n import _
 from rich.text import Text
 
 custom_theme = Theme({
@@ -17,16 +18,19 @@ custom_theme = Theme({
 console = Console(theme=custom_theme)
 
 def print_info(text):
-    console.print(f"[info]INFO:[/info] {text}")
+    """Print info message (no prefix - APT style)."""
+    console.print(text)
 
 def print_error(text):
-    console.print(f"[error]ERROR:[/error] {text}")
+    """Print error message (no prefix - APT style)."""
+    console.print(text)
 
 def print_command(text):
     console.print(f"[command]{text}[/command]")
 
 def print_success(text):
-    console.print(f"[success]SUCCESS:[/success] {text}")
+    """Print success message."""
+    console.print(f"[success]{text}[/success]")
 
 def print_apt_download_line(index, total, url, filename, size_str=""):
     """

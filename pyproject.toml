@@ -17,3 +17,11 @@ apt-pac = "apt_pac.__main__:main"
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["apt_pac"]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+apt_pac = ["../locales/*.mo"]
+

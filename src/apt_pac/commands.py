@@ -4,6 +4,7 @@ import os
 from .ui import print_info, print_command, print_error, console, format_search_results, format_show, show_help, format_aur_search_results, print_apt_download_line
 from . import aur
 from .config import get_config
+from .i18n import _
 
 COMMAND_MAP = {
     "update": ["-Sy"],
@@ -158,7 +159,7 @@ def get_protected_packages():
         kernels = subprocess.run(["pacman", "-Qq"], capture_output=True, text=True).stdout.splitlines()
         detected_kernels = {pkg for pkg in kernels if pkg.startswith("linux")}
         core_packages.update(detected_kernels)
-    except:
+    except Exception:
         pass
 
     # Detect bootloaders
@@ -167,7 +168,7 @@ def get_protected_packages():
         pkgs = subprocess.run(["pacman", "-Qq"], capture_output=True, text=True).stdout.splitlines()
         detected_bootloaders = {pkg for pkg in pkgs if any(hint in pkg for hint in bootloader_hints)}
         core_packages.update(detected_bootloaders)
-    except:
+    except Exception:
         pass
         
     return core_packages
@@ -179,9 +180,10 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
         # Check if there are pending upgrades
         check_upgrades = subprocess.run(["pacman", "-Qu"], capture_output=True, text=True)
         if check_upgrades.returncode == 0 and check_upgrades.stdout.strip():
-            console.print("\n[bold yellow]WARNING: Partial upgrades are unsupported on Arch Linux.[/bold yellow]")
-            console.print("You should run [bold]apt upgrade[/bold] before installing new packages.")
-            if not console.input("Do you want to continue anyway? [y/N] ").lower().startswith('y'):
+            console.print(_("\n[bold yellow]W: Partial upgrades are unsupported on Arch Linux.[/bold yellow]"))
+            console.print(_("You should run [bold]apt upgrade[/bold] before installing new packages."))
+            if not console.input(_("Do you want to continue anyway? [y/N] ")).lower().startswith('y'):
+                print_info(_("Aborted."))
                 sys.exit(0)
 
     # 2. Protected Packages
@@ -189,10 +191,10 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
         protected = get_protected_packages()
         for pkg in extra_args:
             if pkg in protected:
-                console.print(f"\n[bold red]CRITICAL: You are trying to remove a core system package: {pkg}[/bold red]")
-                console.print("Removing this package may render your system unbootable.")
-                if console.input(f"To proceed, type: 'Yes, I know what I am doing': ") != "Yes, I know what I am doing":
-                    print_info("Aborted.")
+                console.print(f"\n[bold red]E: You are trying to remove a core system package: {pkg}[/bold red]")  
+                console.print(_("Removing this package may render your system unbootable."))
+                if console.input(_("To proceed, type 'Yes, I know what I am doing': ")) != "Yes, I know what I am doing":
+                    print_info(_("Aborted."))
                     sys.exit(1)
 
     # 3. Large Removal Warning
@@ -212,9 +214,9 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
         if result.returncode == 0:
             removed_pkgs = result.stdout.strip().split('\n')
             if len(removed_pkgs) > 20:
-                console.print(f"\n[bold yellow]WARNING: You are about to remove {len(removed_pkgs)} packages.[/bold yellow]")
-                if not console.input("Are you sure you want to continue? [y/N] ").lower().startswith('y'):
-                    print_info("Aborted.")
+                console.print(f"\n[bold yellow]W: You are about to remove {len(removed_pkgs)} packages.[/bold yellow]")
+                if not console.input(_("Are you sure you want to continue? [y/N] ")).lower().startswith('y'):
+                    print_info(_("Aborted."))
                     sys.exit(0)
 
 def get_editor():
@@ -422,11 +424,11 @@ def execute_command(apt_cmd, extra_args):
     # Handle privilege check (Strict APT style)
     if apt_cmd in NEED_SUDO and os.getuid() != 0:
         if apt_cmd == "update":
-            console.print(f"E: Could not open lock file /var/lib/pacman/db.lck - open (13: Permission denied)")
-            console.print(f"E: Unable to lock directory /var/lib/pacman/")
+            console.print(_("E: Could not open lock file /var/lib/pacman/db.lck - open (13: Permission denied)"))
+            console.print(_("E: Unable to lock directory /var/lib/pacman/"))
         else:
-            console.print(f"E: Could not open lock file /var/lib/pacman/db.lck - open (13: Permission denied)")
-            console.print(f"E: Unable to lock the administration directory (/var/lib/pacman/), are you root?")
+            console.print(_("E: Could not open lock file /var/lib/pacman/db.lck - open (13: Permission denied)"))
+            console.print(_("E: Unable to lock the administration directory (/var/lib/pacman/), are you root?"))
         sys.exit(100)
 
     # Handle apt list with all options

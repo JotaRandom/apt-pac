@@ -1,0 +1,89 @@
+# Spanish translations for apt-pac
+# Copyright (C) 2025
+# This file is distributed under the same license as the apt-pac package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: apt-pac 1.0\n"
+"Report-Msgid-Bugs-To: https://github.com/JotaRandom/apt-pac/issues\n"
+"POT-Creation-Date: 2025-12-31 02:23-0300\n"
+"PO-Revision-Date: 2025-12-31 01:48:00-0300\n"
+"Last-Translator: Auto-generated\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Poedit-Basepath: ..\n"
+"X-Poedit-SearchPath-0: src/apt_pac\n"
+"X-Poedit-KeywordsList: _\n"
+
+#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:183
+msgid ""
+"\n"
+"[bold yellow]W: Partial upgrades are unsupported on Arch Linux.[/bold yellow]"
+msgstr ""
+
+#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:184
+msgid "You should run [bold]apt upgrade[/bold] before installing new packages."
+msgstr ""
+
+#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:185
+#, fuzzy
+msgid "Do you want to continue anyway? [y/N] "
+msgstr "¿Desea continuar? [S/n]"
+
+#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:186
+#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:197
+#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:219
+msgid "Aborted."
+msgstr "Abortado."
+
+#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:195
+msgid "Removing this package may render your system unbootable."
+msgstr ""
+
+#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:196
+msgid "To proceed, type 'Yes, I know what I am doing': "
+msgstr ""
+
+#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:218
+#, fuzzy
+msgid "Are you sure you want to continue? [y/N] "
+msgstr "¿Desea continuar? [S/n]"
+
+# Permission errors
+#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:427
+#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:430
+msgid ""
+"E: Could not open lock file /var/lib/pacman/db.lck - open (13: Permission "
+"denied)"
+msgstr ""
+"E: No se pudo abrir el fichero de bloqueo /var/lib/pacman/db.lck - open (13: "
+"Permiso denegado)"
+
+#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:428
+msgid "E: Unable to lock directory /var/lib/pacman/"
+msgstr "E: Imposible bloquear el directorio /var/lib/pacman/"
+
+#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:431
+msgid ""
+"E: Unable to lock the administration directory (/var/lib/pacman/), are you "
+"root?"
+msgstr ""
+"E: Imposible bloquear el directorio de administración (/var/lib/pacman/), "
+"¿es superusuario?"
+
+# Common messages
+#~ msgid "Reading package lists..."
+#~ msgstr "Leyendo lista de paquetes..."
+
+#~ msgid "Done"
+#~ msgstr "Listo"
+
+#~ msgid "Building dependency tree..."
+#~ msgstr "Creando árbol de dependencias..."
+
+#~ msgid "Reading state information..."
+#~ msgstr "Leyendo la información de estado..."

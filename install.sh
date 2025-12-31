@@ -96,6 +96,22 @@ if [ -f "src/completions/apt-pac.fish" ]; then
     fi
 fi
 
+# Install translations
+echo "Installing translations..."
+if compgen -G "locales/*.mo" > /dev/null; then
+    for mo_file in locales/*.mo; do
+        if [ -f "$mo_file" ]; then
+            locale=$(basename "$mo_file" .mo)
+            LOCALE_DIR="/usr/share/locale/$locale/LC_MESSAGES"
+            sudo mkdir -p "$LOCALE_DIR"
+            sudo install -Dm644 "$mo_file" "$LOCALE_DIR/apt-pac.mo"
+            echo "Installed $locale translation to $LOCALE_DIR/apt-pac.mo"
+        fi
+    done
+else
+    echo "No compiled translations found. Run ./scripts/compile-translations.sh first."
+fi
+
 # Create a proper wrapper script to avoid PYTHONPATH issues
 INSTALL_DIR="/usr/local/bin"
 SRC_PATH="$(pwd)/src"
@@ -117,9 +133,11 @@ echo "--------------------------------------------------"
 echo "Installation complete!"
 echo "Installed files:"
 echo "  - /usr/local/bin/apt-pac"
-echo "  - /usr/local/share/man/man8/apt-pac.8 (manpage)"
-echo "  - Shell completions (bash, zsh, fish)"
-echo "  - /etc/apt-pac/config.toml (global config)"
+echo "  - /usr/local/share/man/man8/apt-pac.8 (manpage)
+  - Shell completions (bash, zsh, fish)
+  - /etc/apt-pac/config.toml (global config)
+  - /usr/share/locale/*/LC_MESSAGES/apt-pac.mo (translations)
+"
 echo ""
 echo "User config will be auto-created at:"
 echo "  ~/.config/apt-pac/config.toml"

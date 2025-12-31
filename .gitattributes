@@ -6,3 +6,8 @@
 
 # Python files
 *.py text indentation=space indent_size=4
+
+# Translation files
+*.po text eol=lf
+*.pot text eol=lf
+

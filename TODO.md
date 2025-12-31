@@ -45,4 +45,4 @@
 
 ## Others
 
-- [ ] **Translation**: Make it translatable or at least add i18n support for what apt outputs translated.
+- [x] **Translation**: Make it translatable or at least add i18n support for what apt outputs translated.

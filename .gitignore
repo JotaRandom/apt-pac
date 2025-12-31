@@ -49,3 +49,7 @@ src_pkg/
 apt-pac-*/
 *.log-pkg
 *.sig
+
+# i18n compiled files
+*.mo
+
