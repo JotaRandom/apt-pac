@@ -1172,10 +1172,15 @@ def execute_command(apt_cmd, extra_args):
                 console.print("File database: [green]Done[/green]")
             return  # Exit after upgrade handling
         else:
-            # For install, remove, etc.
-            success = run_pacman_with_apt_output(current_cmd, show_hooks=True)
-            if not success:
-                sys.exit(1)
+            # For install/reinstall, use APT-style output with hooks
+            # For remove/purge/etc, use normal pacman to allow interactive prompts
+            if apt_cmd in ["install", "reinstall"]:
+                success = run_pacman_with_apt_output(current_cmd, show_hooks=True)
+                if not success:
+                    sys.exit(1)
+            else:
+                # For remove, purge, autoremove, etc. - run normally to preserve interactivity
+                subprocess.run(current_cmd, check=True)
             
     except subprocess.CalledProcessError:
         sys.exit(1)
