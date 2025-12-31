@@ -112,6 +112,7 @@ def format_show(output):
     """
     Format pacman -Si/Qi output to look like apt show.
     Maps Pacman keys to APT keys.
+    Handles multi-line fields like Optional Deps.
     """
     lines = output.strip().split('\n')
     text = Text()
@@ -123,7 +124,7 @@ def format_show(output):
         "Description": "Description",
         "Architecture": "Architecture",
         "URL": "Homepage",
-        "Licenses": "Section", # Not direct map, but Licenses is closest to section info usually
+        "Licenses": "Section",
         "Groups": "Tag",
         "Provides": "Provides",
         "Depends On": "Depends",
@@ -137,32 +138,54 @@ def format_show(output):
         "Build Date": "Build-Date",
         "Install Date": "Install-Date",
         "Install Reason": "APT-Manual-Installed",
-        "Repository": "Section", # Often repo maps to section like 'main' 'contrib'
+        "Repository": "Section",
     }
 
+    current_key = None
+    current_val = ""
+    
     for line in lines:
-        if ':' in line:
-            key, val = line.split(':', 1)
-            key = key.strip()
-            val = val.strip()
-            
-            # Map key if exists
-            if key in key_map:
-                new_key = key_map[key]
-                
+        # Check if line starts with non-whitespace (new field)
+        if line and not line[0].isspace() and ':' in line:
+            # Save previous field if exists
+            if current_key:
+                mapped_key = key_map.get(current_key, current_key)
                 # Special value mapping
-                if key == "Install Reason":
-                    val = "yes" if "Explicitly installed" in val else "no"
+                if current_key == "Install Reason":
+                    current_val = "yes" if "Explicitly installed" in current_val else "no"
                 
-                text.append(f"{new_key:<20}", style="bold cyan")
-                text.append(f": {val}\n")
-            else:
-                 # Keep original if no map
-                 text.append(f"{key:<20}", style="bold cyan")
-                 text.append(f": {val}\n")
-
+                text.append(f"{mapped_key:<20}", style="bold cyan")
+                text.append(f": {current_val}\n")
+            
+            # Start new field
+            key, val = line.split(':', 1)
+            current_key = key.strip()
+            current_val = val.strip()
+        elif line and line[0].isspace():
+            # Continuation line (indented) - part of current field
+            current_val += " " + line.strip()
         else:
+            # Empty line or other
+            if current_key:
+                # Save current field before empty line
+                mapped_key = key_map.get(current_key, current_key)
+                if current_key == "Install Reason":
+                    current_val = "yes" if "Explicitly installed" in current_val else "no"
+                
+                text.append(f"{mapped_key:<20}", style="bold cyan")
+                text.append(f": {current_val}\n")
+                current_key = None
+                current_val = ""
             text.append(f"{line}\n")
+    
+    # Don't forget last field
+    if current_key:
+        mapped_key = key_map.get(current_key, current_key)
+        if current_key == "Install Reason":
+            current_val = "yes" if "Explicitly installed" in current_val else "no"
+        
+        text.append(f"{mapped_key:<20}", style="bold cyan")
+        text.append(f": {current_val}\n")
             
     console.print(Panel(text, title="Package Information", border_style="blue"))
 

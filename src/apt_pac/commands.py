@@ -62,8 +62,15 @@ def show_summary(apt_cmd, extra_args):
     # Filter out flags
     packages = [arg for arg in extra_args if not arg.startswith('-')]
     
+    # Debug: show what we're processing
+    import sys
     if not packages:
+        # No packages to process - this is likely the issue
+        # write to stderr to not interfere with UI
+        print(f"DEBUG: No packages found in extra_args: {extra_args}", file=sys.stderr)
         return
+    
+    print(f"DEBUG: Processing packages: {packages}", file=sys.stderr)
     
     from rich.table import Table
     

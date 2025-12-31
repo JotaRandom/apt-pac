@@ -21,7 +21,7 @@ makedepends=('python-build'
 source=("$_pkgname::git+https://github.com/JotaRandom/$_pkgname.git")
 sha256sums=('SKIP')
 
-version() {
+pkgver() {
   cd "$srcdir/$_pkgname"
   if git describe --tags --exact-match 2>/dev/null; then
     git describe --tags | sed 's/^v//;s/-/+/g'
