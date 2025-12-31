@@ -124,6 +124,13 @@ def show_summary(apt_cmd, extra_args):
         
         print(f"DEBUG: pacman -Si output has {len(info.stdout.splitlines())} lines", file=sys.stderr)
         
+        # DEBUG: Print all field names to see what they actually are
+        print(f"DEBUG: Field names in pacman -Si output:", file=sys.stderr)
+        for line in info.stdout.splitlines():
+            if ':' in line and not line[0].isspace():
+                field_name = line.split(':', 1)[0].strip()
+                print(f"  - '{field_name}'", file=sys.stderr)
+        
         dl_size = 0
         inst_size = 0
         
