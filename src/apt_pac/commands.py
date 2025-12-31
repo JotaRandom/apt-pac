@@ -128,10 +128,12 @@ def show_summary(apt_cmd, extra_args):
                 # Format: "Download Size  : 22.27 MiB"
                 size_str = line.split(':', 1)[1].strip()
                 dl_size = parse_pacman_size(size_str)
+                print(f"DEBUG: {pkg_name} - Download Size parsed: {size_str} -> {dl_size} bytes", file=sys.stderr)
             elif line.startswith("Installed Size"):
                 # Format: "Installed Size : 90.43 MiB"
                 size_str = line.split(':', 1)[1].strip()
                 inst_size = parse_pacman_size(size_str)
+                print(f"DEBUG: {pkg_name} - Installed Size parsed: {size_str} -> {inst_size} bytes", file=sys.stderr)
         
         total_dl_size += dl_size
         
@@ -1194,13 +1196,21 @@ def execute_command(apt_cmd, extra_args):
             return  # Exit after upgrade handling
         else:
             # For install/reinstall: use APT-style output with hooks
-            # For remove/purge/autoremove: use normal pacman to preserve full interactivity
+            # For remove/purge/autoremove: suppress pacman output completely
             if apt_cmd in ["install", "reinstall"]:
                 success = run_pacman_with_apt_output(current_cmd, show_hooks=True)
                 if not success:
                     sys.exit(1)
+            elif apt_cmd in ["remove", "purge", "autoremove"]:
+                # Run with full output capture - silent
+                result = subprocess.run(current_cmd, capture_output=True, text=True)
+                if result.returncode != 0:
+                    # Only show errors
+                    if result.stderr:
+                        console.print(result.stderr)
+                    sys.exit(result.returncode)
             else:
-                # Run with full terminal control - no output capture
+                # Other commands: run normally
                 subprocess.run(current_cmd, check=True)
             
     except subprocess.CalledProcessError:

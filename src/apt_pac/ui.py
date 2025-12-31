@@ -163,7 +163,11 @@ def format_show(output):
             current_val = val.strip()
         elif line and line[0].isspace():
             # Continuation line (indented) - part of current field
-            current_val += " " + line.strip()
+            # For multi-line fields like Optional Deps, add newline to preserve formatting
+            if current_key in ["Optional Deps", "Depends On", "Required By"]:
+                current_val += "\n                     " + line.strip()
+            else:
+                current_val += " " + line.strip()
         else:
             # Empty line or other
             if current_key:
