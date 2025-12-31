@@ -117,7 +117,7 @@ def format_show(output):
     lines = output.strip().split('\n')
     text = Text()
     
-    # APT Mapping
+    # APT Mapping (pacman output forced to English with LC_ALL=C)
     key_map = {
         "Name": "Package",
         "Version": "Version",

@@ -2,8 +2,20 @@ import subprocess
 import sys
 import os
 from .ui import print_info, print_command, print_error, console, format_search_results, format_show, show_help, format_aur_search_results, print_apt_download_line
-from . import aur
 from .config import get_config
+from .aur import search_aur, install_aur, get_aur_info
+
+def run_pacman(cmd, **kwargs):
+    """
+    Wrapper for subprocess.run that forces LC_ALL=C for consistent English output.
+    Use this instead of subprocess.run when calling pacman to avoid locale issues.
+    """
+    import subprocess
+    env = kwargs.get('env', os.environ.copy())
+    env['LC_ALL'] = 'C'
+    kwargs['env'] = env
+    return subprocess.run(cmd, **kwargs)
+
 from .i18n import _
 
 COMMAND_MAP = {
@@ -111,11 +123,12 @@ def show_summary(apt_cmd, extra_args):
             continue
         
         # Check if package is currently installed
-        check = subprocess.run(["pacman", "-Qi", pkg_name], capture_output=True, text=True)
+        # Force English output with LC_ALL=C
+        check = run_pacman(["pacman", "-Qi", pkg_name], capture_output=True, text=True)
         is_upgrade = (check.returncode == 0)
         
         # Get package info from repository
-        info = subprocess.run(["pacman", "-Si", pkg_name], capture_output=True, text=True)
+        info = run_pacman(["pacman", "-Si", pkg_name], capture_output=True, text=True)
         print(f"DEBUG: pacman -Si {pkg_name} returncode: {info.returncode}", file=sys.stderr)
         if info.returncode != 0:
             print(f"DEBUG: pacman -Si FAILED for {pkg_name}", file=sys.stderr)
@@ -134,7 +147,7 @@ def show_summary(apt_cmd, extra_args):
         dl_size = 0
         inst_size = 0
         
-        # Parse the -Si output
+        # Parse the -Si output (now guaranteed to be in English)
         for line in info.stdout.splitlines():
             if line.startswith("Download Size"):
                 # Format: "Download Size  : 22.27 MiB"
@@ -226,7 +239,7 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
     # 1. Partial Upgrade Warning
     if apt_cmd == "install":
         # Check if there are pending upgrades
-        check_upgrades = subprocess.run(["pacman", "-Qu"], capture_output=True, text=True)
+        check_upgrades = run_pacman(["pacman", "-Qu"], capture_output=True, text=True)
         if check_upgrades.returncode == 0 and check_upgrades.stdout.strip():
             console.print(_("\n[bold yellow]W: Partial upgrades are unsupported on Arch Linux.[/bold yellow]"))
             console.print(_("You should run [bold]apt upgrade[/bold] before installing new packages."))
@@ -674,8 +687,8 @@ def execute_command(apt_cmd, extra_args):
         # Simulate apt-cache policy: show installed version and repo version
         pkg = extra_args[0] if extra_args else ""
         if pkg:
-            local = subprocess.run(["pacman", "-Qi", pkg], capture_output=True, text=True)
-            remote = subprocess.run(["pacman", "-Si", pkg], capture_output=True, text=True)
+            local = run_pacman(["pacman", "-Qi", pkg], capture_output=True, text=True)
+            remote = run_pacman(["pacman", "-Si", pkg], capture_output=True, text=True)
             console.print(f"[bold]{pkg}:[/bold]")
             if local.returncode == 0:
                 for line in local.stdout.splitlines():
