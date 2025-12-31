@@ -55,8 +55,12 @@ NEED_SUDO = {
 }
 
 def show_summary(apt_cmd, extra_args):
+    """
+    Show APT-style installation summary with accurate package sizes.
+    """
     pacman_args = COMMAND_MAP[apt_cmd]
-    print_cmd = ["pacman"] + pacman_args + extra_args + ["--print", "--print-format", "%n|%v|%s|%m"]
+    # Get list of packages to be installed/upgraded
+    print_cmd = ["pacman"] + pacman_args + extra_args + ["--print"]
     
     result = subprocess.run(print_cmd, capture_output=True, text=True)
     if result.returncode != 0 or not result.stdout.strip():
@@ -64,56 +68,80 @@ def show_summary(apt_cmd, extra_args):
     
     from rich.table import Table
     
-    lines = result.stdout.strip().split('\n')
+    # Helper function to parse pacman size strings
+    def parse_pacman_size(size_str):
+        """Parse '22.27 MiB' style strings to bytes."""
+        if not size_str or size_str.strip() in ['N/A', '']:
+            return 0
+        
+        parts = size_str.strip().split()
+        if len(parts) != 2:
+            return 0
+        
+        try:
+            value = float(parts[0])
+            unit = parts[1]
+            
+            if unit == 'B':
+                return int(value)
+            elif unit == 'KiB':
+                return int(value * 1024)
+            elif unit == 'MiB':
+                return int(value * 1024 * 1024)
+            elif unit == 'GiB':
+                return int(value * 1024 * 1024 * 1024)
+            else:
+                return 0
+        except (ValueError, IndexError):
+            return 0
+    
+    packages = result.stdout.strip().splitlines()
     new_pkgs = []
     upgraded_pkgs = []
     total_dl_size = 0
     total_inst_size_change = 0
     
-    # Simple logic to distinguish new vs upgraded (rough estimate)
-    for line in lines:
-        if '|' not in line: continue
-        parts = line.split('|')
-        if len(parts) < 4: continue
+    for pkg_name in packages:
+        if not pkg_name.strip():
+            continue
         
-        name, ver, dl_size_str, inst_size_str = parts[0], parts[1], parts[2], parts[3]
+        # Check if package is currently installed
+        check = subprocess.run(["pacman", "-Qi", pkg_name], capture_output=True, text=True)
+        is_upgrade = (check.returncode == 0)
         
-        try:
-            dl_size = int(dl_size_str)
-            inst_size = int(inst_size_str)
-            total_dl_size += dl_size
-        except ValueError:
-            dl_size = 0
-            inst_size = 0
+        # Get package info from repository
+        info = subprocess.run(["pacman", "-Si", pkg_name], capture_output=True, text=True)
+        if info.returncode != 0:
+            continue
         
-        # Check if installed to determine if it's an upgrade or new install
-        # Also need to subtract old package size if it's an upgrade
-        check = subprocess.run(["pacman", "-Qi", name], capture_output=True, text=True)
-        if check.returncode == 0:
-            upgraded_pkgs.append(name)
-            # Find old installed size to calculate delta
-            # This is slow for many packages, but accurate-ish
-            for info_line in check.stdout.splitlines():
-                 if info_line.startswith("Installed Size"):
-                     # Format: Installed Size : 123.45 MiB
-                     # We need to parse this. Pacman output varies by locale potentially, but usually:
-                     # 123.45 KiB/MiB
-                     try:
-                         val_str = info_line.split(':', 1)[1].strip()
-                         val, unit = val_str.split()
-                         val = float(val)
-                         if unit == 'KiB': old_size = val * 1024
-                         elif unit == 'MiB': old_size = val * 1024 * 1024
-                         elif unit == 'GiB': old_size = val * 1024 * 1024 * 1024
-                         else: old_size = val # bytes?
-                         
-                         total_inst_size_change += (inst_size - int(old_size))
-                     except:
-                         total_inst_size_change += 0 # Safe fallback
-                         pass
-                     break
+        dl_size = 0
+        inst_size = 0
+        
+        # Parse the -Si output
+        for line in info.stdout.splitlines():
+            if line.startswith("Download Size"):
+                # Format: "Download Size  : 22.27 MiB"
+                size_str = line.split(':', 1)[1].strip()
+                dl_size = parse_pacman_size(size_str)
+            elif line.startswith("Installed Size"):
+                # Format: "Installed Size : 90.43 MiB"
+                size_str = line.split(':', 1)[1].strip()
+                inst_size = parse_pacman_size(size_str)
+        
+        total_dl_size += dl_size
+        
+        if is_upgrade:
+            upgraded_pkgs.append(pkg_name)
+            # Calculate size delta for upgrades
+            old_size = 0
+            for line in check.stdout.splitlines():
+                if line.startswith("Installed Size"):
+                    size_str = line.split(':', 1)[1].strip()
+                    old_size = parse_pacman_size(size_str)
+                    break
+            total_inst_size_change += (inst_size - old_size)
         else:
-            new_pkgs.append(name)
+            new_pkgs.append(pkg_name)
             total_inst_size_change += inst_size
 
     console.print("\nReading package lists... [green]Done[/green]")
@@ -131,7 +159,7 @@ def show_summary(apt_cmd, extra_args):
     stats = f"{len(upgraded_pkgs)} upgraded, {len(new_pkgs)} newly installed, 0 to remove and 0 not upgraded."
     console.print(stats)
     
-    # Format sizes
+    # Format sizes (APT uses decimal, not binary)
     def fmt_size(bytes_val):
         for unit in ['B', 'kB', 'MB', 'GB']:
             if abs(bytes_val) < 1000.0:
@@ -149,6 +177,7 @@ def show_summary(apt_cmd, extra_args):
     if not console.input("\n[bold]Do you want to continue? [Y/n][/bold] ").lower().startswith('y'):
         print_info("Aborted.")
         sys.exit(0)
+
 
 def get_protected_packages():
     """Dynamically detects installed kernels and bootloaders to protect them."""
