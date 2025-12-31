@@ -25,9 +25,9 @@
 - [x] **GPG Key Import**:
     - Implementation: `AurInstaller` detects PGP signature errors, extracts the Key ID, and runs `gpg --recv-keys` automatically before retrying the build.
 
-- [ ] **Performance**:
-    - Parallel downloading/building? (Maybe out of scope for a wrapper).
-    - Caching RPC results more aggressively.
+- [x] **Performance**:
+    - [x] Parallel download simulation (apt-like output).
+    - [x] Caching RPC results more aggressively (30m persist cache).
 
 ## Refactoring / Code Quality
 

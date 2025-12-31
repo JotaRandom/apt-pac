@@ -237,5 +237,151 @@ class TestAurFeatures(unittest.TestCase):
         mock_run.assert_called_with(["pacman-key", "--add", "key.gpg"], check=True, capture_output=True)
         self.assertIn("OK", mock_stdout.getvalue())
 
+    @patch('sys.stdout', new_callable=io.StringIO)
+    @patch('subprocess.run')
+    @patch('apt_pac.commands.get_config')
+    @patch('apt_pac.commands.console')
+    @patch('apt_pac.ui.console')
+    @patch('os.getuid', return_value=0, create=True)
+    def test_download_output(self, mock_getuid, mock_ui_console, mock_cmd_console, mock_config, mock_run, mock_stdout):
+        from apt_pac.commands import execute_command
+        # Mock config
+        mock_conf_obj = MagicMock()
+        mock_conf_obj.get.return_value = 0
+        mock_config.return_value = mock_conf_obj
+        
+        # Setup mock for subprocess.run
+        url_output = "file://var/cache/pacman/pkg/testpkg-1.0-1-any.pkg.tar.zst\nhttp://mirror.archlinux.org/core/os/x86_64/testpkg-1.0-1-any.pkg.tar.zst"
+        
+        def side_effect(*args, **kwargs):
+             cmd = args[0]
+             if "-p" in cmd:
+                 return MagicMock(returncode=0, stdout=url_output)
+             if "-Qu" in cmd: # Partial upgrade check
+                 return MagicMock(returncode=1, stdout="")
+             return MagicMock(returncode=0)
+             
+        mock_run.side_effect = side_effect
+        
+        execute_command("install", ["testpkg"])
+        
+        # Verify ui.print_apt_download_line called
+        # It uses ui.console, so proper mock is mock_ui_console
+        
+        found_get = False
+        for call_args in mock_ui_console.print.call_args_list:
+             if len(call_args[0]) > 0 and "Get:" in str(call_args[0][0]):
+                 found_get = True
+                 break
+        
+        self.assertTrue(found_get, "Should have printed Get: line")
+
+        self.assertTrue(found_get, "Should have printed Get: line")
+
+    @patch('apt_pac.aur.get_config')
+    @patch('urllib.request.urlopen')
+    def test_rpc_caching(self, mock_urlopen, mock_config):
+        from apt_pac import aur
+        import json
+        import os
+        
+        # Mock Default Config (30 min)
+        mock_conf_obj = MagicMock()
+        mock_conf_obj.get.return_value = 30
+        mock_config.return_value = mock_conf_obj
+
+        # Setup mock response
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({
+            "version": 5, 
+            "type": "search", 
+            "resultcount": 1, 
+            "results": [{"Name": "cached-pkg", "Version": "1.0"}]
+        }).encode('utf-8')
+        mock_response.status = 200
+        mock_response.__enter__.return_value = mock_response
+        
+        mock_urlopen.return_value = mock_response
+        
+        # Ensure clean state
+        cache_file = aur.CACHE_FILE
+        if cache_file.exists():
+            try:
+                os.remove(cache_file)
+            except:
+                pass
+                
+        try:
+            # First call - should hit network
+            res1 = aur.search_aur("cached-pkg")
+            self.assertEqual(len(res1), 1)
+            self.assertEqual(mock_urlopen.call_count, 1)
+            
+            # Second call - should hit cache
+            res2 = aur.search_aur("cached-pkg")
+            self.assertEqual(len(res2), 1)
+            # Call count should STILL be 1
+            self.assertEqual(mock_urlopen.call_count, 1)
+            
+        finally:
+             if cache_file.exists():
+                try:
+                    os.remove(cache_file)
+                except:
+                    pass
+
+    @patch('time.time')
+    @patch('apt_pac.aur.get_config')
+    @patch('urllib.request.urlopen')
+    def test_rpc_cache_expiry(self, mock_urlopen, mock_config, mock_time):
+        from apt_pac import aur
+        import json
+        import os
+        
+        # Mock Config with SHORT TTL (1 minute)
+        mock_conf_obj = MagicMock()
+        mock_conf_obj.get.return_value = 1 # 1 minute
+        mock_config.return_value = mock_conf_obj
+        
+        # Setup mock response
+        mock_response = MagicMock()
+        # Return generic content
+        mock_response.read.return_value = json.dumps({
+            "version": 5, "type": "search", "results": [{"Name": "expired-pkg"}]
+        }).encode('utf-8')
+        mock_response.status = 200
+        mock_response.__enter__.return_value = mock_response
+        mock_urlopen.return_value = mock_response
+        
+        # Define time progression
+        start_time = 1000.0
+        mock_time.return_value = start_time
+        
+        # Clean cache
+        cache_file = aur.CACHE_FILE
+        if cache_file.exists():
+             try: os.remove(cache_file)
+             except: pass
+             
+        try:
+            # 1. First search (Time = 0)
+            aur.search_aur("expired-pkg")
+            self.assertEqual(mock_urlopen.call_count, 1)
+            
+            # 2. Advance time by 30 seconds (Within 1 min TTL)
+            mock_time.return_value = start_time + 30.0
+            aur.search_aur("expired-pkg")
+            self.assertEqual(mock_urlopen.call_count, 1) # Should be cached
+            
+            # 3. Advance time by 61 seconds (Expired)
+            mock_time.return_value = start_time + 61.0
+            aur.search_aur("expired-pkg")
+            self.assertEqual(mock_urlopen.call_count, 2) # Should re-fetch
+            
+        finally:
+            if cache_file.exists():
+                try: os.remove(cache_file)
+                except: pass
+
 if __name__ == '__main__':
     unittest.main()

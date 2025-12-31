@@ -28,6 +28,19 @@ def print_command(text):
 def print_success(text):
     console.print(f"[success]SUCCESS:[/success] {text}")
 
+def print_apt_download_line(index, total, url, filename, size_str=""):
+    """
+    Prints a line like: Get:1 http://mirror.../pkg.tar.zst core/package [123 kB]
+    """
+    # APT format: Get:1 URL Package [Size]
+    # We try to mimic: Get:<index> <url> <filename> [<size>]
+    
+    # Extract shorter path from URL if possible for display? APT usually shows full URL base
+    # But usually just prints: Get:1 http://archive.ubuntu.com/ubuntu jammy/main amd64 bash amd64 5.1-6ubuntu1 [123 kB]
+    
+    size_part = f" [{size_str}]" if size_str else ""
+    console.print(f"[bold]Get:{index}[/bold] {url} {filename}{size_part}")
+
 def format_search_results(output):
     """
     Format pacman -Ss output to look like apt search.

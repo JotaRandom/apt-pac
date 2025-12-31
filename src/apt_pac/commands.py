@@ -1,7 +1,7 @@
 import subprocess
 import sys
 import os
-from .ui import print_info, print_command, print_error, console, format_search_results, format_show, show_help, format_aur_search_results
+from .ui import print_info, print_command, print_error, console, format_search_results, format_show, show_help, format_aur_search_results, print_apt_download_line
 from . import aur
 from .config import get_config
 
@@ -224,6 +224,55 @@ def get_editor():
             return cmd
     return "vi"  # Ultimate fallback as it's likely in base
 
+def simulate_apt_download_output(pacman_cmd, config):
+    """
+    Simulates APT's "Get:1 ..." output by running pacman -Sp first.
+    """
+    # Only applicable for install/upgrade/dist-upgrade
+    # We construct a dry-run URL fetch command
+    # Remove flags that might conflict or be irrelevant for -Sp (like -v, -q if handled)
+    # Actually -Sp works with most.
+    
+    # We need to construct the command. pacman_cmd is ["pacman", "-S", ...]
+    # We want ["pacman", "-Sp", ...]
+    # But wait, pacman_cmd might already have -Syu.
+    
+    # Check if we can just append -p
+    cmd = list(pacman_cmd)
+    
+    # Insert -p after the operation flag (usually index 1, e.g. -S or -Syu or -U)
+    # A bit naive, but let's try appending -p to the command args. 
+    # Actually pacman -Syu -p works.
+    cmd.append("-p")
+    
+    # Run it
+    # Run it
+    try:
+        # We need to suppress stderr or handle it? 
+        # If -Sp fails (e.g. conflicts), we probably shouldn't show "Get:..." yet 
+        # or we might fail silent here and let the real command show the error.
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            return # Fail silently on simulation
+            
+        lines = result.stdout.strip().splitlines()
+        urls = [line for line in lines if "://" in line]
+        
+        if not urls:
+            return
+            
+        # Print "Get:X" lines
+        total = len(urls)
+        for i, url in enumerate(urls, 1):
+            filename = url.split('/')[-1]
+            # Try to get size? -Sp doesn't give size.
+            # We skip size or fake it? APT usually has it.
+            # Without significant overhead (-Si for each), we skip size.
+            print_apt_download_line(i, total, url, filename)
+            
+    except Exception:
+        pass
+
 def execute_command(apt_cmd, extra_args):
     if apt_cmd not in COMMAND_MAP:
         import difflib
@@ -378,6 +427,8 @@ def execute_command(apt_cmd, extra_args):
                 idx = extra_args.index("--repo")
                 if idx + 1 < len(extra_args):
                     repo = extra_args[idx + 1]
+
+
             if repo:
                 if subprocess.run(["command -v paclist"], shell=True, capture_output=True).returncode == 0:
                     pacman_cmd = ["paclist", repo]
@@ -912,6 +963,13 @@ def execute_command(apt_cmd, extra_args):
         if apt_cmd in ["install", "upgrade", "dist-upgrade", "full-upgrade", "remove", "purge", "autoremove"]:
             pacman_cmd.append("--noconfirm")
     
+    # Simulate download output if applicable
+    if apt_cmd in ["install", "reinstall", "upgrade", "dist-upgrade", "full-upgrade"]:
+         # Only if not --print or --dry-run (which is -s)
+         if not any(x in extra_args for x in ["--print", "-p"]):
+             # Check if we are doing a real op
+             simulate_apt_download_output(pacman_cmd, config)
+
     try:
         # Use --noconfirm if we already asked
         current_cmd = list(pacman_cmd)
@@ -990,8 +1048,9 @@ def execute_command(apt_cmd, extra_args):
                 console.print("\nSyncing file database...")
                 subprocess.run(["pacman", "-Fy"], check=False, capture_output=True)
                 console.print("File database: [green]Done[/green]")
-            return
-
+            else:
+                # For install, remove, etc.
+                subprocess.run(current_cmd, check=True)
             
     except subprocess.CalledProcessError:
         sys.exit(1)

@@ -39,6 +39,9 @@ DEFAULT_CONFIG = {
     },
     "directories": {
         "cache_dir": "",  # Empty = auto-detect with XDG fallback
+    },
+    "performance": {
+        "rpc_cache_ttl": 30,  # minutes
     }
 }
 
@@ -84,6 +87,10 @@ always_sync_files = true
 # Custom cache directory (empty = auto-detect)
 # If set, overrides XDG fallback logic
 cache_dir = ""
+
+[performance]
+# Time to live for AUR RPC cache in minutes (0 = disable cache)
+rpc_cache_ttl = 30
 """
 
 def _get_config_dir() -> Optional[Path]:

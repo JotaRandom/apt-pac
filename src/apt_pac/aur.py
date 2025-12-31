@@ -1,4 +1,5 @@
 import json
+import time
 import urllib.request
 import urllib.parse
 from typing import List, Dict, Optional, Set, Tuple
@@ -11,6 +12,51 @@ from .ui import console, print_error, print_info, print_command
 from .config import get_config
 
 AUR_RPC_URL = "https://aur.archlinux.org/rpc/v5/"
+CACHE_FILE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "apt-pac" / "rpc_cache.json"
+
+def _load_cache() -> Dict:
+    if not CACHE_FILE.exists():
+        return {}
+    try:
+        with open(CACHE_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _save_cache(cache: Dict):
+    try:
+        CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(cache, f)
+    except Exception:
+        pass
+
+def _get_cached(key: str) -> Optional[List[Dict]]:
+    config = get_config()
+    # Default to 30 minutes if not set
+    ttl_minutes = config.get("performance", "rpc_cache_ttl", 30)
+    ttl_seconds = ttl_minutes * 60
+    
+    cache = _load_cache()
+    if key in cache:
+        entry = cache[key]
+        if time.time() - entry.get('timestamp', 0) < ttl_seconds:
+            return entry.get('data')
+        else:
+            # Expired
+            del cache[key]
+            _save_cache(cache)
+    return None
+
+def _set_cached(key: str, data: List[Dict]):
+    cache = _load_cache()
+    # Clean up old entries occasionally? For now just append/overwrite.
+    # Simple size limit check could be added here if needed.
+    cache[key] = {
+        'timestamp': time.time(),
+        'data': data
+    }
+    _save_cache(cache)
 
 def search_aur(query: str) -> List[Dict]:
     """
@@ -21,6 +67,12 @@ def search_aur(query: str) -> List[Dict]:
         # Construct URL: /rpc/v5/search/{arg}
         # Note: v5 search endpoint documentation typically uses /search/keyword
         safe_query = urllib.parse.quote(query)
+        cache_key = f"search:{safe_query}"
+        
+        cached = _get_cached(cache_key)
+        if cached is not None:
+            return cached
+            
         url = f"{AUR_RPC_URL}search/{safe_query}"
         
         req = urllib.request.Request(url)
@@ -34,8 +86,11 @@ def search_aur(query: str) -> List[Dict]:
             data = json.loads(response.read().decode('utf-8'))
             
             # v5 response structure: {"version":5, "type":"search", "resultcount": N, "results": [...]}
+            # v5 response structure: {"version":5, "type":"search", "resultcount": N, "results": [...]}
             if data.get("type") == "search" and "results" in data:
-                return data["results"]
+                results = data["results"]
+                _set_cached(cache_key, results)
+                return results
             
     except Exception:
         return []
@@ -57,6 +112,15 @@ def get_aur_info(package_names: List[str]) -> List[Dict]:
         params.append(("arg[]", p))
         
     query_string = urllib.parse.urlencode(params)
+    
+    # Cache key based on sorted package names to ensure consistency
+    sorted_names = ",".join(sorted(package_names))
+    cache_key = f"info:{sorted_names}"
+    
+    cached = _get_cached(cache_key)
+    if cached is not None:
+        return cached
+
     url = f"{AUR_RPC_URL}info?{query_string}"
     
     try:
@@ -70,7 +134,9 @@ def get_aur_info(package_names: List[str]) -> List[Dict]:
             data = json.loads(response.read().decode('utf-8'))
             
             if data.get("type") == "multiinfo" and "results" in data:
-                return data["results"]
+                results = data["results"]
+                _set_cached(cache_key, results)
+                return results
                 
     except Exception:
         return []
