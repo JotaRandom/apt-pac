@@ -73,15 +73,8 @@ def show_summary(apt_cmd, extra_args):
     # Filter out flags
     packages = [arg for arg in extra_args if not arg.startswith('-')]
     
-    # Debug: show what we're processing
-    import sys
     if not packages:
-        # No packages to process - this is likely the issue
-        # write to stderr to not interfere with UI
-        print(f"DEBUG: No packages found in extra_args: {extra_args}", file=sys.stderr)
         return
-    
-    print(f"DEBUG: Processing packages: {packages}", file=sys.stderr)
     
     from rich.table import Table
     
@@ -128,20 +121,8 @@ def show_summary(apt_cmd, extra_args):
         
         # Get package info from repository
         info = run_pacman(["pacman", "-Si", pkg_name], capture_output=True, text=True)
-        print(f"DEBUG: pacman -Si {pkg_name} returncode: {info.returncode}", file=sys.stderr)
         if info.returncode != 0:
-            print(f"DEBUG: pacman -Si FAILED for {pkg_name}", file=sys.stderr)
-            print(f"DEBUG: stderr: {info.stderr}", file=sys.stderr)
             continue
-        
-        print(f"DEBUG: pacman -Si output has {len(info.stdout.splitlines())} lines", file=sys.stderr)
-        
-        # DEBUG: Print all field names to see what they actually are
-        print(f"DEBUG: Field names in pacman -Si output:", file=sys.stderr)
-        for line in info.stdout.splitlines():
-            if ':' in line and not line[0].isspace():
-                field_name = line.split(':', 1)[0].strip()
-                print(f"  - '{field_name}'", file=sys.stderr)
         
         dl_size = 0
         inst_size = 0
@@ -149,15 +130,11 @@ def show_summary(apt_cmd, extra_args):
         # Parse the -Si output (now guaranteed to be in English)
         for line in info.stdout.splitlines():
             if line.startswith("Download Size"):
-                # Format: "Download Size  : 22.27 MiB"
                 size_str = line.split(':', 1)[1].strip()
                 dl_size = parse_pacman_size(size_str)
-                print(f"DEBUG: {pkg_name} - Download Size parsed: {size_str} -> {dl_size} bytes", file=sys.stderr)
             elif line.startswith("Installed Size"):
-                # Format: "Installed Size : 90.43 MiB"
                 size_str = line.split(':', 1)[1].strip()
                 inst_size = parse_pacman_size(size_str)
-                print(f"DEBUG: {pkg_name} - Installed Size parsed: {size_str} -> {inst_size} bytes", file=sys.stderr)
         
         total_dl_size += dl_size
         
@@ -751,7 +728,7 @@ def execute_command(apt_cmd, extra_args):
     
     elif apt_cmd == "pkgnames":
         if extra_args:
-            result = subprocess.run(["pacman", "-Slq"], capture_output=True, text=True)
+            result = run_pacman(["pacman", "-Slq"], capture_output=True, text=True)
             prefix = extra_args[0]
             filtered = [line for line in result.stdout.splitlines() if line.startswith(prefix)]
             for pkg in filtered:
@@ -1055,8 +1032,8 @@ def execute_command(apt_cmd, extra_args):
 
         # Show Command (Official -> Local -> AUR)
         if apt_cmd == "show":
-             # 1. Try Official Repos (pacman -Si)
-             result = subprocess.run(pacman_cmd, capture_output=True, text=True)
+             # 1. Try Official Repos (pacman -Si) with English output
+             result = run_pacman(pacman_cmd, capture_output=True, text=True)
              found = False
              
              if result.returncode == 0:
@@ -1074,7 +1051,7 @@ def execute_command(apt_cmd, extra_args):
              if not found:
                  # Try -Qi
                  local_cmd = ["pacman", "-Qi"] + extra_args
-                 result_local = subprocess.run(local_cmd, capture_output=True, text=True)
+                 result_local = run_pacman(local_cmd, capture_output=True, text=True)
                  if result_local.returncode == 0:
                      found = True
                      if show_output in ["apt-pac", "apt"]:
@@ -1220,21 +1197,13 @@ def execute_command(apt_cmd, extra_args):
             return  # Exit after upgrade handling
         else:
             # For install/reinstall: use APT-style output with hooks
-            # For remove/purge/autoremove: suppress pacman output completely
+            # For remove/purge/autoremove and others: run normally without capture
             if apt_cmd in ["install", "reinstall"]:
                 success = run_pacman_with_apt_output(current_cmd, show_hooks=True)
                 if not success:
                     sys.exit(1)
-            elif apt_cmd in ["remove", "purge", "autoremove"]:
-                # Run with full output capture - silent
-                result = subprocess.run(current_cmd, capture_output=True, text=True)
-                if result.returncode != 0:
-                    # Only show errors
-                    if result.stderr:
-                        console.print(result.stderr)
-                    sys.exit(result.returncode)
             else:
-                # Other commands: run normally
+                # Run directly without output capture - shows pacman's normal output
                 subprocess.run(current_cmd, check=True)
             
     except subprocess.CalledProcessError:
