@@ -22,13 +22,23 @@ apt-pac maintains compatibility with APT command syntax while leveraging pacman'
 Update package database
 .br
 Synchronizes the package databases with the repositories (pacman -Sy). This also automatically updates the files database (pacman -Fy) to enable file search functionality. This command should always be run before an upgrade or install to ensure you have the latest package metadata.
+.br
+Note: This also syncs AUR metadata if configured (implicit).
 .TP
 .B upgrade
 (pacman -Syu)
 .br
 Upgrade all installed packages
 .br
-Performs a full system upgrade (pacman -Syu). It retrieves the latest package lists (if not already up to date) and upgrades all installed packages to their latest available versions. On Arch Linux, partial upgrades are unsupported, so this command upgrades the entire system to maintain consistency.
+Performs a full system upgrade (pacman -Syu). It retrieves the latest package lists (if not already up to date) and upgrades all installed packages to their latest available versions.
+.br
+On Arch Linux, partial upgrades are unsupported, so this command upgrades the entire system.
+.br
+On Arch Linux, partial upgrades are unsupported, so this command upgrades the entire system.
+.br
+\fBAUR Support:\fR After the main upgrade, apt-pac checks for updates to installed AUR packages. If found, it prompts to build and install them. Use \fB-y\fR to auto-confirm both system and AUR upgrades.
+.br
+\fBSelective Upgrades:\fR Use \fB--official\fR to skip AUR checks, or \fB--aur\fR to skip official package upgrades (pacman -Syu). Note that \fBdist-upgrade\fR ignores these flags.
 .TP
 .B full\-upgrade, dist\-upgrade
 (pacman -Syu)
@@ -37,10 +47,23 @@ Same as upgrade
 .br
 In the context of Arch Linux, these are aliases for the standard 'upgrade' command (pacman -Syu). Unlike Debian/APT where 'dist-upgrade' handles changing dependencies smartly, 'pacman -Syu' always handles dependency resolution and upgrades the entire system.
 .TP
-.B install \fIPACKAGES\fR...
-(pacman -S or pacman -U)
+.B add\-repository
+(edits /etc/pacman.conf)
 .br
-Install one or more packages. Supports local .pkg.tar.zst files
+Add a new repository to /etc/pacman.conf.
+.br
+Provides an interactive guide and helper to add third-party repositories (like Chaotic-AUR) to your system configuration. It will offer to launch your editor to make the necessary changes.
+.TP
+.B install \fIPACKAGES\fR...
+(pacman -S)
+.br
+Install one or more packages.
+.br
+\fBAUR Support:\fR If a package is not found in official repositories, apt-pac searches the AUR.
+.br
+- \fBSmart Providers:\fR Interactive provider selection is enabled for AUR builds.
+.br
+- \fBGPG Keys:\fR If a build fails due to missing PGP keys, apt-pac will attempt to automatically import them and retry.
 .br
 Installs the specified packages. It supports hybrid installation from Official Repositories and the Arch User Repository (AUR).
 .br
@@ -208,14 +231,20 @@ Generates a DOT graph description of the package's dependencies (pactree -g). Th
 .br
 Download package source files using pkgctl
 .br
-Clone the source repository for a package using 'pkgctl repo clone' (from devtools). This downloads the PKGBUILD and related files to the cache directory (~/.cache/apt-pac/sources/abs), ready for building with makepkg.
+Clone the source repository for a package.
+.br
+- First checks Official Repositories: uses 'pkgctl repo clone' if available.
+.br
+- Fallback to AUR: if not in official repos, clones the git repository from the AUR.
+.br
+Downloads to the cache directory (~/.cache/apt-pac/sources/), ready for building with makepkg.
 .TP
 .B build\-dep \fIPACKAGE\fR
 (pacman -S <makedepends>)
 .br
 Install build dependencies for a package
 .br
-Downloads the PKGBUILD for the specified package and automatically installs all packages listed in its 'makedepends' array. Essential for compiling packages from source.
+Downloads the PKGBUILD for the specified package (from Official or AUR) and automatically installs all packages listed in its 'makedepends' array. Essential for compiling packages from source.
 .TP
 .B showsrc \fIPACKAGE\fR
 (parses PKGBUILD)
@@ -238,7 +267,7 @@ Performs a suite of system health checks. It runs 'pacman -Dk' (database consist
 .br
 Remove all cached package files
 .br
-Clears the entire pacman package cache (pacman -Scc). This aggressively removes ALL downloaded package files, including those for currently installed packages. Use when disk space is critically low.
+Clears the entire pacman package cache (pacman -Scc) AND the apt-pac source cache (~/.cache/apt-pac/sources). This aggressively removes ALL downloaded package files and sources. Use when disk space is critically low.
 .TP
 .B autoclean
 (paccache -rk3 or pacman -Sc)
@@ -270,12 +299,18 @@ Display pacman configuration
 .br
 Outputs the contents of /etc/pacman.conf to stdout. useful for quickly checking enabled repositories or configuration settings.
 .TP
-.B apt\-key \fI[add|del|list|adv]\fR
-(pacman-key wrapper)
+.B apt\-key, key \fI[add|del|list]\fR
+(pacman-key --add, --delete, --list-keys)
 .br
 Manage GPG keys for package verification
 .br
-A wrapper for 'pacman-key'. Supports commands 'add' (import key), 'list' (show keys), 'del' (delete key), and 'adv' (pass-through to gpg). Used for managing the web of trust for package signatures.
+Wraps 'pacman-key' operations to manage the web of trust:
+.br
+- \fBadd\fR: Import a key file (\fBpacman-key --add\fR)
+.br
+- \fBdel\fR: Remove a key by ID (\fBpacman-key --delete\fR)
+.br
+- \fBlist\fR: List all keys (\fBpacman-key --list-keys\fR)
 .TP
 .B add\-repository
 (Informational)
@@ -312,6 +347,12 @@ Only upgrade packages that are already installed.
 .TP
 .B \-v, \-\-version [\fITYPE\fR]
 Display version information. Optional TYPE: full, pacman
+.TP
+.B \-\-official
+Update/Upgrade only packages from official repositories.
+.TP
+.B \-\-aur, \-\-aur\-only
+Update/Upgrade only packages from the AUR.
 .TP
 .B \-h, \-\-help
 Display help message and exit.

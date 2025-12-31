@@ -9,10 +9,10 @@ _apt_pac_completion() {
     commands="update upgrade dist-upgrade full-upgrade install reinstall remove purge autoremove \
               search show list depends rdepends policy madison source build-dep showsrc \
               check clean autoclean stats edit-sources config file-search changelog scripts \
-              apt-mark pkgnames dotty apt-key add-repository download"
+              apt-mark pkgnames dotty apt-key key add-repository download"
 
     opts="-h --help -v --version -y --yes --assume-yes -q --quiet --verbose -s --simulate --dry-run \
-          --download-only -f --fix-broken --no-install-recommends --only-upgrade"
+          --download-only -f --fix-broken --no-install-recommends --only-upgrade --official --aur --aur-only"
 
     case "${prev}" in
         install|reinstall|remove|purge|show|depends|rdepends|policy|madison|source|build-dep|showsrc|file-search|changelog|scripts|dotty|download)
@@ -32,7 +32,7 @@ _apt_pac_completion() {
             COMPREPLY=( $(compgen -W "auto manual" -- ${cur}) )
             return 0
             ;;
-        apt-key)
+        apt-key|key)
             COMPREPLY=( $(compgen -W "add list del delete remove adv" -- ${cur}) )
             return 0
             ;;

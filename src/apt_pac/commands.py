@@ -39,6 +39,7 @@ COMMAND_MAP = {
     "madison": ["madison"],  # Custom implementation
     "config": ["config"],  # Show pacman.conf
     "apt-key": ["pacman-key"],  # GPG key management
+    "key": ["pacman-key"],  # Alias for apt-key
     "add-repository": ["add-repository"],  # Educational message
     "showsrc": ["showsrc"],  # Placeholder for ABS+AUR
 }
@@ -62,38 +63,84 @@ def show_summary(apt_cmd, extra_args):
     lines = result.stdout.strip().split('\n')
     new_pkgs = []
     upgraded_pkgs = []
-    total_size = 0
+    total_dl_size = 0
+    total_inst_size_change = 0
     
     # Simple logic to distinguish new vs upgraded (rough estimate)
     for line in lines:
         if '|' not in line: continue
-        name, ver, size, _ = line.split('|')
-        try:
-            total_size += int(size)
-        except: pass
+        parts = line.split('|')
+        if len(parts) < 4: continue
         
-        # Check if installed
-        check = subprocess.run(["pacman", "-Qq", name], capture_output=True)
+        name, ver, dl_size_str, inst_size_str = parts[0], parts[1], parts[2], parts[3]
+        
+        try:
+            dl_size = int(dl_size_str)
+            inst_size = int(inst_size_str)
+            total_dl_size += dl_size
+        except ValueError:
+            dl_size = 0
+            inst_size = 0
+        
+        # Check if installed to determine if it's an upgrade or new install
+        # Also need to subtract old package size if it's an upgrade
+        check = subprocess.run(["pacman", "-Qi", name], capture_output=True, text=True)
         if check.returncode == 0:
             upgraded_pkgs.append(name)
+            # Find old installed size to calculate delta
+            # This is slow for many packages, but accurate-ish
+            for info_line in check.stdout.splitlines():
+                 if info_line.startswith("Installed Size"):
+                     # Format: Installed Size : 123.45 MiB
+                     # We need to parse this. Pacman output varies by locale potentially, but usually:
+                     # 123.45 KiB/MiB
+                     try:
+                         val_str = info_line.split(':', 1)[1].strip()
+                         val, unit = val_str.split()
+                         val = float(val)
+                         if unit == 'KiB': old_size = val * 1024
+                         elif unit == 'MiB': old_size = val * 1024 * 1024
+                         elif unit == 'GiB': old_size = val * 1024 * 1024 * 1024
+                         else: old_size = val # bytes?
+                         
+                         total_inst_size_change += (inst_size - int(old_size))
+                     except:
+                         total_inst_size_change += 0 # Safe fallback
+                         pass
+                     break
         else:
             new_pkgs.append(name)
+            total_inst_size_change += inst_size
 
     console.print("\nReading package lists... [green]Done[/green]")
     console.print("Building dependency tree... [green]Done[/green]")
     console.print("Reading state information... [green]Done[/green]\n")
 
     if new_pkgs:
-        console.print("[bold]The following NEW packages will be installed:[/bold]")
+        console.print(f"The following [green]NEW[/green] packages will be installed:")
         console.print(f"  {' '.join(new_pkgs)}\n")
     
     if upgraded_pkgs:
-        console.print("[bold]The following packages will be upgraded:[/bold]")
+        console.print(f"The following packages will be upgraded:")
         console.print(f"  {' '.join(upgraded_pkgs)}\n")
 
     stats = f"{len(upgraded_pkgs)} upgraded, {len(new_pkgs)} newly installed, 0 to remove and 0 not upgraded."
     console.print(stats)
-    console.print(f"Need to get {total_size / 1024 / 1024:.1f} MB of archives.")
+    
+    # Format sizes
+    def fmt_size(bytes_val):
+        for unit in ['B', 'kB', 'MB', 'GB']:
+            if abs(bytes_val) < 1000.0:
+                return f"{bytes_val:.1f} {unit}"
+            bytes_val /= 1000.0
+        return f"{bytes_val:.1f} TB"
+
+    console.print(f"Need to get {fmt_size(total_dl_size)} of archives.")
+    
+    if total_inst_size_change > 0:
+        console.print(f"After this operation, {fmt_size(total_inst_size_change)} of additional disk space will be used.")
+    elif total_inst_size_change < 0:
+        console.print(f"After this operation, {fmt_size(abs(total_inst_size_change))} disk space will be freed.")
     
     if not console.input("\n[bold]Do you want to continue? [Y/n][/bold] ").lower().startswith('y'):
         print_info("Aborted.")
@@ -218,6 +265,19 @@ def execute_command(apt_cmd, extra_args):
     if "--download-only" in extra_args:
         download_only = True
         extra_args.remove("--download-only")
+    
+    # Selective upgrade flags
+    only_official = False
+    only_aur = False
+    if "--official" in extra_args:
+        only_official = True
+        extra_args.remove("--official")
+    if "--aur" in extra_args:
+        only_aur = True
+        extra_args.remove("--aur")
+    if "--aur-only" in extra_args:
+        only_aur = True
+        extra_args.remove("--aur-only")
     
     # Apply config verbosity if not overridden
     config_verbosity = config.get("ui", "verbosity", 1)
@@ -357,7 +417,7 @@ def execute_command(apt_cmd, extra_args):
                 # Then install AUR packages
                 installer = aur.AurInstaller()
                 try:
-                    installer.install(aur_pkgs, verbose=verbose)
+                    installer.install(aur_pkgs, verbose=verbose, auto_confirm=auto_confirm)
                 except KeyboardInterrupt:
                     print_error("\nInterrupted.")
                     sys.exit(1)
@@ -386,6 +446,21 @@ def execute_command(apt_cmd, extra_args):
             pacman_cmd = ["pacman", "-Qii"] + extra_args
     elif apt_cmd == "reinstall":
         pacman_cmd = ["pacman", "-S", "--force"] + extra_args
+    elif apt_cmd == "clean":
+        # Run pacman clean
+        subprocess.run(["pacman", "-Scc"], check=False)
+        
+        # Clean apt-pac cache
+        cache_dir = config.cache_dir
+        if cache_dir.exists():
+            console.print(f"\n[bold]Cleaning apt-pac cache ({cache_dir})...[/bold]")
+            sources_dir = cache_dir / "sources"
+            if sources_dir.exists():
+                import shutil
+                shutil.rmtree(sources_dir)
+                console.print(f"[green]Removed {sources_dir}[/green]")
+        return
+
     elif apt_cmd == "autoclean":
         if subprocess.run(["command -v paccache"], shell=True, capture_output=True).returncode == 0:
             pacman_cmd = ["paccache", "-rk3"]
@@ -524,9 +599,48 @@ def execute_command(apt_cmd, extra_args):
         sys.exit(0 if success else 1)
     
     elif apt_cmd == "dotty":
-        if not extra_args:
-            print_error("E: No package specified")
-            return
+        # Check if pactree is installed
+        if subprocess.run(["command -v pactree"], shell=True, capture_output=True).returncode == 0:
+             pacman_cmd = ["pactree", "-g"] + extra_args
+        else:
+             print_error("pactree (pacman-contrib) is required for dotty.")
+             sys.exit(1)
+
+    elif apt_cmd == "add-repository":
+        from rich.panel import Panel
+        from rich.text import Text
+        
+        text = Text()
+        text.append("Adding repositories in Arch Linux differs from Debian/Ubuntu.\n", style="bold")
+        text.append("You need to edit /etc/pacman.conf and add a [section].\n\n")
+        
+        text.append("Example (Chaotic AUR):\n", style="bold green")
+        text.append("[chaotic-aur]\n")
+        text.append("Include = /etc/pacman.d/chaotic-mirrorlist\n\n")
+        
+        text.append("Example (Generic):\n", style="bold green")
+        text.append("[repo-name]\n")
+        text.append("Server = https://example.com/$arch\n")
+        text.append("SigLevel = Required DatabaseOptional\n\n")
+        
+        text.append("Note: You may need to import GPG keys first using apt-key (pacman-key).\n", style="italic")
+        
+        console.print(Panel(text, title="How to add a repository", border_style="blue"))
+        
+        if console.input("\nDo you want to edit /etc/pacman.conf now? [Y/n] ").lower().startswith('y'):
+            # Reuse edit-sources logic
+            # Just recursively call execute_command or copy logic. Copying is safer to avoid recursion limits/state issues.
+            editor = get_editor()
+            cmd = ["sudo", editor, "/etc/pacman.conf"]
+            if os.getuid() == 0:
+                 cmd = [editor, "/etc/pacman.conf"]
+                 
+            print_command(f"Running: {' '.join(cmd)}")
+            try:
+                subprocess.run(cmd, check=True)
+            except subprocess.CalledProcessError:
+                sys.exit(1)
+        return
         
         if subprocess.run(["command", "-v", "pactree"], shell=True, capture_output=True).returncode == 0:
             pacman_cmd = ["pactree", "-g"] + extra_args
@@ -577,7 +691,7 @@ def execute_command(apt_cmd, extra_args):
             print_error("E: Permission denied reading /etc/pacman.conf")
         return
     
-    elif apt_cmd == "apt-key":
+    elif apt_cmd in ["apt-key", "key"]:
         if not extra_args:
             console.print("\n[bold]Usage:[/bold] apt-key [add|list|del|adv] ...\n")
             console.print("[bold]Examples:[/bold]")
@@ -607,20 +721,52 @@ def execute_command(apt_cmd, extra_args):
             print_error(f"E: Unknown apt-key command: {sub}")
             return
         
-        subprocess.run(pacman_cmd)
+        # For add/del, apt-key only prints "OK" on success
+        if sub in ["add", "del", "delete", "remove"]:
+            try:
+                subprocess.run(pacman_cmd, check=True, capture_output=True)
+                print("OK")
+            except subprocess.CalledProcessError as e:
+                # pass through stderr if failed
+                sys.stderr.write(e.stderr.decode() if e.stderr else f"Error running {' '.join(pacman_cmd)}\n")
+                sys.exit(e.returncode)
+        else:
+            # list/adv pass through directly
+            subprocess.run(pacman_cmd)
         return
     
     elif apt_cmd == "add-repository":
-        console.print("\n[info]Arch Linux manages repositories via /etc/pacman.conf[/info]\n")
-        console.print("[bold]To add a repository:[/bold]")
-        console.print("  1. Edit configuration: [command]sudo apt edit-sources[/command]")
-        console.print("  2. Add repository section:")
-        console.print("     [desc][repository-name][/desc]")
-        console.print("     [desc]Server = <mirror-url>[/desc]")
-        console.print("  3. Update: [command]sudo apt update[/command]\n")
-        console.print("[bold]Popular third-party repos:[/bold]")
-        console.print("  - [link]https://wiki.archlinux.org/title/Unofficial_user_repositories[/link]\n")
-        console.print("[italic grey70]Note: Arch does not use PPAs like Ubuntu[/italic grey70]")
+        from rich.panel import Panel
+        from rich.text import Text
+        
+        text = Text()
+        text.append("Adding repositories in Arch Linux differs from Debian/Ubuntu.\n", style="bold")
+        text.append("You need to edit /etc/pacman.conf and add a [section].\n\n")
+        
+        text.append("Example (Chaotic AUR):\n", style="bold green")
+        text.append("[chaotic-aur]\n")
+        text.append("Include = /etc/pacman.d/chaotic-mirrorlist\n\n")
+        
+        text.append("Example (Generic):\n", style="bold green")
+        text.append("[repo-name]\n")
+        text.append("Server = https://example.com/$arch\n")
+        text.append("SigLevel = Required DatabaseOptional\n\n")
+        
+        text.append("Note: You may need to import GPG keys first using apt-key (pacman-key).\n", style="italic")
+        
+        console.print(Panel(text, title="How to add a repository", border_style="blue"))
+        
+        if console.input("\nDo you want to edit /etc/pacman.conf now? [Y/n] ").lower().startswith('y'):
+            editor = get_editor()
+            cmd = ["sudo", editor, "/etc/pacman.conf"]
+            if os.getuid() == 0:
+                 cmd = [editor, "/etc/pacman.conf"]
+                 
+            print_command(f"Running: {' '.join(cmd)}")
+            try:
+                subprocess.run(cmd, check=True)
+            except subprocess.CalledProcessError:
+                sys.exit(1)
         return
     
     elif apt_cmd == "showsrc":
@@ -784,17 +930,66 @@ def execute_command(apt_cmd, extra_args):
                 subprocess.run(sync_cmd, check=False, capture_output=True)
                 
             console.print("Reading package lists... [green]Done[/green]")
+            if only_aur:
+                print_info("Note: 'update --aur' simply checks official DBs as AUR has no central DB to sync.")
             return # Exit early as we've handled everything for update
         
         elif apt_cmd in ["upgrade", "dist-upgrade", "full-upgrade"]:
             # For upgrades, also sync file database after upgrading packages
             # This is done in the background to not block the main upgrade
-            subprocess.run(current_cmd)  # Run the upgrade (with user interaction)
             
+            # Smart logic for flags
+            run_official = True
+            run_aur = True
+            
+            # If dist-upgrade, force EVERYTHING regardless of flags (apt-like power)
+            if apt_cmd in ["dist-upgrade", "full-upgrade"]:
+                run_official = True
+                run_aur = True
+                if only_official or only_aur:
+                    print_info(f"Ignoring selective flags for {apt_cmd}: performing full system upgrade.")
+            else:
+                # Normal upgrade: respect flags
+                if only_official:
+                    run_aur = False
+                if only_aur:
+                    run_official = False
+            
+            if run_official:
+                subprocess.run(current_cmd)  # Run the upgrade (with user interaction)
+            else:
+                console.print("[dim]Skipping official packages upgrade (--aur provided)[/dim]")
+            
+            # Check for AUR updates
+            if run_aur:
+                console.print("\n[bold blue]Checking for AUR updates...[/bold blue]")
+                try:
+                    aur_updates = aur.check_updates(verbose=verbose)
+                    
+                    if aur_updates:
+                        console.print(f"\n[bold]The following AUR packages will be upgraded:[/bold]")
+                        for up in aur_updates:
+                            console.print(f"  {up['name']}: {up['current']} -> {up['new']}")
+                        
+                        if auto_confirm or console.input("\nDo you want to upgrade these AUR packages? [Y/n] ").lower().startswith('y'):
+                            pkgs_to_update = [u['name'] for u in aur_updates]
+                            installer = aur.AurInstaller()
+                            try:
+                                installer.install(pkgs_to_update, verbose=verbose, auto_confirm=auto_confirm)
+                            except Exception as e:
+                                print_error(f"AUR Upgrade failed: {e}")
+                    else:
+                        console.print("All AUR packages are up to date.")
+                except Exception as e:
+                     print_error(f"Failed to check AUR updates: {e}")
+            else:
+                console.print("\n[dim]Skipping AUR updates (--official provided)[/dim]")
+
             # Sync file database in background (silent)
-            console.print("\nSyncing file database...")
-            subprocess.run(["pacman", "-Fy"], check=False, capture_output=True)
-            console.print("File database: [green]Done[/green]")
+            if run_official:
+                console.print("\nSyncing file database...")
+                subprocess.run(["pacman", "-Fy"], check=False, capture_output=True)
+                console.print("File database: [green]Done[/green]")
             return
 
             

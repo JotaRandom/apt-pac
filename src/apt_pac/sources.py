@@ -4,7 +4,8 @@ Source package management for apt-pac.
 Handles downloading and managing PKGBUILDs from official Arch repositories
 using the Arch Build System (ABS) via pkgctl (from devtools package).
 
-AUR support is intentionally excluded to keep complexity manageable.
+Handles downloading and managing PKGBUILDs from official Arch repositories
+using the Arch Build System (ABS) and the AUR.
 """
 
 import subprocess
@@ -208,6 +209,13 @@ def handle_apt_source(package_name, extra_args, verbose=False):
     # Download the source
     pkg_dir = download_source(package_name, verbose=verbose)
     
+    if not pkg_dir:
+        # Try AUR
+        from .aur import download_aur_source
+        if verbose:
+            console.print(f"[dim]Checking AUR for {package_name}...[/dim]")
+        pkg_dir = download_aur_source(package_name)
+    
     if pkg_dir:
         print_info(f"\nYou can build this package with:")
         print_info(f"  cd {pkg_dir}")
@@ -216,6 +224,9 @@ def handle_apt_source(package_name, extra_args, verbose=False):
             console.print(f"[dim]Source directory: {pkg_dir}[/dim]")
             console.print(f"[dim]PKGBUILD location: {pkg_dir / 'PKGBUILD'}[/dim]")
         return True
+    
+    if verbose:
+        print_error(f"E: Failed to find source for {package_name} in ABS or AUR")
     return False
 
 def handle_build_dep(package_name, verbose=False):
@@ -229,7 +240,12 @@ def handle_build_dep(package_name, verbose=False):
         print_info(f"Downloading source for {package_name}...")
         pkg_dir = download_source(package_name, verbose=verbose)
         if not pkg_dir:
-            return False
+             # Try AUR
+            from .aur import download_aur_source
+            pkg_dir = download_aur_source(package_name)
+            
+            if not pkg_dir:
+                return False
     elif verbose:
         console.print(f"[dim]Found cached source at {pkg_dir}[/dim]")
     
@@ -279,7 +295,12 @@ def handle_showsrc(package_name, verbose=False):
         print_info(f"Source not cached, downloading {package_name}...")
         pkg_dir = download_source(package_name, verbose=verbose)
         if not pkg_dir:
-            return False
+            # Try AUR
+            from .aur import download_aur_source
+            pkg_dir = download_aur_source(package_name)
+            
+            if not pkg_dir:
+                return False
     elif verbose:
         console.print(f"[dim]Using cached source: {pkg_dir}[/dim]")
     

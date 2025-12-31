@@ -51,6 +51,7 @@ complete -f -c apt-pac -n '__fish_apt_pac_needs_command' -a apt-mark -d 'Mark pa
 complete -f -c apt-pac -n '__fish_apt_pac_needs_command' -a pkgnames -d 'List package names'
 complete -f -c apt-pac -n '__fish_apt_pac_needs_command' -a dotty -d 'Generate dependency graph'
 complete -f -c apt-pac -n '__fish_apt_pac_needs_command' -a apt-key -d 'Manage GPG keys'
+complete -f -c apt-pac -n '__fish_apt_pac_needs_command' -a key -d 'Manage GPG keys (alias)'
 complete -f -c apt-pac -n '__fish_apt_pac_needs_command' -a add-repository -d 'Add repository info'
 complete -f -c apt-pac -n '__fish_apt_pac_needs_command' -a download -d 'Download packages without installing'
 
@@ -64,6 +65,9 @@ complete -f -c apt-pac -l download-only -d 'Download only'
 complete -f -c apt-pac -s f -l fix-broken -d 'Fix broken dependencies'
 complete -f -c apt-pac -l no-install-recommends -d 'Skip optional dependencies'
 complete -f -c apt-pac -l only-upgrade -d 'Only upgrade installed packages'
+complete -f -c apt-pac -l official -d 'Only official repositories'
+complete -f -c apt-pac -l aur -d 'Only AUR'
+complete -f -c apt-pac -l aur-only -d 'Only AUR'
 complete -f -c apt-pac -s v -l version -d 'Show version'
 complete -f -c apt-pac -s h -l help -d 'Show help'
 
@@ -87,6 +91,7 @@ complete -f -c apt-pac -n '__fish_apt_pac_using_command download' -a '(__fish_pr
 
 complete -f -c apt-pac -n '__fish_apt_pac_using_command apt-mark' -a 'auto manual'
 complete -f -c apt-pac -n '__fish_apt_pac_using_command apt-key' -a 'add list del delete remove adv'
+complete -f -c apt-pac -n '__fish_apt_pac_using_command key' -a 'add list del delete remove adv'
 complete -f -c apt-pac -n '__fish_apt_pac_using_command list' -a '--installed --upgradable --manual-installed --all-versions --repo'
 complete -f -c apt-pac -n '__fish_apt_pac_using_command search' -l aur -d 'Search only AUR'
 complete -f -c apt-pac -n '__fish_apt_pac_using_command search' -l official -d 'Search only official repos'

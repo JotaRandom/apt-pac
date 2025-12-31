@@ -37,6 +37,7 @@ _apt_pac() {
         'pkgnames:List package names'
         'dotty:Generate dependency graph'
         'apt-key:Manage GPG keys'
+        'key:Manage GPG keys (alias)'
         'add-repository:Add repository info'
         'download:Download packages without installing'
     )
@@ -51,6 +52,9 @@ _apt_pac() {
         '(-f --fix-broken)'{-f,--fix-broken}'[Fix broken dependencies]'
         '--no-install-recommends[Skip optional dependencies]'
         '--only-upgrade[Only upgrade installed packages]'
+        '--official[Only official repositories]'
+        '--aur[Only AUR]'
+        '--aur-only[Only AUR]'
         '(-v --version)'{-v,--version}'[Show version]'
         '(-h --help)'{-h,--help}'[Show help]'
     )
@@ -75,7 +79,7 @@ _apt_pac() {
                 apt-mark)
                     _arguments '1:mark:(auto manual)' '*:packages:_pacman_completions_installed_packages'
                     ;;
-                apt-key)
+                apt-key|key)
                     _arguments '1:action:(add list del delete remove adv)'
                     ;;
                 search)
