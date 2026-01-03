@@ -67,17 +67,39 @@ NEED_SUDO = {
 
 def show_summary(apt_cmd, extra_args):
     """
-    Show APT-style installation summary with accurate package sizes.
+    Show APT-style installation summary with accurate package sizes using pacman dry-run.
     """
-    # Get packages directly from extra_args (user input)
-    # Filter out flags
-    packages = [arg for arg in extra_args if not arg.startswith('-')]
-    
-    if not packages:
-        return
-    
+    # Use pacman -Sp to get list of downloadable packages (URLs)
+    # This resolves dependencies effectively for official repos.
+    # For AUR, our separate logic handles it, so this is mostly for official packages.
+
     from rich.table import Table
+    import urllib.parse
+
+    # 1. Resolve Packages
+    # We run 'pacman -Sp' with the user arguments.
+    # We suppress stderr to avoid "there is nothing to do" spam if we handle that elsewhere,
+    # but we want to know if it fails.
+    cmd = ["pacman", "-Sp"] + extra_args
+    # Add -q usually suppresses some output but for -p it might just output urls.
+    # Let's stick to standard behavior.
     
+    result = run_pacman(cmd, capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        # If pacman fails (e.g. conflict, not found), we let the real run handle the error display
+        # or we could print it here. 
+        # But commonly if we are just summarizing, we might want to return and let execution proceed to fail.
+        return
+
+    urls = [line.strip() for line in result.stdout.splitlines() if "://" in line]
+    
+    if not urls:
+        # Nothing to download/install?
+        # Maybe already installed.
+        # Check if we should show "0 upgraded..."
+        pass
+
     # Helper function to parse pacman size strings
     def parse_pacman_size(size_str):
         """Parse '22.27 MiB' style strings to bytes."""
@@ -104,53 +126,190 @@ def show_summary(apt_cmd, extra_args):
                 return 0
         except (ValueError, IndexError):
             return 0
+
+    resolved_pkgs = []
+    
+    # Extract package names from URLs
+    # Format usually: host/repo/os/arch/pkgname-version-arch.pkg.tar.zst
+    # We can use pacman functionality, or string parsing. 
+    # Filenames are standard: name-version-release-arch.pkg.tar.zst
+    # It's tricky to split name-version without regex or logic, 
+    # but pacman -Si on the file or querying DB is better.
+    #
+    # Simpler: We have the list of URLs. run 'pacman -Sddp' prints just package names? No.
+    #
+    # Workaround:
+    # 1. Parse filename.
+    # 2. To get clean name, we might iterate.
+    # 
+    # Better approach for names:
+    # Run `pacman -S ... --print --print-format '%n'`? User said NO.
+    # Run `pacman -S ... -p` prints "Targets (N): pkg1 pkg2".
+    # This is much easier to parse for names!
+    
+    # Let's try parsing the "Targets" list from a normal dry run simulation.
+    # We run 'pacman -S ... -p' (without -q to ensure we see the targets list)
+    sim_cmd = ["pacman", "-S", "-p"] + extra_args
+    sim_result = run_pacman(sim_cmd, capture_output=True, text=True)
+    
+    if sim_result.returncode != 0:
+        return
+
+    # Parse output for "Targets (N): pkg1 pkg2..."
+    # Or "Members (N): ..."
+    # Output might be spread across lines.
+    
+    lines = sim_result.stdout.splitlines()
+    found_targets = False
+    pkg_list = []
+    
+    for line in lines:
+        if line.startswith("Targets ("):
+             # Found it!
+             # Content follows ": "
+             content = line.split("):", 1)[1].strip()
+             pkg_list.extend(content.split())
+             found_targets = True
+             continue
+        
+        if found_targets:
+            # Continue reading if indented or seemingly part of list?
+            # Pacman typically puts all on one line or wraps. 
+            # If wrapped, usually indented.
+            if line.startswith(" "):
+                 pkg_list.extend(line.strip().split())
+            else:
+                 if line.strip(): # Stop if we hit a non-empty line that isn't indented
+                     # But check if it's another header?
+                     if "Total Download Size:" in line or "Total Installed Size:" in line:
+                         break
+                     # Sometimes headers appear after.
+    
+    # If -p didn't give "Targets" (maybe because of config?), fallback to URL parsing is hard.
+    # But usually it is there.
+    
+    if not pkg_list:
+        # Fallback: maybe just explicit args if nothing else?
+        # If no deps, pacman might not say "Targets".
+        # It might just say "checking..." then nothing if up to date.
+        pass
+
+    # Now we have pkg_list which contains "pkgname-version" or just "pkgname"?
+    # Pacman targets list usually shows "pkgname-version".
+    # We need to split to get just pkgname for -Qi/-Si checks.
+    # Actually, we can just pass the full string to -Si? No, -Si expects name.
+    # Pattern: name-version
+    # We need to strip version.
+    
+    # Actually, let's look at `pacman -Sp` output again.
+    # file:///.../acl-2.3.1-1-x86_64.pkg.tar.zst
+    # getting name from that is: acl
+    
+    # Let's use the pkg_list from "Targets" as it contains versions too usually.
+    # But wait, "Targets (1): pacman-contrib-1.4.0-1"
+    
+    import re
     
     new_pkgs = []
     upgraded_pkgs = []
     total_dl_size = 0
     total_inst_size_change = 0
+
+    # Get bulk info is faster?
+    # We have a list of strings "pkgname-version-release".
+    # Finding where name ends is hard (hyphens allowed in name).
+    # But "version-release" usually starts with a digit.
+    # Heuristic: Split by hyphen, find first part starting with digit is version.
     
-    for pkg_name in packages:
-        if not pkg_name.strip():
-            continue
+    clean_names = []
+    for p in pkg_list:
+        parts = p.split('-')
+        # walk backwards or forwards?
+        # Version usually starts with digit.
+        idx = -1
+        for i, part in enumerate(parts):
+            if part and part[0].isdigit():
+                idx = i
+                break
         
-        # Check if package is currently installed
-        # Force English output with LC_ALL=C
-        check = run_pacman(["pacman", "-Qi", pkg_name], capture_output=True, text=True)
-        is_upgrade = (check.returncode == 0)
-        
-        # Get package info from repository
-        info = run_pacman(["pacman", "-Si", pkg_name], capture_output=True, text=True)
-        if info.returncode != 0:
-            continue
-        
-        dl_size = 0
-        inst_size = 0
-        
-        # Parse the -Si output (now guaranteed to be in English)
-        for line in info.stdout.splitlines():
-            if line.startswith("Download Size"):
-                size_str = line.split(':', 1)[1].strip()
-                dl_size = parse_pacman_size(size_str)
-            elif line.startswith("Installed Size"):
-                size_str = line.split(':', 1)[1].strip()
-                inst_size = parse_pacman_size(size_str)
-        
-        total_dl_size += dl_size
-        
-        if is_upgrade:
-            upgraded_pkgs.append(pkg_name)
-            # Calculate size delta for upgrades
-            old_size = 0
-            for line in check.stdout.splitlines():
-                if line.startswith("Installed Size"):
-                    size_str = line.split(':', 1)[1].strip()
-                    old_size = parse_pacman_size(size_str)
-                    break
-            total_inst_size_change += (inst_size - old_size)
+        if idx != -1:
+            name = "-".join(parts[:idx])
+            clean_names.append(name)
         else:
-            new_pkgs.append(pkg_name)
-            total_inst_size_change += inst_size
+            clean_names.append(p) # Fallback
+
+    if not clean_names:
+        # If we couldn't parse logic, use extra_args as fallback to at least show something
+        clean_names = [arg for arg in extra_args if not arg.startswith('-')]
+
+    # Batch query -Si for all
+    # To properly separate NEW vs UPGRADE, we need to check -Qi.
+    # Batch -Qi
+    installed_map = {}
+    check_batch = run_pacman(["pacman", "-Qi"] + clean_names, capture_output=True, text=True)
+    # Output is verbose.
+    # Easier: run `pacman -Q <list>` in one go.
+    # If package not installed, it prints error to stderr.
+    # We can parse stdout for installed ones.
+    
+    q_res = run_pacman(["pacman", "-Q"] + clean_names, capture_output=True, text=True)
+    installed_set = set()
+    if q_res.returncode != 127: # 127 is command not found
+        for line in q_res.stdout.splitlines():
+            # line is "name version"
+            if " " in line:
+                installed_set.add(line.split()[0])
+    
+    # Batch -Si to get sizes
+    # We run -Si on all clean_names
+    si_res = run_pacman(["pacman", "-Si"] + clean_names, capture_output=True, text=True)
+    
+    # Parse -Si output (blocks separated by blank lines)
+    # We map package name to sizes
+    pkg_sizes = {}
+    current_pkg = None
+    curr_dl = 0
+    curr_inst = 0
+    
+    for line in si_res.stdout.splitlines():
+        if line.startswith("Name"):
+            current_pkg = line.split(":", 1)[1].strip()
+            curr_dl = 0
+            curr_inst = 0
+        elif line.startswith("Download Size"):
+            curr_dl = parse_pacman_size(line.split(":", 1)[1].strip())
+        elif line.startswith("Installed Size"):
+            curr_inst = parse_pacman_size(line.split(":", 1)[1].strip())
+            if current_pkg:
+                pkg_sizes[current_pkg] = (curr_dl, curr_inst)
+
+    # Now iterate clean_names to build lists
+    for name in clean_names:
+        dl, inst = pkg_sizes.get(name, (0, 0))
+        total_dl_size += dl
+        
+        if name in installed_set:
+            upgraded_pkgs.append(name)
+            
+            # Get old installed size
+            # We need specific -Qi for this to be accurate?
+            # Doing one by one is slow but accurate.
+            # Batching -Qi is possible but parsing block output is annoying.
+            # Let's just do `pacman -Qi name` for upgrades. expected to be few.
+            qi = run_pacman(["pacman", "-Qi", name], capture_output=True, text=True)
+            old_size = 0
+            for line in qi.stdout.splitlines():
+                if line.startswith("Installed Size"):
+                    old_size = parse_pacman_size(line.split(":", 1)[1].strip())
+                    break
+            
+            total_inst_size_change += (inst - old_size)
+        else:
+            new_pkgs.append(name)
+            total_inst_size_change += inst
+
+    if not new_pkgs and not upgraded_pkgs:
+        return
 
     console.print("\nReading package lists... [green]Done[/green]")
     console.print("Building dependency tree... [green]Done[/green]")
@@ -158,6 +317,7 @@ def show_summary(apt_cmd, extra_args):
 
     if new_pkgs:
         console.print(f"The following [green]NEW[/green] packages will be installed:")
+        # Wrap?
         console.print(f"  {' '.join(new_pkgs)}\n")
     
     if upgraded_pkgs:
@@ -1112,11 +1272,83 @@ def execute_command(apt_cmd, extra_args):
              # Check if we are doing a real op
              simulate_apt_download_output(pacman_cmd, config)
 
+    if apt_cmd in ["remove", "purge", "autoremove"]:
+        # Intercept remove to show summary
+        if not is_simulation and not auto_confirm:
+            # Get list of what would be removed
+            # pacman -R... -p
+            sim_cmd = ["pacman"] + pacman_args + extra_args + ["-p"]
+            
+            # If autoremove, we need to handle the command structure differently
+            if apt_cmd == "autoremove":
+                 # For autoremove, the command we want to simulate is:
+                 # pacman -Rns $(pacman -Qdtq) -p
+                 # First get orphans
+                 check_orphans = subprocess.run(["pacman", "-Qdtq"], capture_output=True, text=True)
+                 if not check_orphans.stdout.strip():
+                     console.print("0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.")
+                     return
+                 orphans = check_orphans.stdout.split()
+                 sim_cmd = ["pacman", "-Rns"] + orphans + ["-p"]
+                 # Also update the real command arguments for later execution
+                 pacman_cmd = ["pacman", "-Rns"] + orphans
+            
+            # Check safeguards again if needed (execute_command already calls check_safeguards but for raw args)
+            # But here we have full resolved list.
+            
+            sim_res = run_pacman(sim_cmd, capture_output=True, text=True)
+            
+            if sim_res.returncode == 0:
+                lines = sim_res.stdout.splitlines()
+                # Parse targets
+                to_remove = []
+                
+                found_targets = False
+                for line in lines:
+                    if line.startswith("Targets ("):
+                         content = line.split("):", 1)[1].strip()
+                         to_remove.extend(content.split())
+                         found_targets = True
+                         continue
+                    if found_targets:
+                        if line.startswith(" "):
+                             to_remove.extend(line.strip().split())
+                        else:
+                             if line.strip() and "Total " not in line:
+                                 break
+                
+                # If parsing targets failed, fallback to assuming lines ARE targets (simpler pacman versions sometimes do this on -Rp?)
+                # No, standard is Targets (...).
+                # If empty list but valid return code, maybe nothing to remove?
+                
+                if to_remove:
+                     console.print(f"The following packages will be [bold red]REMOVED[/bold red]:")
+                     console.print(f"  {' '.join(to_remove)}\n")
+                     
+                     count = len(to_remove)
+                     console.print(f"0 upgraded, 0 newly installed, {count} to remove and 0 not upgraded.")
+                     console.print(f"After this operation, 0 B of additional disk space will be used.") # Removal usually frees space, APT says 'will be freed'
+                     # We could parse size but let's stick to basic listing first.
+                     
+                     if not console.input("[bold]Do you want to continue? [Y/n][/bold] ").lower().startswith('y'):
+                         print_info("Aborted.")
+                         sys.exit(0)
+                     
+                     # If confirmed, append --noconfirm for the real run
+                     pacman_cmd.append("--noconfirm")
+            else:
+                # Simulation failed (e.g. target not found)
+                # Let valid run proceed to show error
+                pass
+
     try:
         # Use --noconfirm if we already asked
         current_cmd = list(pacman_cmd)
-        if apt_cmd in ["install", "upgrade", "dist-upgrade", "full-upgrade"]:
-            current_cmd.append("--noconfirm")
+        if apt_cmd in ["install", "upgrade", "dist-upgrade", "full-upgrade", "remove", "purge", "autoremove"]:
+             if "--noconfirm" in pacman_cmd: # Ensure we don't duplicate
+                 pass
+             elif auto_confirm: 
+                 current_cmd.append("--noconfirm")
         
         # Special case for update and upgrade: sync files as well
         if apt_cmd == "update":
@@ -1195,6 +1427,7 @@ def execute_command(apt_cmd, extra_args):
                 subprocess.run(["pacman", "-Fy"], check=False, capture_output=True)
                 console.print("File database: [green]Done[/green]")
             return  # Exit after upgrade handling
+
         else:
             # For install/reinstall: use APT-style output with hooks
             # For remove/purge/autoremove and others: run normally without capture
