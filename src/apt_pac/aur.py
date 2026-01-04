@@ -424,39 +424,7 @@ class AurInstaller:
         for pkg in build_queue:
             self._build_pkg(pkg, verbose, auto_confirm)
 
-def get_resolved_package_info(build_queue: List[Dict], official_deps: set) -> List[tuple]:
-    """
-    Helper to convert build queue and official deps into a list of (name, version) tuples
-    for the transaction summary. Resolves versions of official deps using pacman.
-    """
-    install_info = []
 
-    # Add AUR packages from build queue
-    for p in build_queue:
-        ver = p.get('Version', '')
-        install_info.append((p['Name'], ver))
-        
-    # Add Official deps
-    if official_deps:
-            # run pacman -S --print to get versions
-            try:
-                cmd = ["pacman", "-S", "--print", "--print-format", "%n %v"] + list(official_deps)
-                res = subprocess.run(cmd, capture_output=True, text=True)
-                if res.returncode == 0:
-                    for line in res.stdout.splitlines():
-                        parts = line.split()
-                        if len(parts) >= 2:
-                            install_info.append((parts[0], parts[1]))
-                        else:
-                            install_info.append((line.strip(), ""))
-                else:
-                    for dep in official_deps:
-                        install_info.append((dep, ""))
-            except Exception:
-                for dep in official_deps:
-                    install_info.append((dep, ""))
-                    
-    return install_info
 
     def _build_pkg(self, pkg_info: Dict, verbose: bool, auto_confirm: bool):
         name = pkg_info['Name']
@@ -543,3 +511,37 @@ def get_resolved_package_info(build_queue: List[Dict], official_deps: set) -> Li
             
             print_error(f"Failed to build {name}")
             sys.exit(1)
+
+def get_resolved_package_info(build_queue: List[Dict], official_deps: set) -> List[tuple]:
+    """
+    Helper to convert build queue and official deps into a list of (name, version) tuples
+    for the transaction summary. Resolves versions of official deps using pacman.
+    """
+    install_info = []
+
+    # Add AUR packages from build queue
+    for p in build_queue:
+        ver = p.get('Version', '')
+        install_info.append((p['Name'], ver))
+        
+    # Add Official deps
+    if official_deps:
+            # run pacman -S --print to get versions
+            try:
+                cmd = ["pacman", "-S", "--print", "--print-format", "%n %v"] + list(official_deps)
+                res = subprocess.run(cmd, capture_output=True, text=True)
+                if res.returncode == 0:
+                    for line in res.stdout.splitlines():
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            install_info.append((parts[0], parts[1]))
+                        else:
+                            install_info.append((line.strip(), ""))
+                else:
+                    for dep in official_deps:
+                        install_info.append((dep, ""))
+            except Exception:
+                for dep in official_deps:
+                    install_info.append((dep, ""))
+                    
+    return install_info
