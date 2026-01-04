@@ -15,6 +15,13 @@ from .ui import (
 from .i18n import _
 from .config import get_config
 
+class CyclicDependencyError(Exception):
+    """Raised when a circular dependency is detected in AUR packages."""
+    def __init__(self, cycle_path: List[str]):
+        self.cycle = cycle_path
+        cycle_str = " → ".join(cycle_path)
+        super().__init__(f"Dependency cycle detected: {cycle_str}")
+
 AUR_RPC_URL = "https://aur.archlinux.org/rpc/v5/"
 CACHE_FILE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "apt-pac" / "rpc_cache.json"
 
@@ -315,10 +322,13 @@ def download_aur_source(package_name: str, target_dir: Optional[Path] = None, fo
 
 class AurResolver:
     def __init__(self):
-        self.seen = set()
-        self.queue = [] # Topological sort result
+        self.visiting = set()      # Currently visiting (gray nodes for cycle detection)
+        self.visited = set()       # Fully processed (black nodes)
+        self.queue = []            # Topological sort result
         self.aur_info_cache = {}
         self.official_deps = set()
+        self.package_bases = {}    # PackageBase → set of package names (for split packages)
+        self.base_to_info = {}     # PackageBase → representative package info
 
     def resolve(self, packages: List[str]) -> List[Dict]:
         """
@@ -330,17 +340,28 @@ class AurResolver:
             self._visit(pkg, force_visit=True)
         return self.queue
 
-    def _visit(self, pkg_name: str, force_visit=False):
-        if pkg_name in self.seen:
+    def _visit(self, pkg_name: str, force_visit=False, path=None):
+        if path is None:
+            path = []
+        
+        # Cycle detection: if we encounter a package we're currently visiting, it's a cycle
+        if pkg_name in self.visiting:
+            cycle_path = path + [pkg_name]
+            raise CyclicDependencyError(cycle_path)
+        
+        # If already fully processed, skip
+        if pkg_name in self.visited:
             return
         
         # If installed and not forced (explicitly requested), skip
         if not force_visit and is_installed(pkg_name):
+            self.visited.add(pkg_name)
             return
         
         # Check if official (ignore if so, makepkg handles it)
         if is_in_official_repos(pkg_name):
             self.official_deps.add(pkg_name)
+            self.visited.add(pkg_name)
             return
 
         # Fetch info from AUR
@@ -352,7 +373,16 @@ class AurResolver:
             self.aur_info_cache[pkg_name] = info[0]
         
         pkg_info = self.aur_info_cache[pkg_name]
-        self.seen.add(pkg_name) # Mark as visiting/visited
+        base = pkg_info.get('PackageBase', pkg_name)
+        
+        # Track split packages: multiple packages from same PKGBUILD
+        if base not in self.package_bases:
+            self.package_bases[base] = set()
+            self.base_to_info[base] = pkg_info
+        self.package_bases[base].add(pkg_name)
+        
+        # Mark as visiting (gray node)
+        self.visiting.add(pkg_name)
 
         # Dependencies
         deps = pkg_info.get('Depends', []) + pkg_info.get('MakeDepends', []) + pkg_info.get('CheckDepends', [])
@@ -366,10 +396,15 @@ class AurResolver:
 
         # Recurse
         for dep in clean_deps:
-            self._visit(dep, force_visit=False)
+            self._visit(dep, force_visit=False, path=path + [pkg_name])
+        
+        # Mark as visited (black node) and remove from visiting
+        self.visiting.remove(pkg_name)
+        self.visited.add(pkg_name)
             
-        # Add to queue (Post-order)
-        self.queue.append(pkg_info)
+        # Add to queue (Post-order), but only once per PackageBase
+        if base not in [p.get('PackageBase', p['Name']) for p in self.queue]:
+            self.queue.append(self.base_to_info[base])
 
 class AurInstaller:
     def __init__(self):
@@ -388,10 +423,22 @@ class AurInstaller:
         if build_queue is None:
             resolver = AurResolver()
             with console.status("[blue]Resolving AUR dependencies...[/blue]", spinner="dots"):
-                build_queue = resolver.resolve(packages)
+                try:
+                    build_queue = resolver.resolve(packages)
+                except CyclicDependencyError as e:
+                    print_error(str(e))
+                    console.print("\n[yellow]Possible solutions:[/yellow]")
+                    console.print("  1. One of these packages may list the other as a dependency incorrectly")
+                    console.print("  2. Try installing packages individually")
+                    console.print(f"  3. Report this to AUR maintainers: {', '.join(set(e.cycle))}")
+                    sys.exit(1)
             official_deps = resolver.official_deps
+            # Store resolver for split package info access
+            self.resolver = resolver
         else:
             official_deps = official_deps or set()
+            # No resolver if build_queue was provided directly
+            self.resolver = None
         
         if not build_queue:
             print_info("Nothing to do.")
@@ -427,14 +474,27 @@ class AurInstaller:
 
 
     def _build_pkg(self, pkg_info: Dict, verbose: bool, auto_confirm: bool):
+        # Use PackageBase for split packages (e.g., linux-headers uses 'linux' base)
+        base = pkg_info.get('PackageBase', pkg_info['Name'])
         name = pkg_info['Name']
-        pkg_dir = self.build_dir / name
+        pkg_dir = self.build_dir / base  # Download/build in PackageBase directory
         
-        console.print(f"\n[bold blue]:: Processing {name}...[/bold blue]")
+        # Determine if this is a split package
+        is_split = False
+        split_pkgs = []
+        if self.resolver and base in self.resolver.package_bases:
+            split_pkgs = sorted(self.resolver.package_bases[base])
+            is_split = len(split_pkgs) > 1
         
-        # 1. Clone or Pull
-        if not download_aur_source(name, pkg_dir):
-            print_error(f"Failed to download source for {name}")
+        # Processing message
+        if is_split:
+            console.print(f"\n[bold blue]:: Processing {base} (split package)...[/bold blue]")
+        else:
+            console.print(f"\n[bold blue]:: Processing {name}...[/bold blue]")
+        
+        # 1. Clone or Pull (using PackageBase)
+        if not download_aur_source(base, pkg_dir):
+            print_error(f"Failed to download source for {base}")
             sys.exit(1)
             
         # Fix permissions if running as root (so ordinary user can build)
@@ -445,7 +505,10 @@ class AurInstaller:
             subprocess.run(["chown", "-R", f"{real_user}:", str(self.build_dir)], check=False)
 
         # 2. Build
-        console.print(f"[dim]Building {name}...[/dim]")
+        if is_split:
+            console.print(f"[dim]Building {base} (provides: {', '.join(split_pkgs)})...[/dim]")
+        else:
+            console.print(f"[dim]Building {base}...[/dim]")
         
         # makepkg -si (sync deps, install, clean, needed)
         # We only add --noconfirm if auto_confirm is True, otherwise allow interaction
@@ -467,7 +530,12 @@ class AurInstaller:
             # We redirect output unless verbose
             # Capture output to check for GPG errors if it fails
             subprocess.run(cmd, cwd=pkg_dir, check=True, capture_output=not verbose)
-            console.print(f"[success]Successfully installed {name}[/success]")
+            
+            # Success message
+            if is_split:
+                console.print(f"[success]Successfully installed {', '.join(split_pkgs)}[/success]")
+            else:
+                console.print(f"[success]Successfully installed {name}[/success]")
             
         except subprocess.CalledProcessError as e:
             # Check for GPG errors
@@ -500,7 +568,12 @@ class AurInstaller:
                     console.print("[blue]Retrying build...[/blue]")
                     try:
                         subprocess.run(cmd, cwd=pkg_dir, check=True)
-                        console.print(f"[success]Successfully installed {name}[/success]")
+                        
+                        # Success message after retry
+                        if is_split:
+                            console.print(f"[success]Successfully installed {', '.join(split_pkgs)}[/success]")
+                        else:
+                            console.print(f"[success]Successfully installed {name}[/success]")
                         return
                     except subprocess.CalledProcessError:
                          pass # Fallthrough to failure message
