@@ -18,13 +18,24 @@ custom_theme = Theme({
 
 console = Console(theme=custom_theme)
 
+def set_force_colors(force: bool):
+    """Update console to force terminal output (colors) if requested."""
+    if force:
+        # Re-initialize to strictly force it, or just set option if supported
+        global console
+        console = Console(theme=custom_theme, force_terminal=True, force_interactive=True)
+
 def print_info(text):
     """Print info message (no prefix - APT style)."""
     console.print(text)
 
 def print_error(text):
     """Print error message (no prefix - APT style)."""
-    console.print(text)
+    try:
+        console.print(text)
+    except Exception:
+        # Fallback if markup fails (e.g. text contains unmatched tags)
+        console.print(text, markup=False)
 
 def print_command(text):
     console.print(f"[command]{text}[/command]")
@@ -192,7 +203,7 @@ def format_show(output):
         text.append(f"{mapped_key:<20}", style="bold cyan")
         text.append(f": {current_val}\n")
             
-    console.print(Panel(text, title="Package Information", border_style="blue"))
+    console.print(Panel(text, title=_("Package Information"), border_style="blue"))
 
 def format_aur_info(packages):
     if not packages:
@@ -227,7 +238,7 @@ def format_aur_info(packages):
         add_field("Vote-Count", str(pkg.get("NumVotes", 0)))
         add_field("Popularity", str(pkg.get("Popularity", 0)))
         
-        console.print(Panel(text, title=f"Package Information (AUR)", border_style="magenta"))
+        console.print(Panel(text, title=f"{_('Package Information')} (AUR)", border_style="magenta"))
 
 
 
@@ -307,8 +318,17 @@ def print_transaction_summary(
         # Let's stick to rich text similar to APT
         console.print(f"\n[bold]{_('The following packages will be upgraded:')}[/bold]")
         lines = []
-        for name, ver in upgraded_pkgs:
-            lines.append(f"{name} [bold]{ver}[/bold]" if ver else name)
+        for item in upgraded_pkgs:
+            # Handle both 2-tuple (name, ver) and 3-tuple (name, old_ver, new_ver)
+            if len(item) == 3:
+                name, old_ver, ver = item
+                # Display format: pkgname (old -> new) or just new?
+                # APT often just lists them. pacman typically: pkg (1.0 -> 2.0)
+                # Let's show: pkg [bold]1.0 -> 2.0[/bold]
+                lines.append(f"{name} ([dim]{old_ver}[/dim] -> [bold]{ver}[/bold])")
+            else:
+                name, ver = item
+                lines.append(f"{name} [bold]{ver}[/bold]" if ver else name)
         print_columnar_list(sorted(lines), "green")
 
     # 3. Installs (Split Explicit vs Extra)
@@ -344,14 +364,14 @@ def show_help():
     
     text = Text()
     text.append(f"apt-pac {__version__} (Arch Linux)\n", style="bold")
-    text.append("Usage: apt [options] command\n\n", style="header")
+    text.append(f"{_('Usage:')} apt [{_('options')}] {_('command')}\n\n", style="header")
     
-    text.append("apt-pac is a commandline package manager wrapper for pacman.\n")
-    text.append("It provides an APT-like experience while ensuring system safety.\n\n")
+    text.append(f"{_('apt-pac is a commandline package manager wrapper for pacman.')}\n")
+    text.append(f"{_('It provides an APT-like experience while ensuring system safety.')}\n\n")
     
     table = Table(show_header=False, box=None, padding=(0, 2))
-    table.add_column("Command", style="success")
-    table.add_column("Description")
+    table.add_column(_("Command"), style="success")
+    table.add_column(_("Description"))
     
     commands = [
         ("update", "update list of available packages (syncs -Sy and -Fy)"),
@@ -390,9 +410,9 @@ def show_help():
     ]
     
     for cmd, desc in commands:
-        table.add_row(cmd, desc)
+        table.add_row(cmd, _(desc))
         
     console.print(text)
-    console.print("[bold]Most used commands:[/bold]")
+    console.print(f"[bold]{_('Most used commands:')}[/bold]")
     console.print(table)
-    console.print("\n[italic grey70]This APT has Super Pacman Powers.[/italic grey70]")
+    console.print(f"\n[italic grey70]{_('This APT has Super Pacman Powers.')}[/italic grey70]")
