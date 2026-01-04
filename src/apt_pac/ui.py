@@ -1,7 +1,8 @@
 from rich.console import Console
 from rich.theme import Theme
-from rich.table import Table
+from rich.table import Table, Column
 from rich.panel import Panel
+from rich.padding import Padding
 from .i18n import _
 from rich.text import Text
 
@@ -227,6 +228,115 @@ def format_aur_info(packages):
         add_field("Popularity", str(pkg.get("Popularity", 0)))
         
         console.print(Panel(text, title=f"Package Information (AUR)", border_style="magenta"))
+
+
+
+def print_columnar_list(pkgs, color_tag="green"):
+    """
+    Prints a list of packages in columns (like ls or apt), adapting to terminal width.
+    """
+    if not pkgs:
+        return
+        
+    width = console.size.width
+    # Determine max length of package names (ignoring markup)
+    # Add minimal padding between columns (e.g. 2 spaces)
+    max_len = max(Text.from_markup(p).cell_len for p in pkgs) + 2
+    
+    # Calculate columns vs width
+    # 4 columns is standard for APT if space allows? 
+    # Actually APT uses varying columns.
+    # Let's try to fit as many as possible.
+    
+    # We want slight indentation (3 spaces)
+    available_width = width - 4 
+    
+    cols = available_width // max_len
+    if cols < 1: cols = 1
+    
+    # Calculate rows
+    # We fill by row for readability? Or by column?
+    # APT fills by row. (a b c d \n e f g h)
+    
+    table = Table(show_header=False, box=None, padding=(0, 2), pad_edge=False)
+    for _ in range(cols):
+        table.add_column()
+        
+    row_buffer = []
+    for pkg in pkgs:
+        row_buffer.append(f"[{color_tag}]{pkg}[/{color_tag}]")
+        if len(row_buffer) == cols:
+            table.add_row(*row_buffer)
+            row_buffer = []
+    if row_buffer:
+        while len(row_buffer) < cols:
+            row_buffer.append("")
+        table.add_row(*row_buffer)
+    
+    # Indent by 3 spaces
+    console.print(Padding(table, (0, 0, 0, 3)))
+    console.print()
+
+def print_transaction_summary(
+    new_pkgs: list = None,      # List of (name, version)
+    upgraded_pkgs: list = None, # List of (name, version)
+    remove_pkgs: list = None,   # List of (name, version)
+    explicit_names: set = None  # Set of package names requested by user
+):
+    """
+    Unified function to print transaction summary for installs, upgrades, and removals.
+    Handles coloring, bold versions, and explicit vs dependency separation.
+    """
+    new_pkgs = new_pkgs or []
+    upgraded_pkgs = upgraded_pkgs or []
+    remove_pkgs = remove_pkgs or []
+    explicit_names = explicit_names or set()
+
+    # 1. Removals
+    if remove_pkgs:
+        console.print(f"\n{_('The following packages will be REMOVED:')}")
+        lines = []
+        for name, ver in remove_pkgs:
+            lines.append(f"{name} [bold]{ver}[/bold]" if ver else name)
+        print_columnar_list(sorted(lines), "red")
+
+    # 2. Upgrades
+    if upgraded_pkgs:
+        # Check standard APT message? "The following packages will be upgraded:"
+        # Or simple "Upgrading:" like we had? 
+        # Let's stick to rich text similar to APT
+        console.print(f"\n[bold]{_('The following packages will be upgraded:')}[/bold]")
+        lines = []
+        for name, ver in upgraded_pkgs:
+            lines.append(f"{name} [bold]{ver}[/bold]" if ver else name)
+        print_columnar_list(sorted(lines), "green")
+
+    # 3. Installs (Split Explicit vs Extra)
+    if new_pkgs:
+        explicit_list = []
+        extra_list = []
+        
+        for name, ver in new_pkgs:
+            if name in explicit_names:
+                explicit_list.append((name, ver))
+            else:
+                extra_list.append((name, ver))
+
+        # Explicit First
+        if explicit_list:
+            console.print(f"[bold]{_('The following NEW packages will be installed:')}[/bold]")
+            lines = []
+            for name, ver in explicit_list:
+                lines.append(f"{name} [bold]{ver}[/bold]" if ver else name)
+            print_columnar_list(sorted(lines), "green")
+
+        # Dependencies Second
+        if extra_list:
+             console.print(f"[bold]{_('The following extra packages will be installed:')}[/bold]")
+             lines = []
+             for name, ver in extra_list:
+                 lines.append(f"{name} [bold]{ver}[/bold]" if ver else name)
+             print_columnar_list(sorted(lines), "green")
 
 
 def show_help():

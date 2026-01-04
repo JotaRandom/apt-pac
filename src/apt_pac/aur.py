@@ -8,7 +8,11 @@ import os
 import sys
 import shutil
 from pathlib import Path
-from .ui import console, print_error, print_info, print_command
+from .ui import (
+    console, print_error, print_info, print_command, 
+    print_columnar_list, print_transaction_summary
+)
+from .i18n import _
 from .config import get_config
 
 AUR_RPC_URL = "https://aur.archlinux.org/rpc/v5/"
@@ -314,6 +318,7 @@ class AurResolver:
         self.seen = set()
         self.queue = [] # Topological sort result
         self.aur_info_cache = {}
+        self.official_deps = set()
 
     def resolve(self, packages: List[str]) -> List[Dict]:
         """
@@ -321,15 +326,21 @@ class AurResolver:
         Returns a list of package info dicts in build order.
         """
         for pkg in packages:
-            self._visit(pkg)
+            # Force visit explicitly requested packages even if installed
+            self._visit(pkg, force_visit=True)
         return self.queue
 
-    def _visit(self, pkg_name: str):
-        if pkg_name in self.seen or is_installed(pkg_name):
+    def _visit(self, pkg_name: str, force_visit=False):
+        if pkg_name in self.seen:
+            return
+        
+        # If installed and not forced (explicitly requested), skip
+        if not force_visit and is_installed(pkg_name):
             return
         
         # Check if official (ignore if so, makepkg handles it)
         if is_in_official_repos(pkg_name):
+            self.official_deps.add(pkg_name)
             return
 
         # Fetch info from AUR
@@ -355,7 +366,7 @@ class AurResolver:
 
         # Recurse
         for dep in clean_deps:
-            self._visit(dep)
+            self._visit(dep, force_visit=False)
             
         # Add to queue (Post-order)
         self.queue.append(pkg_info)
@@ -370,36 +381,82 @@ class AurInstaller:
         if not self.build_dir.exists():
             self.build_dir.mkdir(parents=True, exist_ok=True)
 
-    def install(self, packages: List[str], verbose=False, auto_confirm=False):
-        resolver = AurResolver()
-        with console.status("[blue]Resolving AUR dependencies...[/blue]", spinner="dots"):
-            build_queue = resolver.resolve(packages)
+        if not self.build_dir.exists():
+            self.build_dir.mkdir(parents=True, exist_ok=True)
+
+    def install(self, packages: List[str], verbose=False, auto_confirm=False, build_queue=None, official_deps=None, skip_summary=False):
+        if build_queue is None:
+            resolver = AurResolver()
+            with console.status("[blue]Resolving AUR dependencies...[/blue]", spinner="dots"):
+                build_queue = resolver.resolve(packages)
+            official_deps = resolver.official_deps
+        else:
+            official_deps = official_deps or set()
         
         if not build_queue:
             print_info("Nothing to do.")
             return
 
-        # APT-like Summary
-        console.print("Reading package lists... Done")
-        console.print("Building dependency tree... Done")
-        console.print("Reading state information... Done")
-        
-        console.print("The following NEW packages will be installed:")
-        names = [p['Name'] for p in build_queue]
-        # Sort for display
-        names.sort()
-        console.print(f"  {' '.join(names)}")
-        
-        # Calculate size if possible? AUR RPC doesn't give built size easily, assuming unknown.
-        count = len(names)
-        console.print(f"0 upgraded, {count} newly installed, 0 to remove and 0 not upgraded.")
-        
-        if not console.input("Do you want to continue? [Y/n] ").lower().startswith('y'):
-            print_info("Aborted.")
-            sys.exit(0)
+        if not skip_summary:
+            console.print("Building dependency tree... Done")
+            console.print("Reading state information... Done")
+            
+            # Prepare list of (name, version) for summary
+            install_info = get_resolved_package_info(build_queue, official_deps)
+            explicit_set = set(packages)
+
+            # Use shared UI helper
+            print_transaction_summary(
+                new_pkgs=install_info,
+                explicit_names=explicit_set
+            )
+            
+            # Calculate size if possible?
+            count = len(install_info)
+            console.print(f"0 upgraded, {count} newly installed, 0 to remove and 0 not upgraded.")
+            
+            if auto_confirm:
+                console.print(f"{_('Do you want to continue?')} [Y/n] [bold green]Yes[/bold green]")
+            elif not console.input(f"{_('Do you want to continue?')} [Y/n] ").lower().startswith('y'):
+                print_info(_("Aborted."))
+                sys.exit(0)
 
         for pkg in build_queue:
             self._build_pkg(pkg, verbose, auto_confirm)
+
+def get_resolved_package_info(build_queue: List[Dict], official_deps: set) -> List[tuple]:
+    """
+    Helper to convert build queue and official deps into a list of (name, version) tuples
+    for the transaction summary. Resolves versions of official deps using pacman.
+    """
+    install_info = []
+
+    # Add AUR packages from build queue
+    for p in build_queue:
+        ver = p.get('Version', '')
+        install_info.append((p['Name'], ver))
+        
+    # Add Official deps
+    if official_deps:
+            # run pacman -S --print to get versions
+            try:
+                cmd = ["pacman", "-S", "--print", "--print-format", "%n %v"] + list(official_deps)
+                res = subprocess.run(cmd, capture_output=True, text=True)
+                if res.returncode == 0:
+                    for line in res.stdout.splitlines():
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            install_info.append((parts[0], parts[1]))
+                        else:
+                            install_info.append((line.strip(), ""))
+                else:
+                    for dep in official_deps:
+                        install_info.append((dep, ""))
+            except Exception:
+                for dep in official_deps:
+                    install_info.append((dep, ""))
+                    
+    return install_info
 
     def _build_pkg(self, pkg_info: Dict, verbose: bool, auto_confirm: bool):
         name = pkg_info['Name']
