@@ -8,7 +8,7 @@ from .ui import (
     console, print_error, print_info, print_command, 
     print_success, print_apt_download_line, format_show, 
     format_search_results, print_columnar_list, show_help, 
-    format_aur_search_results, print_transaction_summary
+    format_aur_search_results, print_transaction_summary, print_reading_status
 )
 from .config import get_config
 from . import aur
@@ -382,9 +382,7 @@ def show_summary(apt_cmd, extra_args, auto_confirm=False, aur_new=None, aur_upgr
         console.print(_("0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded."))
         return
 
-    console.print(f"\n{_('Reading package lists...')} [green]{_('Done')}[/green]")
-    console.print(f"{_('Building dependency tree...')} [green]{_('Done')}[/green]")
-    console.print(f"{_('Reading state information...')} [green]{_('Done')}[/green]")
+    print_reading_status()
 
     # Identify explicit names from extra_args (excluding flags)
     explicit_names = {arg for arg in extra_args if not arg.startswith('-')}
@@ -597,9 +595,7 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
         else:
             print_cmd = ["pacman"] + pacman_args + extra_args + ["--print"]
             
-        console.print(f"\n{_('Reading package lists...')} [green]{_('Done')}[/green]")
-        console.print(f"{_('Building dependency tree...')} [green]{_('Done')}[/green]")
-        console.print(f"{_('Reading state information...')} [green]{_('Done')}[/green]")
+        print_reading_status()
             
         result = subprocess.run(print_cmd, capture_output=True, text=True)
         if result.returncode == 0:
@@ -747,21 +743,21 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
             if install_match:
                 pkg_name = install_match.group(1)
                 installing_packages.append(pkg_name)
-                console.print(f"Setting up {pkg_name} ...")
+                console.print(f"{_('Setting up')} {pkg_name} ...")
                 continue
             
             # Detect package upgrade: "upgrading package-name..."
             upgrade_match = re.search(r'upgrading ([a-zA-Z0-9._+-]+)\.\.\.', line, re.IGNORECASE)
             if upgrade_match:
                 pkg_name = upgrade_match.group(1)
-                console.print(f"Setting up {pkg_name} ...")
+                console.print(f"{_('Setting up')} {pkg_name} ...")
                 continue
             
             # Detect package removal: "removing package-name..."
             remove_match = re.search(r'removing ([a-zA-Z0-9._+-]+)\.\.\.', line, re.IGNORECASE)
             if remove_match:
                 pkg_name = remove_match.group(1)
-                console.print(f"Removing {pkg_name} ...")
+                console.print(f"{_('Removing')} {pkg_name} ...")
                 continue
             
             # Detect hooks: "running 'hook-name.hook'..."
@@ -772,7 +768,7 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
                     # Convert hook name to trigger-like name
                     # e.g., "systemd-update.hook" -> "systemd-update"
                     trigger_name = hook_name.replace('.hook', '')
-                    console.print(f"Processing triggers for {trigger_name} ...")
+                    console.print(f"{_('Processing triggers for')} {trigger_name} ...")
                     continue
             
             # Detect "target not found" error and mimic APT output
@@ -790,7 +786,7 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
         return process.returncode == 0
         
     except Exception as e:
-        print_error(f"Error running pacman: {e}")
+        print_error(f"[red]{_('E:')}[/red] {_(f'Error running pacman: {e}')}")
         return False
 
 
@@ -799,10 +795,10 @@ def execute_command(apt_cmd, extra_args):
         import difflib
         matches = difflib.get_close_matches(apt_cmd, COMMAND_MAP.keys(), n=1, cutoff=0.6)
         if matches:
-            print_error(f"E: Invalid operation {apt_cmd}")
-            console.print(f"[info]Did you mean:[/info] [bold white]{matches[0]}[/bold white]?")
+            print_error(f"[red]{_('E:')}[/red] {_(f'Invalid operation {apt_cmd}')}")
+            console.print(f"[info]{_('Did you mean:')}[/info] [bold white]{matches[0]}[/bold white]?")
         else:
-            print_error(f"E: Invalid operation {apt_cmd}")
+            print_error(f"[red]{_('E:')}[/red] {_(f'Invalid operation {apt_cmd}')}")
         sys.exit(1)
     
     # Get configuration for flag defaults
@@ -875,31 +871,29 @@ def execute_command(apt_cmd, extra_args):
     if is_simulation:
         # Remove the flag from extra_args so it doesn't confuse pacman if it doesn't support it
         extra_args = [a for a in extra_args if a not in ["-s", "--simulate", "--dry-run"]]
-        print_info("Simulation mode enabled.")
+        print_info(_("Simulation mode enabled."))
 
     # Handle --fix-broken flag
     if "--fix-broken" in extra_args or "-f" in extra_args:
         extra_args = [a for a in extra_args if a not in ["--fix-broken", "-f"]]
-        console.print("\n[bold blue]Reading package lists...[/bold blue]")
-        console.print("[bold blue]Building dependency tree...[/bold blue]")
-        console.print("[bold blue]Reading state information...[/bold blue]")
-        console.print("[info]Correcting dependencies...[/info]\n")
+        print_reading_status()
+        console.print(f"[info]{_('Correcting dependencies...')}[/info]\n")
         
         subprocess.run(["pacman", "-Dk"], check=False)
-        console.print("[info]Attempting to resolve broken dependencies via system upgrade...[/info]")
+        console.print(f"[info]{_('Attempting to resolve broken dependencies via system upgrade...')}[/info]")
         if os.getuid() == 0:
             subprocess.run(["pacman", "-Syu", "--noconfirm"], check=False)
             subprocess.run(["pacman", "-Syu", "--noconfirm"], check=False)
             console.print(f"\n[green]{_('Done')}[/green]")
         else:
-            console.print(f"W: {_('Run as root to attempt automatic fixes')}")
+            console.print(f"[yellow]{_('W:')}[/yellow] {_('Run as root to attempt automatic fixes')}")
         return
     
     # Handle --no-install-recommends flag
     if "--no-install-recommends" in extra_args:
         extra_args = [a for a in extra_args if a != "--no-install-recommends"]
         if apt_cmd == "install":
-            msg = _("Note: Pacman doesn't install optional dependencies by default")
+            msg = f"[magenta]{_('N:')}[/magenta] {_('Pacman doesn\'t install optional dependencies by default')}"
             console.print(f"[info]{msg}[/info]")
     
     # Handle --only-upgrade flag
@@ -916,7 +910,7 @@ def execute_command(apt_cmd, extra_args):
                     console.print(f"[info]{_('Skipping')} {pkg} ({_('not installed')})[/info]")
             
             if not pkgs_to_upgrade:
-                print_info("0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.")
+                print_info(_("0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded."))
                 return
             
             extra_args = pkgs_to_upgrade
@@ -925,21 +919,21 @@ def execute_command(apt_cmd, extra_args):
 
     # Easter Eggs
     if apt_cmd == "moo":
-        console.print("         (__)")
-        console.print("         (oo)")
-        console.print("   /------\\/")
-        console.print("  / |    ||")
-        console.print(" *  /\\---/\\")
-        console.print("    ~~   ~~")
-        console.print("....\"Have you mooed today?\"...")
+        # Cute furry cow OwO
+        console.print("        ^__^")
+        console.print("        (oo)\\_______")
+        console.print("        (__)\\       )\\")
+        console.print("            ||----w | *")
+        console.print("            ||     ||")
+        console.print(_("...\"Have you mooed today?\"..."))
         return
         
     if apt_cmd == "pacman":
-        console.print(" .--.")
-        console.print("/  _ \\")
-        console.print("|  _  |   .  .  .  .  .  .  .")
-        console.print("\\     /")
-        console.print(" '--'")
+        # Cool Pacman!
+        console.print("")
+        console.print("    ᗧ···· ᗣ  ᗣ  ᗣ")
+        console.print("")
+        console.print(_("...Waka waka!..."))
         return
 
     # Check safeguards before doing anything destructive
@@ -1028,10 +1022,10 @@ def execute_command(apt_cmd, extra_args):
                 try:
                     installer.install(aur_pkgs, verbose=verbose, auto_confirm=auto_confirm)
                 except KeyboardInterrupt:
-                    print_error("\nInterrupted.")
+                    print_error(_("\nInterrupted."))
                     sys.exit(1)
                 except Exception as e:
-                    print_error(f"AUR Installation failed: {e}")
+                    print_error(_(f"AUR Installation failed: {e}"))
                     sys.exit(1)
                 return # Exit after AUR install handling
             
@@ -1087,7 +1081,7 @@ def execute_command(apt_cmd, extra_args):
                     if line.startswith("Version"):
                         console.print(f"  Installed: {line.split(':', 1)[1].strip()}")
             else:
-                console.print("  Installed: (none)")
+                console.print(f"  {_('Installed:')} ({_('none')})")
             
             if remote.returncode == 0:
                 for line in remote.stdout.splitlines():
@@ -1096,7 +1090,7 @@ def execute_command(apt_cmd, extra_args):
             return
     elif apt_cmd == "apt-mark":
         if not extra_args:
-            print_info("Usage: apt-mark [auto|manual|hold|unhold] [package]")
+            print_info(_("Usage: apt-mark [auto|manual|hold|unhold] [package]"))
             return
         sub = extra_args[0]
         pkgs = extra_args[1:]
@@ -1105,20 +1099,18 @@ def execute_command(apt_cmd, extra_args):
         elif sub == "manual":
             pacman_cmd = ["pacman", "-D", "--asexplicit"] + pkgs
         elif sub == "hold":
-            print_info("Note: Arch handles 'hold' via IgnorePkg in /etc/pacman.conf.")
-            print_info("Consider adding these packages to IgnorePkg manually.")
+            print_info(f"[magenta]{_('N:')}[/magenta] {_('Arch handles \'hold\' via IgnorePkg in /etc/pacman.conf.')}")  
+            print_info(_("Consider adding these packages to IgnorePkg manually."))
             return
         else:
-            print_info(f"Subcommand {sub} not yet implemented.")
+            print_info(_(f"Subcommand {sub} not yet implemented."))
             return
     elif apt_cmd == "check":
-        console.print("\n[bold blue]Reading package lists...[/bold blue]")
-        console.print("[bold blue]Building dependency tree...[/bold blue]")
-        console.print("[bold blue]Reading state information...[/bold blue]\n")
+        print_reading_status()
         
         result_db = subprocess.run(["pacman", "-Dk"], capture_output=True, text=True)
         if result_db.returncode == 0:
-            console.print("Database integrity: [green]OK[/green]")
+            console.print(f"{_('Database integrity:')} [green]{_('OK')}[/green]")
         else:
             console.print(f"[error]E:[/error] Database errors:\n{result_db.stdout}")
         
@@ -1127,16 +1119,16 @@ def execute_command(apt_cmd, extra_args):
         if dep_issues:
             console.print(f"\nW: {len(dep_issues)} package warnings found")
         else:
-            console.print("All packages: [green]OK[/green]")
+            console.print(f"{_('All packages:')} [green]{_('OK')}[/green]")
         
         if subprocess.run(["command", "-v", "lddd"], shell=True, capture_output=True).returncode == 0:
             try:
                 result_lddd = subprocess.run(["lddd"], capture_output=True, text=True, check=False)
                 if result_lddd.returncode == 0:
                     if result_lddd.stdout.strip():
-                        console.print("\nW: Broken libraries detected")
+                        console.print(f"\nW: {_('Broken libraries detected')}")
                     else:
-                        console.print("Library links: [green]OK[/green]")
+                        console.print(f"{_('Library links:')} [green]{_('OK')}[/green]")
             except (FileNotFoundError, OSError):
                 # lddd not actually available, skip check silently
                 pass
@@ -1154,7 +1146,7 @@ def execute_command(apt_cmd, extra_args):
         return
     
     elif apt_cmd == "stats":
-        console.print("\n[bold]Package Statistics:[/bold]\n")
+        console.print(f"\n[bold]{_('Package Statistics:')}[/bold]\n")
         
         total_avail = subprocess.run(["pacman", "-Slq"], capture_output=True, text=True)
         num_avail = len(total_avail.stdout.splitlines())
@@ -1190,8 +1182,8 @@ def execute_command(apt_cmd, extra_args):
     elif apt_cmd == "source":
         from .sources import handle_apt_source
         if not extra_args:
-            print_error("E: No packages specified for source download")
-            print_info("Usage: apt source <package>")
+            print_error(f"[red]{_('E:')}[/red] {_('No packages specified for source download')}")
+            print_info(_("Usage: apt source <package>"))
             sys.exit(1)
         package_name = extra_args[0]
         success = handle_apt_source(package_name, extra_args[1:], verbose=verbose)
@@ -1200,8 +1192,8 @@ def execute_command(apt_cmd, extra_args):
     elif apt_cmd == "build-dep":
         from .sources import handle_build_dep
         if not extra_args:
-            print_error("E: No package specified")
-            print_info("Usage: apt build-dep <package>")
+            print_error(f"[red]{_('E:')}[/red] {_('No package specified')}")
+            print_info(_("Usage: apt build-dep <package>"))
             sys.exit(1)
         package_name = extra_args[0]
         success = handle_build_dep(package_name, verbose=verbose)
@@ -1212,7 +1204,7 @@ def execute_command(apt_cmd, extra_args):
         if subprocess.run(["command -v pactree"], shell=True, capture_output=True).returncode == 0:
              pacman_cmd = ["pactree", "-g"] + extra_args
         else:
-             print_error("pactree (pacman-contrib) is required for dotty.")
+             print_error(_("pactree (pacman-contrib) is required for dotty."))
              sys.exit(1)
 
     elif apt_cmd == "add-repository":
@@ -1236,7 +1228,7 @@ def execute_command(apt_cmd, extra_args):
         
         console.print(Panel(text, title="How to add a repository", border_style="blue"))
         
-        if console.input("\nDo you want to edit /etc/pacman.conf now? [Y/n] ").lower().startswith('y'):
+        if console.input(f"\n{_('Do you want to edit /etc/pacman.conf now?')} [Y/n] ").lower().startswith('y'):
             # Reuse edit-sources logic
             # Just recursively call execute_command or copy logic. Copying is safer to avoid recursion limits/state issues.
             editor = get_editor()
@@ -1255,13 +1247,13 @@ def execute_command(apt_cmd, extra_args):
             pacman_cmd = ["pactree", "-g"] + extra_args
             subprocess.run(pacman_cmd)
         else:
-            print_error("E: This command requires 'pacman-contrib' package")
-            console.print("Install with: [command]sudo pacman -S pacman-contrib[/command]")
+            print_error(f"[red]{_('E:')}[/red] {_('This command requires \'pacman-contrib\' package')}")
+            console.print(f"{_('Install with:')} [command]sudo pacman -S pacman-contrib[/command]")
         return
     
     elif apt_cmd == "madison":
         if not extra_args:
-            print_error("E: No package specified")
+            print_error(f"[red]{_('E:')}[/red] {_('No package specified')}")
             return
         
         pkg = extra_args[0]
@@ -1287,7 +1279,7 @@ def execute_command(apt_cmd, extra_args):
         return
     
     elif apt_cmd == "config":
-        console.print("\n[bold]Pacman Configuration:[/bold]\n")
+        console.print(f"\n[bold]{_('Pacman Configuration:')}[/bold]\n")
         try:
             with open("/etc/pacman.conf", "r") as f:
                 content = f.read()
@@ -1295,39 +1287,39 @@ def execute_command(apt_cmd, extra_args):
                 from rich.panel import Panel
                 console.print(Panel(content, title="/etc/pacman.conf", border_style="blue"))
         except FileNotFoundError:
-            print_error("E: Cannot read /etc/pacman.conf")
+            print_error(f"[red]{_('E:')}[/red] {_('Cannot read /etc/pacman.conf')}")
         except PermissionError:
-            print_error("E: Permission denied reading /etc/pacman.conf")
+            print_error(f"[red]{_('E:')}[/red] {_('Permission denied reading /etc/pacman.conf')}")
         return
     
     elif apt_cmd in ["apt-key", "key"]:
         if not extra_args:
-            console.print("\n[bold]Usage:[/bold] apt-key [add|list|del|adv] ...\n")
-            console.print("[bold]Examples:[/bold]")
-            console.print("  apt-key add <keyfile>     - Import GPG key")
-            console.print("  apt-key list              - List all keys")
-            console.print("  apt-key del <keyid>       - Remove key\n")
-            console.print("[info]Note: This is a wrapper for pacman-key[/info]")
+            console.print(f"\n[bold]{_('Usage:')}[/bold] apt-key [add|list|del|adv] ...\n")
+            console.print(f"[bold]{_('Examples:')}[/bold]")
+            console.print(f"  apt-key add <keyfile>     - {_('Import GPG key')}")
+            console.print(f"  apt-key list              - {_('List all keys')}")
+            console.print(f"  apt-key del <keyid>       - {_('Remove key')}\n")
+            console.print(f"[magenta]{_('N:')}[/magenta] {_('This is a wrapper for pacman-key')}")
             return
         
         sub = extra_args[0]
         if sub == "add":
             if len(extra_args) < 2:
-                print_error("E: No keyfile specified")
+                print_error(f"[red]{_('E:')}[/red] {_('No keyfile specified')}")
                 return
             pacman_cmd = ["pacman-key", "--add"] + extra_args[1:]
         elif sub == "list":
             pacman_cmd = ["pacman-key", "--list-keys"]
         elif sub in ["del", "delete", "remove"]:
             if len(extra_args) < 2:
-                print_error("E: No key ID specified")
+                print_error(f"[red]{_('E:')}[/red] {_('No key ID specified')}")
                 return
             pacman_cmd = ["pacman-key", "--delete"] + extra_args[1:]
         elif sub == "adv":
             # Pass through to gpg
             pacman_cmd = ["pacman-key"] + extra_args
         else:
-            print_error(f"E: Unknown apt-key command: {sub}")
+            print_error(f"[red]{_('E:')}[/red] {_(f'Unknown apt-key command: {sub}')}")
             return
         
         # For add/del, apt-key only prints "OK" on success
@@ -1382,7 +1374,7 @@ def execute_command(apt_cmd, extra_args):
         from .sources import handle_showsrc
         if not extra_args:
             print_error("E: No package specified")
-            print_info("Usage: apt-cache showsrc <package>")
+            print_info(_("Usage: apt-cache showsrc <package>"))
             sys.exit(1)
         package_name = extra_args[0]
         success = handle_showsrc(package_name, verbose=verbose)
@@ -1594,9 +1586,10 @@ def execute_command(apt_cmd, extra_args):
                     sync_cmd = ["pacman", "-Fy"]
                     subprocess.run(sync_cmd, check=False, capture_output=True)
                 
-            console.print("Reading package lists... [green]Done[/green]")
+            # print_reading_status() would add newline, so just print first line
+            console.print(f"\n{_('Reading package lists...')} [green]{_('Done')}[/green]")
             if only_aur:
-                print_info(_("Note: 'update --aur' simply checks official DBs as AUR has no central DB to sync."))
+                print_info(f"[magenta]{_('N:')}[/magenta] {_('\'update --aur\' simply checks official DBs as AUR has no central DB to sync.')}")  
             return # Exit early as we've handled everything for update
         
         elif apt_cmd in ["upgrade", "dist-upgrade", "full-upgrade"]:
@@ -1728,7 +1721,7 @@ def execute_command(apt_cmd, extra_args):
                         skip_summary=True
                     )
                 except Exception as e:
-                    print_error(f"AUR Upgrade failed: {e}")
+                    print_error(_(f"AUR Upgrade failed: {e}"))
 
             # Sync file database in background (silent)
             if not run_aur:

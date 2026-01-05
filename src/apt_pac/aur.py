@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 from .ui import (
     console, print_error, print_info, print_command, 
-    print_columnar_list, print_transaction_summary
+    print_columnar_list, print_transaction_summary, print_reading_status
 )
 from .i18n import _
 from .config import get_config
@@ -227,7 +227,7 @@ def check_updates(verbose=False) -> List[Dict]:
         return []
 
     if verbose:
-        console.print(f"[dim]Checking {len(installed_aur)} foreign packages for updates...[/dim]")
+        console.print(f"[dim]{_('Checking')} {len(installed_aur)} {_('foreign packages for updates...')}[/dim]")
 
     # Get local versions
     installed_map = get_installed_packages()
@@ -255,7 +255,7 @@ def check_updates(verbose=False) -> List[Dict]:
                     })
         except Exception as e:
             if verbose:
-                print_error(f"Error checking updates for chunk: {e}")
+                print_error(_(f"Error checking updates for chunk: {e}"))
                 
     return updates
 
@@ -303,22 +303,26 @@ def download_aur_source(package_name: str, target_dir: Optional[Path] = None, fo
         elif (target_dir / ".git").exists():
             # Already exists and is a git repo, just pull
             try:
-                subprocess.run(["git", "pull"], cwd=target_dir, capture_output=True, check=True)
+                subprocess.run(["git", "pull"], cwd=target_dir, check=True)
                 return target_dir
             except subprocess.CalledProcessError:
-                # If pull fails, might need to re-clone
-                pass
+                # If pull fails, remove and re-clone
+                console.print(f"[yellow]{_('Pull failed for')} {package_name}, {_('re-cloning...')}[/yellow]")
+                shutil.rmtree(target_dir)
+        else:
+            # Directory exists but is not a git repo - remove it
+            console.print(f"[yellow]{_('Removing incomplete directory for')} {package_name}...[/yellow]")
+            shutil.rmtree(target_dir)
     
     # Clone
     target_dir.parent.mkdir(parents=True, exist_ok=True)
-    if not target_dir.exists():
-         try:
-            subprocess.run(["git", "clone", clone_url, str(target_dir)], capture_output=True, check=True)
-            return target_dir
-         except subprocess.CalledProcessError:
-            return None
-            
-    return target_dir
+    try:
+        # Show git clone output so users can see progress/errors
+        subprocess.run(["git", "clone", clone_url, str(target_dir)], check=True)
+        return target_dir
+    except subprocess.CalledProcessError:
+        print_error(_(f"Failed to clone {package_name} from AUR"))
+        return None
 
 class AurResolver:
     def __init__(self):
@@ -368,7 +372,7 @@ class AurResolver:
         if pkg_name not in self.aur_info_cache:
             info = get_aur_info([pkg_name])
             if not info:
-                print_error(f"Package '{pkg_name}' not found in AUR or official repos.")
+                print_error(_(f"Package '{pkg_name}' not found in AUR or official repos."))
                 sys.exit(1)
             self.aur_info_cache[pkg_name] = info[0]
         
@@ -410,12 +414,27 @@ class AurInstaller:
     def __init__(self):
         self.config = get_config()
         # Use user-writeable cache dir for sources
-        # We need a place where the user has permissions. 
-        # Typically ~/.cache/apt-pac/sources/
-        self.build_dir = self.config.cache_dir / "sources" / "aur"
-        if not self.build_dir.exists():
-            self.build_dir.mkdir(parents=True, exist_ok=True)
-
+        # IMPORTANT: If running as root via sudo, use the real user's cache, not root's
+        # This way the user can access the files when we drop privileges
+        if os.getuid() == 0:
+            real_user = os.environ.get("SUDO_USER")
+            if real_user:
+                # Get the real user's home directory
+                import pwd
+                try:
+                    user_info = pwd.getpwnam(real_user)
+                    user_home = Path(user_info.pw_dir)
+                    # Use XDG_CACHE_HOME or ~/.cache
+                    user_cache = Path(os.environ.get("XDG_CACHE_HOME", user_home / ".cache"))
+                    self.build_dir = user_cache / "apt-pac" / "sources" / "aur"
+                except KeyError:
+                    # Fallback to config if we can't find user
+                    self.build_dir = self.config.cache_dir / "sources" / "aur"
+            else:
+                self.build_dir = self.config.cache_dir / "sources" / "aur"
+        else:
+            self.build_dir = self.config.cache_dir / "sources" / "aur"
+        
         if not self.build_dir.exists():
             self.build_dir.mkdir(parents=True, exist_ok=True)
 
@@ -427,10 +446,10 @@ class AurInstaller:
                     build_queue = resolver.resolve(packages)
                 except CyclicDependencyError as e:
                     print_error(str(e))
-                    console.print("\n[yellow]Possible solutions:[/yellow]")
-                    console.print("  1. One of these packages may list the other as a dependency incorrectly")
-                    console.print("  2. Try installing packages individually")
-                    console.print(f"  3. Report this to AUR maintainers: {', '.join(set(e.cycle))}")
+                    console.print(f"\n[yellow]{_('Possible solutions:')}[/yellow]")
+                    console.print(f"  1. {_('One of these packages may list the other as a dependency incorrectly')}")
+                    console.print(f"  2. {_('Try installing packages individually')}")
+                    console.print(f"  3. {_('Report this to AUR maintainers:')} {', '.join(set(e.cycle))}")
                     sys.exit(1)
             official_deps = resolver.official_deps
             # Store resolver for split package info access
@@ -441,7 +460,7 @@ class AurInstaller:
             self.resolver = None
         
         if not build_queue:
-            print_info("Nothing to do.")
+            print_info(_("Nothing to do."))
             return
 
         if not skip_summary:
@@ -460,7 +479,7 @@ class AurInstaller:
             
             # Calculate size if possible?
             count = len(install_info)
-            console.print(f"0 upgraded, {count} newly installed, 0 to remove and 0 not upgraded.")
+            console.print(_(f"0 upgraded, {count} newly installed, 0 to remove and 0 not upgraded."))
             
             if auto_confirm:
                 console.print(f"{_('Do you want to continue?')} [Y/n] [bold green]Yes[/bold green]")
@@ -488,17 +507,25 @@ class AurInstaller:
         
         # Processing message
         if is_split:
-            console.print(f"\n[bold blue]:: Processing {base} (split package)...[/bold blue]")
+            console.print(f"\n[bold blue]:: {_('Processing')} {base} ({_('split package')})...[/bold blue]")
         else:
-            console.print(f"\n[bold blue]:: Processing {name}...[/bold blue]")
+            console.print(f"\n[bold blue]:: {_('Processing')} {name}...[/bold blue]")
         
         # 1. Clone or Pull (using PackageBase)
         if not download_aur_source(base, pkg_dir):
-            print_error(f"Failed to download source for {base}")
+            print_error(_(f"Failed to download source for {base}"))
             sys.exit(1)
             
         # Fix permissions if running as root (so ordinary user can build)
-        real_user = os.environ.get("SUDO_USER")
+        # Get the build user from config or auto-detect
+        config = get_config()
+        build_user_config = config.get("tools", "build_user", "auto")
+        
+        if build_user_config == "auto":
+            real_user = os.environ.get("SUDO_USER")
+        else:
+            real_user = build_user_config
+        
         if os.getuid() == 0 and real_user:
             # Recursively chown the specific package directory and parent
             # We chown the whole build_dir to be safe as it's a cache dir
@@ -506,36 +533,116 @@ class AurInstaller:
 
         # 2. Build
         if is_split:
-            console.print(f"[dim]Building {base} (provides: {', '.join(split_pkgs)})...[/dim]")
+            console.print(f"[dim]{_('Building')} {base} ({_('provides')}: {', '.join(split_pkgs)})...[/dim]")
         else:
-            console.print(f"[dim]Building {base}...[/dim]")
+            console.print(f"[dim]{_('Building')} {base}...[/dim]")
         
-        # makepkg -si (sync deps, install, clean, needed)
-        # We only add --noconfirm if auto_confirm is True, otherwise allow interaction
-        # This effectively enables "Smart Providers" (pacman asks user which provider to pick)
-        cmd = ["makepkg", "-si", "--needed"]
+        # makepkg -sf (sync deps, force rebuild, clean, needed)
+        # We build WITHOUT -i flag so we can install it ourselves with apt-pac formatting
+        # -f flag forces rebuild even if package already exists (needed for upgrades/reinstalls)
+        # This ensures consistent APT-style output for the installation step
+        cmd = ["makepkg", "-sf", "--needed"]
         if auto_confirm:
             cmd.append("--noconfirm")
         
         if os.getuid() == 0:
              if real_user:
                  # Drop privileges to build, but allow installing deps (makepkg calls sudo/pacman)
-                 cmd = get_privilege_command(real_user, cmd)
+                 # IMPORTANT: We need to cd into the directory because run0/sudo don't preserve cwd
+                 config = get_config()
+                 tool = config.get("tools", "privilege_tool", "auto")
+                 
+                 # Auto-detect if auto
+                 if tool == "auto":
+                     if shutil.which("run0"):
+                         tool = "run0"
+                     elif shutil.which("doas"):
+                         tool = "doas"
+                     else:
+                         tool = "sudo"
+                 
+                 # Build the command as: tool --user=X sh -c 'cd /path && makepkg ...'
+                 makepkg_cmd_str = " ".join(cmd)
+                 shell_cmd = f"cd {pkg_dir} && {makepkg_cmd_str}"
+                 
+                 if tool == "run0":
+                     cmd = ["run0", f"--user={real_user}", "sh", "-c", shell_cmd]
+                 elif tool == "doas":
+                     cmd = ["doas", "-u", real_user, "sh", "-c", shell_cmd]
+                 else:
+                     cmd = ["sudo", "-u", real_user, "sh", "-c", shell_cmd]
+                 
+                 # Since we're using shell with cd, we don't need to pass cwd to subprocess
+                 run_cwd = None
              else:
-                 print_error("E: Cannot build AUR packages as root without SUDO_USER set.")
-                 print_info("Please run as a normal user or via sudo.")
+                 print_error(_("E: Cannot build AUR packages as root without SUDO_USER set."))
+                 print_info(_("Please run as a normal user or via sudo."))
                  sys.exit(1)
+        else:
+            # Running as normal user, just use the pkg_dir as cwd
+            run_cwd = pkg_dir
 
         try:
-            # We redirect output unless verbose
-            # Capture output to check for GPG errors if it fails
-            subprocess.run(cmd, cwd=pkg_dir, check=True, capture_output=not verbose)
+            # Always show makepkg output so users can see build errors
+            subprocess.run(cmd, cwd=run_cwd, check=True)
+            
+            # 3. Find the built package(s)
+            # makepkg creates .pkg.tar.* files in the build directory
+            # For split packages, there may be multiple files
+            pkg_files = list(pkg_dir.glob("*.pkg.tar.*"))
+            if not pkg_files:
+                print_error(_(f"No package files found after building {base}"))
+                sys.exit(1)
+            
+            # 4. Show summary and install using existing apt-pac UI functions
+            # Extract package names and versions from built files
+            pkg_info = []
+            for f in pkg_files:
+                # Parse filename: pkgname-pkgver-pkgrel-arch.pkg.tar.*
+                # Example: xapp-symbolic-icons-git-1.0.7+0-1-any.pkg.tar.zst
+                stem = f.stem
+                # Remove .tar from .pkg.tar.* if present
+                if stem.endswith('.tar'):
+                    stem = stem[:-4]
+                # Split: name-ver-rel-arch
+                parts = stem.rsplit('-', 3)
+                if len(parts) >= 2:
+                    pkg_name = parts[0]
+                    pkg_ver = f"{parts[1]}-{parts[2]}" if len(parts) >= 3 else parts[1]
+                    pkg_info.append((pkg_name, pkg_ver))
+                else:
+                    pkg_info.append((stem, ""))
+            
+            # Show APT-style summary using existing function
+            print_reading_status()
+            print_transaction_summary(new_pkgs=pkg_info, explicit_names=set([p[0] for p in pkg_info]))
+            
+            # Summary line
+            console.print(_(f"0 upgraded, {len(pkg_info)} newly installed, 0 to remove and 0 not upgraded."))
+            
+            # Prompt if not auto_confirm
+            if not auto_confirm:
+                from rich.text import Text
+                prompt = Text(f"Do you want to continue? [Y/n] ", style="bold yellow")
+                response = console.input(prompt)
+                if response and not response.lower().startswith('y'):
+                    console.print(_("Abort."))
+                    sys.exit(0)
+            
+            # Install using existing apt-pac wrapper for consistent output
+            install_cmd = ["pacman", "-U"] + [str(f) for f in pkg_files] + ["--noconfirm"]
+            
+            from .commands import run_pacman_with_apt_output
+            success = run_pacman_with_apt_output(install_cmd, show_hooks=True)
+            if not success:
+                print_error(_(f"Failed to install {name}"))
+                sys.exit(1)
             
             # Success message
             if is_split:
-                console.print(f"[success]Successfully installed {', '.join(split_pkgs)}[/success]")
+                console.print(f"[success]{_('Successfully installed')} {', '.join(split_pkgs)}[/success]")
             else:
-                console.print(f"[success]Successfully installed {name}[/success]")
+                console.print(f"[success]{_('Successfully installed')} {name}[/success]")
             
         except subprocess.CalledProcessError as e:
             # Check for GPG errors
@@ -551,11 +658,11 @@ class AurInstaller:
             key_matches = re.findall(r"public key ([A-Fa-f0-9]+)", err_output)
             
             if ("PGP signatures" in err_output or "unknown public key" in err_output) and key_matches:
-                console.print(f"\n[bold yellow]W: GPG verification failed. Missing keys detected: {', '.join(set(key_matches))}[/bold yellow]")
+                console.print(f"\n[bold yellow]W: {_('GPG verification failed. Missing keys detected:')} {', '.join(set(key_matches))}[/bold yellow]")
                 
                 if auto_confirm or console.input("Do you want to try importing these keys? [Y/n] ").lower().startswith('y'):
                     for key_id in set(key_matches):
-                        console.print(f"[blue]Importing key {key_id}...[/blue]")
+                        console.print(f"[blue]{_('Importing key')} {key_id}...[/blue]")
                         gpg_cmd = ["gpg", "--recv-keys", key_id]
                         
                         # IMPORTANT: Import key for the REAL USER, not root
@@ -565,24 +672,60 @@ class AurInstaller:
                         subprocess.run(gpg_cmd, check=False)
                     
                     # Retry build once
-                    console.print("[blue]Retrying build...[/blue]")
+                    console.print(f"[blue]{_('Retrying build...')}[/blue]")
                     try:
-                        subprocess.run(cmd, cwd=pkg_dir, check=True)
+                        subprocess.run(cmd, cwd=run_cwd, check=True)
                         
-                        # Success message after retry
-                        if is_split:
-                            console.print(f"[success]Successfully installed {', '.join(split_pkgs)}[/success]")
-                        else:
-                            console.print(f"[success]Successfully installed {name}[/success]")
-                        return
+                        # Find the built package(s)
+                        # FIXME: This is not the best way to do this, packages can be split AND have multiple versions AND be different extensions (in this case what mather is the content not the extension)
+                        pkg_files = list(pkg_dir.glob("*.pkg.tar.*"))
+                        if not pkg_files:
+                            print_error(_(f"No package files found after building {base}"))
+                            sys.exit(1)
+                        
+                        # Install using same consistent approach as main install
+                        # Parse package info
+                        pkg_info = []
+                        for f in pkg_files:
+                            stem = f.stem
+                            if stem.endswith('.tar'):
+                                stem = stem[:-4]
+                            parts = stem.rsplit('-', 3)
+                            if len(parts) >= 2:
+                                pkg_name = parts[0]
+                                pkg_ver = f"{parts[1]}-{parts[2]}" if len(parts) >= 3 else parts[1]
+                                pkg_info.append((pkg_name, pkg_ver))
+                            else:
+                                pkg_info.append((stem, ""))
+                        
+                        # Show summary and prompt
+                        print_reading_status()
+                        print_transaction_summary(new_pkgs=pkg_info, explicit_names=set([p[0] for p in pkg_info]))
+                        console.print(_(f"0 upgraded, {len(pkg_info)} newly installed, 0 to remove and 0 not upgraded."))
+                        
+                        if not auto_confirm:
+                            from rich.text import Text
+                            prompt = Text(f"Do you want to continue? [Y/n] ", style="bold yellow")
+                            response = console.input(prompt)
+                            if response and not response.lower().startswith('y'):
+                                console.print("Abort.")
+                                sys.exit(0)
+                        
+                        # Install with apt-pac wrapper
+                        install_cmd = ["pacman", "-U"] + [str(f) for f in pkg_files] + ["--noconfirm"]
+                        from .commands import run_pacman_with_apt_output
+                        success = run_pacman_with_apt_output(install_cmd, show_hooks=True)
+                        if not success:
+                            print_error(_(f"Failed to install {name}"))
+                            sys.exit(1)
                     except subprocess.CalledProcessError:
                          pass # Fallthrough to failure message
 
             if verbose:
                 # If verbose was off, we didn't show the error yet (captured)
-                print_error(f"Build output:\n{err_output}")
+                print_error(_(f"Build output:\n{err_output}"))
             
-            print_error(f"Failed to build {name}")
+            print_error(_(f"Failed to build {name}"))
             sys.exit(1)
 
 def get_resolved_package_info(build_queue: List[Dict], official_deps: set) -> List[tuple]:

@@ -14,6 +14,7 @@ from pathlib import Path
 # For development: repo/locales
 def _get_locale_dir():
     # Try installed location first
+    #NOTE: This is the default location for installed i18n but not the only possible location and we shouldn't depend on it as built-in but as default search path and check other or make it configurable somehow, some better solution sould be used.
     system_locale = Path("/usr/share/locale")
     if system_locale.exists():
         return str(system_locale)

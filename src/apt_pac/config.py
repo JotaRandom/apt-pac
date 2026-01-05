@@ -26,6 +26,7 @@ DEFAULT_CONFIG = {
     },
     "tools": {
         "privilege_tool": "auto",  # auto, sudo, doas, run0
+        "build_user": "auto",  # auto = SUDO_USER, or specific username
         "editor": "",  # Empty = use $EDITOR
     },
     "ui": {
@@ -60,6 +61,11 @@ warn_partial_upgrades = true
 # Privilege escalation tool: "auto", "sudo", "doas", "run0"
 # "auto" tries run0 > doas > sudo in order
 privilege_tool = "auto"
+
+# User to build AUR packages as (when running via sudo)
+# Options: "auto" (use SUDO_USER), or specific username
+# Default: "auto"
+build_user = "auto"
 
 # Editor for edit-sources command (empty = use $EDITOR)
 editor = ""
@@ -215,8 +221,9 @@ class Config:
         # Warn if cache is unavailable
         if self.cache_dir is None:
             import sys
-            print("W: Cannot create cache directory - system appears to be read-only", file=sys.stderr)
-            print("W: ABS/AUR features will not be available", file=sys.stderr)
+            from .i18n import _
+            print(f"[yellow]{_('W:')}[/yellow] {_('Cannot create cache directory - system appears to be read-only')}", file=sys.stderr)
+            print(f"[yellow]{_('W:')}[/yellow] {_('ABS/AUR features will not be available')}", file=sys.stderr)
         
         # Re-load to get all settings
         self._load()

@@ -14,6 +14,11 @@ warn_partial_upgrades = true
 # "auto" tries run0 > doas > sudo in order
 privilege_tool = "auto"
 
+# User to build AUR packages as (when running via sudo)
+# Options: "auto" (use SUDO_USER), or specific username
+# Default: "auto"
+build_user = "auto"
+
 # Editor for edit-sources command (empty = use $EDITOR)
 editor = ""
 

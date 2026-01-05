@@ -44,6 +44,12 @@ def print_success(text):
     """Print success message."""
     console.print(f"[success]{text}[/success]")
 
+def print_reading_status():
+    """Print standard APT-style reading/building status messages."""
+    console.print(f"\n{_('Reading package lists...')} [green]{_('Done')}[/green]")
+    console.print(f"{_('Building dependency tree...')} [green]{_('Done')}[/green]")
+    console.print(f"{_('Reading state information...')} [green]{_('Done')}[/green]")
+
 def print_apt_download_line(index, total, url, filename, size_str=""):
     """
     Prints a line like: Get:1 http://mirror.../pkg.tar.zst core/package [123 kB]
