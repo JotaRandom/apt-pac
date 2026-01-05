@@ -40,6 +40,8 @@ _apt_pac() {
         'key:Manage GPG keys (alias)'
         'add-repository:Add repository info'
         'download:Download packages without installing'
+        'moo:Have you mooed today?'
+        'pacman:Waka waka!'
     )
 
     local -a opts

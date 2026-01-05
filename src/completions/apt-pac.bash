@@ -9,7 +9,7 @@ _apt_pac_completion() {
     commands="update upgrade dist-upgrade full-upgrade install reinstall remove purge autoremove \
               search show list depends rdepends policy madison source build-dep showsrc \
               check clean autoclean stats edit-sources config file-search changelog scripts \
-              apt-mark pkgnames dotty apt-key key add-repository download"
+              apt-mark pkgnames dotty apt-key key add-repository download moo pacman"
 
     opts="-h --help -v --version -y --yes --assume-yes -q --quiet --verbose -s --simulate --dry-run \
           --download-only -f --fix-broken --no-install-recommends --only-upgrade --official --aur --aur-only"

@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: apt-pac 1.0\n"
 "Report-Msgid-Bugs-To: https://github.com/JotaRandom/apt-pac/issues\n"
-"POT-Creation-Date: 2026-01-04 23:09-0300\n"
+"POT-Creation-Date: 2026-01-04 23:11-0300\n"
 "PO-Revision-Date: 2025-12-31 01:48:00-0300\n"
 "Last-Translator: Auto-generated\n"
 "Language-Team: Spanish\n"
@@ -469,15 +469,13 @@ msgid "You need to edit /etc/pacman.conf and add a [section]."
 msgstr ""
 
 #: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1218
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1222
 #: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1347
 #: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1351
 msgid "Example"
 msgstr ""
 
 #: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1222
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1351
-msgid "Generic"
+msgid "Example (Generic)"
 msgstr ""
 
 #: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1227
@@ -542,6 +540,10 @@ msgstr ""
 
 #: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1315
 msgid "No key ID specified"
+msgstr ""
+
+#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1351
+msgid "Generic"
 msgstr ""
 
 #: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1377

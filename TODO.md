@@ -2,44 +2,62 @@
 
 ## Recently Completed ✅
 
+- [x] **Internationalization (i18n)**:
+    - Complete gettext implementation with `_()` wrappers across all modules.
+    - Automated `.pot` template generation via `scripts/compile-translations.sh`.
+    - 100% string coverage including help texts, errors, and status messages.
+
+- [x] **Output Standardization**:
+    - Unified message prefixes: `E:` (Red/Error), `W:` (Yellow/Warning), `N:` (Magenta/Note).
+    - Consistent "Reading package lists... Done" status blocks.
+    - Fixed specific "WARNING:" and "Abort" message inconsistencies.
+
+- [x] **AUR Build System Fixes**:
+    - Visible `makepkg` output for better debugging.
+    - Correct working directory preservation for `makepkg`.
+    - Fixed permissions issues when running as root (dropping to `SUDO_USER` or configured build user).
+
+- [x] **Easter Eggs & Polish**:
+    - Improved `apt moo` with a cute furry cow.
+    - Added `apt pacman` with Unicode animation.
+    - "Did you mean?" suggestions for typos.
+
 - [x] **Dependency Cycle Detection**: 
-    - Implementation: 3-color DFS algorithm (visiting/visited sets) to detect circular dependencies in AUR packages.
-    - Provides clear error messages with full cycle path (e.g., "pkg-a → pkg-b → pkg-a").
+    - Implementation: 3-color DFS algorithm to detect circular dependencies in AUR packages.
+    - Provides clear error messages with full cycle path.
 
 - [x] **Split Package Support**:
-    - Implementation: Detects packages with same `PackageBase` field (e.g., `linux`/`linux-headers` share base).
-    - Builds only once per PackageBase, uses base for directory/download.
-    - Enhanced UI messages showing all sub-packages from split base.
+    - Detects packages with same `PackageBase`, builds only once, and handles sub-packages correctly.
 
 ## Critical Features (To Match Full APT/Helper Experience)
 
 - [x] **AUR Upgrades (`apt upgrade`)**: 
-    - Current behavior: Checks official packages via `pacman -Syu` and then checks AUR updates via RPC.
-    - Implementation: Added `check_updates` in `aur.py` and integrated into `apt upgrade` workflow.
+    - Checks official packages via `pacman -Syu` and then checks AUR updates via RPC.
 
 - [x] **APT Repositories (`add-apt-repository`)**:
-    - Implementation: Shows educational guide for `pacman.conf` and offers to launch `$EDITOR`. Safer than automated parsing for Arch.
+    - Shows educational guide for `pacman.conf` and offers to launch `$EDITOR`.
+    - Includes examples for Chaotic AUR and generic repos.
 
 - [x] **Source Management (`apt source`, `apt build-dep`) for AUR**:
-    - Current behavior: `apt source` tries ABS first, then falls back to AUR.
-    - Implementation: Added `download_aur_source` helper and updated `sources.py`.
+    - `apt source` tries ABS first, then falls back to AUR.
+    - `apt build-dep` installs dependencies required for building.
 
 - [x] **Cache Maintenance**:
-    - Current behavior: `apt clean` cleans both pacman cache (`-Scc`) and apt-pac sources (`~/.cache/apt-pac/sources`).
+    - `apt clean` cleans both pacman cache and apt-pac sources.
 
 ## Enhancements
 
 - [x] **Smart Provider Selection**:
-    - Implementation: Removed forceful `--noconfirm` from `makepkg` (unless `-y` is passed), allowing `pacman` to interactively prompt for providers.
+    - Removed forceful `--noconfirm` from `makepkg` to allow provider selection.
 
 - [x] **GPG Key Import**:
-    - Implementation: `AurInstaller` detects PGP signature errors, extracts the Key ID, and runs `gpg --recv-keys` automatically before retrying the build.
+    - Automatically detects PGP errors and attempts to import keys via `gpg --recv-keys`.
 
 - [x] **Performance**:
-    - [x] Parallel download simulation (apt-like output).
-    - [x] Caching RPC results more aggressively (30m persist cache).
+    - [x] Parallel download simulation.
+    - [x] Aggressive RPC result caching.
 
-### Advanced Features
+## Advanced Features
 - [x] **Dependency Graphs**: `apt depends` / `apt rdepends` with pactree integration
 - [x] **GraphViz Export**: `apt dotty` generates visual dependency graphs
 - [x] **Package Statistics**: `apt stats` shows system package analytics
@@ -55,7 +73,6 @@
 ### AUR Enhancements
 - [ ] **Conflict Detection**: Detect conflicts between AUR packages before building
 - [ ] **Provides/Replaces Handling**: Check provides lists before declaring "not found"
-- [x] **AUR Search Improvements**: Simultaneous official + AUR search with formatted output
 - [ ] **PKGBUILD Review Prompts**: Security-focused review before building untrusted code
 - [ ] **VCS Package Updates**: Smart version checking for `-git`, `-svn`, `-hg` packages
 - [ ] **Out-of-date Flagging**: Integration with AUR's flag system
@@ -65,12 +82,11 @@
 - [x] **Hold/Unhold Packages**: `apt-mark` command with `-D --asdeps` / `--asexplicit`
 - [ ] **Package Pinning**: Per-repository priorities
 - [ ] **Emergency Rollback**: System snapshot integration
-- [x] **Orphan Detection**: `apt autoremove` removes orphaned dependencies
+- [ ] **Orphan Detection**: `apt autoremove` removes orphaned dependencies (implemented)
 
 ### Output & UI
-- [x] **Progress Bars**: Simulated download progress (apt-like "Get:1..." output)
+- [x] **Progress Bars**: Simulated download progress
 - [ ] **Parallel Downloads**: True concurrent downloads with aggregate progress
-- [x] **Better Error Messages**: Context-aware suggestions (e.g., cycle detection solutions)
 - [ ] **Config File Diffs**: Colored diff when .pacnew files are created
 - [ ] **Interactive Resolver**: When conflicts arise, offer choices
 
@@ -80,47 +96,8 @@
 - [ ] **Delta Downloads**: Incremental updates for large packages
 - [ ] **ccache/sccache Hints**: Suggest compiler cache for frequent rebuilds
 
-### Compatibility
-- [ ] **Full apt-get Mode**: 100% command compatibility
-- [ ] **aptitude Support**: Interactive TUI mode
-- [ ] **Snap/Flatpak Awareness**: Suggest alternatives when AUR unavailable
-- [ ] **needrestart Integration**: Auto-detect services needing restart
-
-### Safety & Notifications
-- [x] **Mass Removal Warnings**: Configurable threshold alerts (20+ packages)
-- [x] **Partial Upgrade Detection**: Warns when installing during available updates
-- [x] **Critical Package Protection**: Safeguards for kernels, bootloaders, systemd
-- [ ] **Backup Hooks**: Pre-removal snapshots for critical packages
-- [ ] **Change Notifications**: Email/webhook on major system changes
-
-## Refactoring / Code Quality
-
-- [ ] **Configuration Handling**:
-    - Better handling of `os.getuid` checks on non-Linux platforms (for testing).
-    
-- [ ] **Output Parsing**:
-    - Intercepting `pacman` stdout for `install` to provide a truly unified progress bar (currently `pacman` output is direct to tty or simple print).
-
-- [ ] **Test Coverage**:
-    - Integration tests for all commands
-    - Mock AUR server for reproducible testing
-    - Performance benchmarks vs yay/paru
-    - Regression test suite
-
-## Documentation
-
-- [ ] **Man Pages**: Comprehensive documentation for all commands
-- [ ] **Completion Scripts**: Bash/Zsh auto-completion
+## Documentation & Refactoring
+- [x] **Man Pages**: Comprehensive documentation for all commands
+- [x] **Completion Scripts**: Bash/Zsh auto-completion
+- [ ] **Test Coverage**: Integration tests and mock AUR server
 - [ ] **Usage Wiki**: Examples and common workflows
-- [ ] **Video Tutorials**: Screen recordings for new users
-- [ ] **Migration Guide**: From yay/paru to apt-pac
-
-## Just for Fun / Polish
-
-- [x] **"Super Cow Powers"**: 
-    - `apt moo` implementation (like `apt moo` on Debian and Ubuntu's apt).
-    - `apt pacman` implementation (like `ILoveCandy` on Arch's Pacman config and output). 
-
-## Others
-
-- [x] **Translation**: Make it translatable or at least add i18n support for what apt outputs translated.
