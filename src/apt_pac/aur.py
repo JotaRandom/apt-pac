@@ -449,7 +449,7 @@ class AurInstaller:
                     console.print(f"\n[yellow]{_('Possible solutions:')}[/yellow]")
                     console.print(f"  1. {_('One of these packages may list the other as a dependency incorrectly')}")
                     console.print(f"  2. {_('Try installing packages individually')}")
-                    console.print(f"  3. {_('Report this to AUR maintainers:')} {', '.join(set(e.cycle))}")
+                    console.print(f"  3. {_('Report this to')} AUR {_('maintainers:')} {', '.join(set(e.cycle))}")
                     sys.exit(1)
             official_deps = resolver.official_deps
             # Store resolver for split package info access
@@ -575,7 +575,7 @@ class AurInstaller:
                  # Since we're using shell with cd, we don't need to pass cwd to subprocess
                  run_cwd = None
              else:
-                 print_error(_("E: Cannot build AUR packages as root without SUDO_USER set."))
+                 print_error(f"[red]{_('E:')}[/red] {_('Cannot build')} AUR {_('packages as root without SUDO_USER set.')}")
                  print_info(_("Please run as a normal user or via sudo."))
                  sys.exit(1)
         else:
@@ -626,7 +626,7 @@ class AurInstaller:
                 prompt = Text(f"Do you want to continue? [Y/n] ", style="bold yellow")
                 response = console.input(prompt)
                 if response and not response.lower().startswith('y'):
-                    console.print(_("Abort."))
+                    console.print(_("Aborted."))
                     sys.exit(0)
             
             # Install using existing apt-pac wrapper for consistent output

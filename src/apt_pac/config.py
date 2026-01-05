@@ -223,7 +223,7 @@ class Config:
             import sys
             from .i18n import _
             print(f"[yellow]{_('W:')}[/yellow] {_('Cannot create cache directory - system appears to be read-only')}", file=sys.stderr)
-            print(f"[yellow]{_('W:')}[/yellow] {_('ABS/AUR features will not be available')}", file=sys.stderr)
+            print(f"[yellow]{_('W:')}[/yellow] ABS/AUR {_('features will not be available')}", file=sys.stderr)
         
         # Re-load to get all settings
         self._load()

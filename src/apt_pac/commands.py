@@ -456,18 +456,18 @@ def show_summary(apt_cmd, extra_args, auto_confirm=False, aur_new=None, aur_upgr
     has_aur = bool(aur_new or aur_upgrades)
     
     if has_aur:
-        dl_suffix = f" (+ {_('AUR')})"
-        inst_suffix = f" (+ {_('AUR')})"
+        dl_suffix = f" (+ AUR)"
+        inst_suffix = f" (+ AUR)"
         
         # If total sizes are 0 but we have AUR, show "Unknown" instead of 0 B
         if total_dl_size == 0:
-            dl_str = f"{_('Unknown')} ({_('AUR')})"
+            dl_str = f"{_('Unknown')} (AUR)"
             dl_suffix = "" # Reset suffix as we incorporated it
         else:
              dl_str = fmt_adaptive_size(total_dl_size)
 
         if total_inst_size_change == 0:
-             inst_str = f"{_('Unknown')} ({_('AUR')})"
+             inst_str = f"{_('Unknown')} (AUR)"
              inst_suffix = ""
              show_freed = False
         else:
@@ -630,7 +630,7 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
                  count = len(remove_pkgs_info)
                  
                  if count >= threshold:
-                     console.print(f"\n[bold red]{_('WARNING:')}[/bold red] {_('You are about to remove')} [bold]{count}[/bold] {_('packages')} (Threshold: {threshold}).")
+                     console.print(f"\n[yellow]{_('W:')}[/yellow] {_('You are about to remove')} [bold]{count}[/bold] {_('packages')} (Threshold: {threshold}).")
                      if not console.input(f"{_('Are you sure you want to proceed?')} [Y/n] ").lower().startswith('y'):
                          print_info(_("Aborted."))
                          sys.exit(0)
@@ -943,11 +943,11 @@ def execute_command(apt_cmd, extra_args):
     # Handle privilege check (Strict APT style)
     if apt_cmd in NEED_SUDO and os.getuid() != 0:
         if apt_cmd == "update":
-            console.print(_("E: Could not open lock file /var/lib/pacman/db.lck - open (13: Permission denied)"))
-            console.print(_("E: Unable to lock directory /var/lib/pacman/"))
+            console.print(f"[red]{_('E:')}[/red] {_('Could not open lock file /var/lib/pacman/db.lck - open (13: Permission denied)')}")
+            console.print(f"[red]{_('E:')}[/red] {_('Unable to lock directory /var/lib/pacman/')}")
         else:
-            console.print(_("E: Could not open lock file /var/lib/pacman/db.lck - open (13: Permission denied)"))
-            console.print(_("E: Unable to lock the administration directory (/var/lib/pacman/), are you root?"))
+            console.print(f"[red]{_('E:')}[/red] {_('Could not open lock file /var/lib/pacman/db.lck - open (13: Permission denied)')}")
+            console.print(f"[red]{_('E:')}[/red] {_('Unable to lock the administration directory (/var/lib/pacman/), are you root?')}")
         sys.exit(100)
 
     # Handle apt list with all options
@@ -1212,19 +1212,19 @@ def execute_command(apt_cmd, extra_args):
         # from rich.text import Text
         
         text = Text()
-        text.append("Adding repositories in Arch Linux differs from Debian/Ubuntu.\n", style="bold")
-        text.append("You need to edit /etc/pacman.conf and add a [section].\n\n")
+        text.append(_(f"Adding repositories in Arch Linux differs from Debian/Ubuntu.") + "\n", style="bold")
+        text.append(_(f"You need to edit /etc/pacman.conf and add a [section].") + "\n\n")
         
-        text.append("Example (Chaotic AUR):\n", style="bold green")
+        text.append(f"{_('Example')} (Chaotic AUR):\n", style="bold green")
         text.append("[chaotic-aur]\n")
         text.append("Include = /etc/pacman.d/chaotic-mirrorlist\n\n")
         
-        text.append("Example (Generic):\n", style="bold green")
+        text.append(f"{_('Example (Generic)')}):\n", style="bold green")
         text.append("[repo-name]\n")
         text.append("Server = https://example.com/$arch\n")
         text.append("SigLevel = Required DatabaseOptional\n\n")
         
-        text.append("Note: You may need to import GPG keys first using apt-key (pacman-key).\n", style="italic")
+        text.append(f"[magenta]{_('N:')}[/magenta] {_('You may need to import GPG keys first using apt-key (pacman-key).')}\n", style="magenta")
         
         console.print(Panel(text, title="How to add a repository", border_style="blue"))
         
@@ -1341,19 +1341,19 @@ def execute_command(apt_cmd, extra_args):
         # from rich.text import Text
         
         text = Text()
-        text.append("Adding repositories in Arch Linux differs from Debian/Ubuntu.\n", style="bold")
-        text.append("You need to edit /etc/pacman.conf and add a [section].\n\n")
+        text.append(_(f"Adding repositories in Arch Linux differs from Debian/Ubuntu.") + "\n", style="bold")
+        text.append(_(f"You need to edit /etc/pacman.conf and add a [section].") + "\n\n")
         
-        text.append("Example (Chaotic AUR):\n", style="bold green")
+        text.append(f"{_('Example')} (Chaotic AUR):\n", style="bold green")
         text.append("[chaotic-aur]\n")
         text.append("Include = /etc/pacman.d/chaotic-mirrorlist\n\n")
         
-        text.append("Example (Generic):\n", style="bold green")
+        text.append(f"{_('Example')} ({_('Generic')}):\n", style="bold green")
         text.append("[repo-name]\n")
         text.append("Server = https://example.com/$arch\n")
         text.append("SigLevel = Required DatabaseOptional\n\n")
         
-        text.append("Note: You may need to import GPG keys first using apt-key (pacman-key).\n", style="italic")
+        text.append(f"[magenta]{_('N:')}[/magenta] {_('You may need to import GPG keys first using apt-key (pacman-key).')}\n", style="magenta")
         
         console.print(Panel(text, title="How to add a repository", border_style="blue"))
         
@@ -1481,7 +1481,7 @@ def execute_command(apt_cmd, extra_args):
                         format_aur_info(aur_info)
             
              if not found:
-                 print_error(f"{_('Package')} '{' '.join(extra_args)}' {_('not found in repositories, local database, or AUR.')}")
+                 print_error(f"{_('Package')} '{' '.join(extra_args)}' {_('not found in repositories, local database, or')} AUR.")
 
         return
 
@@ -1542,7 +1542,7 @@ def execute_command(apt_cmd, extra_args):
              if prog_name.endswith(".py"): # Fallback if running via python -m
                  prog_name = "apt-pac"
                  
-             console.print(_("\n[bold yellow]W:[/bold yellow] You have {0} pending system upgrades.").format(num_updates))
+             console.print(Text(f"\n[yellow]{_('W:')}[/yellow] {_(f'You have {num_updates} pending system upgrades.')}"))
              console.print(_("Performing partial upgrades is [bold]unsupported[/bold] on Arch Linux and may break your system."))
              console.print(f"[dim]{_('It is recommended to run')} [bold white]'{prog_name} upgrade'[/bold white] {_('first.')}[/dim]\n")
              
@@ -1589,7 +1589,7 @@ def execute_command(apt_cmd, extra_args):
             # print_reading_status() would add newline, so just print first line
             console.print(f"\n{_('Reading package lists...')} [green]{_('Done')}[/green]")
             if only_aur:
-                print_info(f"[magenta]{_('N:')}[/magenta] {_('\'update --aur\' simply checks official DBs as AUR has no central DB to sync.')}")  
+                print_info(f"[magenta]{_('N:')}[/magenta] {_('\'update --aur\' simply checks official DBs as')} AUR {_('has no central DB to sync.')}")  
             return # Exit early as we've handled everything for update
         
         elif apt_cmd in ["upgrade", "dist-upgrade", "full-upgrade"]:
@@ -1630,7 +1630,7 @@ def execute_command(apt_cmd, extra_args):
 
             # Check for AUR updates EARLY (Pre-calc)
             if run_aur:
-                console.print(f"[bold blue]{_('Checking for AUR updates...')}[/bold blue]")
+                console.print(f"[bold blue]{_('Checking for')} AUR {_('updates...')}[/bold blue]")
                 try:
                     aur_updates = aur.check_updates(verbose=verbose)
                     
@@ -1638,7 +1638,7 @@ def execute_command(apt_cmd, extra_args):
                         # Resolve dependencies immediately (One-Pass)
                         aur_candidates = [u['name'] for u in aur_updates]
                         resolver = aur.AurResolver()
-                        with console.status(f"[blue]{_('Resolving AUR dependencies...')}[/blue]", spinner="dots"):
+                        with console.status(f"[blue]{_('Resolving')} AUR {_('dependencies...')}[/blue]", spinner="dots"):
                             aur_build_queue = resolver.resolve(aur_candidates)
                         
                         official_deps_for_aur = resolver.official_deps
@@ -1659,9 +1659,9 @@ def execute_command(apt_cmd, extra_args):
                                 # Dependency
                                 aur_new.append((name, ver))
                     else:
-                        console.print(_("All AUR packages are up to date."))
+                        console.print(f"{_('All')} AUR {_('packages are up to date.')}")
                 except Exception as e:
-                     print_error(f"{_('Failed to check AUR updates:')} {e}")
+                     print_error(f"{_('Failed to check')} AUR {_('updates:')} {e}")
                      aur_candidates = [] # Prevent execution on failure
 
             # 2. Show Summary (Unified)
@@ -1725,7 +1725,7 @@ def execute_command(apt_cmd, extra_args):
 
             # Sync file database in background (silent)
             if not run_aur:
-                console.print(f"\n[dim]{_('Skipping AUR updates (--official provided)')}[/dim]")
+                console.print(f"\n[dim]{_('Skipping')} AUR {_('updates (--official provided)')}[/dim]")
 
             # Sync file database in background (silent)
             if run_official:

@@ -13,7 +13,7 @@ def main():
             
         execute_command(args.command, args.args)
     except KeyboardInterrupt:
-        print(_("\nAborted."))
+        print(_("Aborted."))
         sys.exit(1)
     except Exception as e:
         print_error(str(e))

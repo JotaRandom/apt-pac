@@ -27,8 +27,8 @@ def get_sources_dir():
     """Get the sources cache directory."""
     cache_dir = get_config().get_cache_dir()
     if not cache_dir:
-        print_error(f"{_('E: Cache directory not available')}")
-        print_error(f"{_('W: Cannot download source packages on read-only system')}")
+        print_error(f"[red]{_('E:')}[/red] {_('Cache directory not available')}")
+        print_error(f"[yellow]{_('W:')}[/yellow] {_('Cannot download source packages on read-only system')}")
         return None
     
     sources_dir = cache_dir / "sources" / "abs"
@@ -227,7 +227,7 @@ def handle_apt_source(package_name, extra_args, verbose=False):
         return True
     
     if verbose:
-        print_error(f"[red]{_('E:')}[/red] {_(f'Failed to find source for {package_name} in ABS or AUR')}")
+        print_error(f"[red]{_('E:')}[/red] {_(f'Failed to find source for {package_name} in')} ABS or AUR")
     return False
 
 def handle_build_dep(package_name, verbose=False):
