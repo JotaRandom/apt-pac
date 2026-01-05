@@ -9,10 +9,10 @@ from apt_pac import aur
 
 class TestAurDeps(unittest.TestCase):
     def setUp(self):
-        self.console_patcher = patch('apt_pac.aur.console.print')
+        self.console_patcher = patch('apt_pac.ui.console.print')
         self.mock_console_print = self.console_patcher.start()
         
-        self.input_patcher = patch('apt_pac.aur.console.input', return_value='n') 
+        self.input_patcher = patch('apt_pac.ui.console.input', return_value='n') 
         self.mock_console_input = self.input_patcher.start()
         
         # Mock print_transaction_summary instead of print_columnar_list

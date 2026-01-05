@@ -8,12 +8,33 @@ import os
 import sys
 import shutil
 from pathlib import Path
+from . import ui
 from .ui import (
-    console, print_error, print_info, print_command, 
+    print_error, print_info, print_command, 
     print_columnar_list, print_transaction_summary, print_reading_status
 )
 from .i18n import _
 from .config import get_config
+import tarfile
+
+def is_valid_package(path: str) -> bool:
+    """
+    Check if a file is a valid pacman package (compressed tar with .PKGINFO).
+    Content-based check rather than extension.
+    """
+    if not os.path.isfile(path):
+        return False
+        
+    try:
+        # Optimistic check: tarfile.open handles transparent compression
+        # We look for .PKGINFO
+        with tarfile.open(path, "r:*") as tar:
+             for member in tar:
+                 if member.name == ".PKGINFO":
+                     return True
+             return False
+    except (tarfile.TarError, OSError, Exception):
+        return False
 
 class CyclicDependencyError(Exception):
     """Raised when a circular dependency is detected in AUR packages."""
@@ -227,7 +248,7 @@ def check_updates(verbose=False) -> List[Dict]:
         return []
 
     if verbose:
-        console.print(f"[dim]{_('Checking')} {len(installed_aur)} {_('foreign packages for updates...')}[/dim]")
+        ui.console.print(f"[dim]{_('Checking')} {len(installed_aur)} {_('foreign packages for updates...')}[/dim]")
 
     # Get local versions
     installed_map = get_installed_packages()
@@ -307,11 +328,11 @@ def download_aur_source(package_name: str, target_dir: Optional[Path] = None, fo
                 return target_dir
             except subprocess.CalledProcessError:
                 # If pull fails, remove and re-clone
-                console.print(f"[yellow]{_('Pull failed for')} {package_name}, {_('re-cloning...')}[/yellow]")
+                ui.console.print(f"[yellow]{_('Pull failed for')} {package_name}, {_('re-cloning...')}[/yellow]")
                 shutil.rmtree(target_dir)
         else:
             # Directory exists but is not a git repo - remove it
-            console.print(f"[yellow]{_('Removing incomplete directory for')} {package_name}...[/yellow]")
+            ui.console.print(f"[yellow]{_('Removing incomplete directory for')} {package_name}...[/yellow]")
             shutil.rmtree(target_dir)
     
     # Clone
@@ -437,19 +458,21 @@ class AurInstaller:
         
         if not self.build_dir.exists():
             self.build_dir.mkdir(parents=True, exist_ok=True)
+            
+        self.resolver = None
 
     def install(self, packages: List[str], verbose=False, auto_confirm=False, build_queue=None, official_deps=None, skip_summary=False):
         if build_queue is None:
             resolver = AurResolver()
-            with console.status("[blue]Resolving AUR dependencies...[/blue]", spinner="dots"):
+            with ui.console.status("[blue]Resolving AUR dependencies...[/blue]", spinner="dots"):
                 try:
                     build_queue = resolver.resolve(packages)
                 except CyclicDependencyError as e:
                     print_error(str(e))
-                    console.print(f"\n[yellow]{_('Possible solutions:')}[/yellow]")
-                    console.print(f"  1. {_('One of these packages may list the other as a dependency incorrectly')}")
-                    console.print(f"  2. {_('Try installing packages individually')}")
-                    console.print(f"  3. {_('Report this to')} AUR {_('maintainers:')} {', '.join(set(e.cycle))}")
+                    ui.console.print(f"\n[yellow]{_('Possible solutions:')}[/yellow]")
+                    ui.console.print(f"  1. {_('One of these packages may list the other as a dependency incorrectly')}")
+                    ui.console.print(f"  2. {_('Try installing packages individually')}")
+                    ui.console.print(f"  3. {_('Report this to')} AUR {_('maintainers:')} {', '.join(set(e.cycle))}")
                     sys.exit(1)
             official_deps = resolver.official_deps
             # Store resolver for split package info access
@@ -464,8 +487,8 @@ class AurInstaller:
             return
 
         if not skip_summary:
-            console.print("Building dependency tree... Done")
-            console.print("Reading state information... Done")
+            ui.console.print("Building dependency tree... Done")
+            ui.console.print("Reading state information... Done")
             
             # Prepare list of (name, version) for summary
             install_info = get_resolved_package_info(build_queue, official_deps)
@@ -479,11 +502,11 @@ class AurInstaller:
             
             # Calculate size if possible?
             count = len(install_info)
-            console.print(_(f"0 upgraded, {count} newly installed, 0 to remove and 0 not upgraded."))
+            ui.console.print(_(f"0 upgraded, {count} newly installed, 0 to remove and 0 not upgraded."))
             
             if auto_confirm:
-                console.print(f"{_('Do you want to continue?')} [Y/n] [bold green]Yes[/bold green]")
-            elif not console.input(f"{_('Do you want to continue?')} [Y/n] ").lower().startswith('y'):
+                ui.console.print(f"{_('Do you want to continue?')} [Y/n] [bold green]Yes[/bold green]")
+            elif not ui.console.input(f"{_('Do you want to continue?')} [Y/n] ").lower().startswith('y'):
                 print_info(_("Aborted."))
                 sys.exit(0)
 
@@ -507,9 +530,9 @@ class AurInstaller:
         
         # Processing message
         if is_split:
-            console.print(f"\n[bold blue]:: {_('Processing')} {base} ({_('split package')})...[/bold blue]")
+            ui.console.print(f"\n[bold blue]:: {_('Processing')} {base} ({_('split package')})...[/bold blue]")
         else:
-            console.print(f"\n[bold blue]:: {_('Processing')} {name}...[/bold blue]")
+            ui.console.print(f"\n[bold blue]:: {_('Processing')} {name}...[/bold blue]")
         
         # 1. Clone or Pull (using PackageBase)
         if not download_aur_source(base, pkg_dir):
@@ -533,15 +556,22 @@ class AurInstaller:
 
         # 2. Build
         if is_split:
-            console.print(f"[dim]{_('Building')} {base} ({_('provides')}: {', '.join(split_pkgs)})...[/dim]")
+            ui.console.print(f"[dim]{_('Building')} {base} ({_('provides')}: {', '.join(split_pkgs)})...[/dim]")
         else:
-            console.print(f"[dim]{_('Building')} {base}...[/dim]")
+            ui.console.print(f"[dim]{_('Building')} {base}...[/dim]")
         
         # makepkg -sf (sync deps, force rebuild, clean, needed)
         # We build WITHOUT -i flag so we can install it ourselves with apt-pac formatting
         # -f flag forces rebuild even if package already exists (needed for upgrades/reinstalls)
         # This ensures consistent APT-style output for the installation step
+        # NOTE: We do NOT use -r (rmdeps) because it fails if dependencies were AUR packages 
+        # that we manually installed and it bypasses our wrapper logic.
         cmd = ["makepkg", "-sf", "--needed"]
+        
+        # Handle colors: makepkg outputs colors by default. Pass -m (nocolor) if ui is no_color.
+        if ui.console.no_color:
+            cmd.append("-m")
+            
         if auto_confirm:
             cmd.append("--noconfirm")
         
@@ -584,6 +614,15 @@ class AurInstaller:
 
         try:
             # Always show makepkg output so users can see build errors
+            
+            # Clean up any existing package files to ensure we only capture what is built now
+            # This addresses the ambiguity mentioned in the FIXME below
+            for existing_pkg in pkg_dir.glob("*.pkg.tar.*"):
+                 try:
+                     existing_pkg.unlink()
+                 except OSError:
+                     pass
+
             subprocess.run(cmd, cwd=run_cwd, check=True)
             
             # 3. Find the built package(s)
@@ -618,15 +657,15 @@ class AurInstaller:
             print_transaction_summary(new_pkgs=pkg_info, explicit_names=set([p[0] for p in pkg_info]))
             
             # Summary line
-            console.print(_(f"0 upgraded, {len(pkg_info)} newly installed, 0 to remove and 0 not upgraded."))
+            ui.console.print(_(f"0 upgraded, {len(pkg_info)} newly installed, 0 to remove and 0 not upgraded."))
             
             # Prompt if not auto_confirm
             if not auto_confirm:
                 from rich.text import Text
                 prompt = Text(f"Do you want to continue? [Y/n] ", style="bold yellow")
-                response = console.input(prompt)
+                response = ui.console.input(prompt)
                 if response and not response.lower().startswith('y'):
-                    console.print(_("Aborted."))
+                    ui.console.print(_("Aborted."))
                     sys.exit(0)
             
             # Install using existing apt-pac wrapper for consistent output
@@ -640,9 +679,9 @@ class AurInstaller:
             
             # Success message
             if is_split:
-                console.print(f"[success]{_('Successfully installed')} {', '.join(split_pkgs)}[/success]")
+                ui.console.print(f"[success]{_('Successfully installed')} {', '.join(split_pkgs)}[/success]")
             else:
-                console.print(f"[success]{_('Successfully installed')} {name}[/success]")
+                ui.console.print(f"[success]{_('Successfully installed')} {name}[/success]")
             
         except subprocess.CalledProcessError as e:
             # Check for GPG errors
@@ -658,11 +697,11 @@ class AurInstaller:
             key_matches = re.findall(r"public key ([A-Fa-f0-9]+)", err_output)
             
             if ("PGP signatures" in err_output or "unknown public key" in err_output) and key_matches:
-                console.print(f"\n[bold yellow]W: {_('GPG verification failed. Missing keys detected:')} {', '.join(set(key_matches))}[/bold yellow]")
+                ui.console.print(f"\n[bold yellow]W: {_('GPG verification failed. Missing keys detected:')} {', '.join(set(key_matches))}[/bold yellow]")
                 
-                if auto_confirm or console.input("Do you want to try importing these keys? [Y/n] ").lower().startswith('y'):
+                if auto_confirm or ui.console.input("Do you want to try importing these keys? [Y/n] ").lower().startswith('y'):
                     for key_id in set(key_matches):
-                        console.print(f"[blue]{_('Importing key')} {key_id}...[/blue]")
+                        ui.console.print(f"[blue]{_('Importing key')} {key_id}...[/blue]")
                         gpg_cmd = ["gpg", "--recv-keys", key_id]
                         
                         # IMPORTANT: Import key for the REAL USER, not root
@@ -672,13 +711,17 @@ class AurInstaller:
                         subprocess.run(gpg_cmd, check=False)
                     
                     # Retry build once
-                    console.print(f"[blue]{_('Retrying build...')}[/blue]")
+                    ui.console.print(f"[blue]{_('Retrying build...')}[/blue]")
                     try:
                         subprocess.run(cmd, cwd=run_cwd, check=True)
                         
                         # Find the built package(s)
-                        # FIXME: This is not the best way to do this, packages can be split AND have multiple versions AND be different extensions (in this case what mather is the content not the extension)
-                        pkg_files = list(pkg_dir.glob("*.pkg.tar.*"))
+                        # We found the package file
+                        pkg_files = []
+                        for f in pkg_dir.iterdir():
+                            if is_valid_package(str(f)):
+                                pkg_files.append(f)
+                        
                         if not pkg_files:
                             print_error(_(f"No package files found after building {base}"))
                             sys.exit(1)
@@ -701,14 +744,14 @@ class AurInstaller:
                         # Show summary and prompt
                         print_reading_status()
                         print_transaction_summary(new_pkgs=pkg_info, explicit_names=set([p[0] for p in pkg_info]))
-                        console.print(_(f"0 upgraded, {len(pkg_info)} newly installed, 0 to remove and 0 not upgraded."))
+                        ui.console.print(_(f"0 upgraded, {len(pkg_info)} newly installed, 0 to remove and 0 not upgraded."))
                         
                         if not auto_confirm:
                             from rich.text import Text
                             prompt = Text(f"Do you want to continue? [Y/n] ", style="bold yellow")
-                            response = console.input(prompt)
+                            response = ui.console.input(prompt)
                             if response and not response.lower().startswith('y'):
-                                console.print("Abort.")
+                                ui.console.print("Abort.")
                                 sys.exit(0)
                         
                         # Install with apt-pac wrapper

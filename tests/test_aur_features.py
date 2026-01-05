@@ -97,13 +97,17 @@ class TestAurFeatures(unittest.TestCase):
     @patch('subprocess.run')
     def test_smart_providers_aur(self, mock_run):
         # Case 1: auto_confirm=False (Default) -> Should NOT pass --noconfirm to makepkg
+        mock_run.return_value.returncode = 0 # Default success
+        
         installer = aur.AurInstaller()
         # Mock resolve logic to return one package
         with patch.object(aur.AurResolver, 'resolve', return_value=[{'Name':'foo'}]), \
              patch('apt_pac.aur.download_aur_source', return_value=True), \
              patch('builtins.print'), \
              patch('apt_pac.ui.console.input', return_value='y'), \
-             patch('os.getuid', return_value=1000, create=True): # Mock as non-root user
+             patch('os.getuid', return_value=1000, create=True), \
+             patch('pathlib.Path.glob', return_value=[MagicMock(stem='foo-1.0-1-any')]), \
+             patch('apt_pac.commands.run_pacman_with_apt_output', return_value=True):
              
              installer.install(['foo'], auto_confirm=False)
              
@@ -111,8 +115,8 @@ class TestAurFeatures(unittest.TestCase):
              # Logic traverses build_pkg -> subprocess.run(cmd)
              # We want to find the call ["makepkg", ...]
              found = False
-             for call in mock_run.call_args_list:
-                 args = call[0][0]
+             for call_val in mock_run.call_args_list:
+                 args = call_val[0][0]
                  if args and args[0] == "makepkg":
                      self.assertNotIn("--noconfirm", args)
                      found = True
@@ -120,17 +124,21 @@ class TestAurFeatures(unittest.TestCase):
 
         # Case 2: auto_confirm=True -> Should pass --noconfirm
         mock_run.reset_mock()
+        mock_run.return_value.returncode = 0
+        
         with patch.object(aur.AurResolver, 'resolve', return_value=[{'Name':'foo'}]), \
              patch('apt_pac.aur.download_aur_source', return_value=True), \
              patch('builtins.print'), \
              patch('apt_pac.ui.console.input', return_value='y'), \
-             patch('os.getuid', return_value=1000, create=True):
+             patch('os.getuid', return_value=1000, create=True), \
+             patch('pathlib.Path.glob', return_value=[MagicMock(stem='foo-1.0-1-any')]), \
+             patch('apt_pac.commands.run_pacman_with_apt_output', return_value=True):
              
              installer.install(['foo'], auto_confirm=True)
              
              found = False
-             for call in mock_run.call_args_list:
-                 args = call[0][0]
+             for call_val in mock_run.call_args_list:
+                 args = call_val[0][0]
                  if args and args[0] == "makepkg":
                      self.assertIn("--noconfirm", args)
                      found = True
@@ -189,10 +197,19 @@ class TestAurFeatures(unittest.TestCase):
 
              mock_run.side_effect = side_effect
              
-             # Run
-             # Mock os.getuid to avoid AttributeError on Windows
-             with patch('os.getuid', return_value=1000, create=True):
-                 installer._build_pkg({'Name': 'package-query', 'Version': '1.9'}, verbose=False, auto_confirm=True)
+             # Fix: Mock pathlib.Path.iterdir to avoid FileNotFoundError
+             # and return a dummy package file for the install step
+             with patch('pathlib.Path.iterdir') as mock_iterdir, \
+                  patch('apt_pac.aur.is_valid_package', return_value=True):
+                 
+                 mock_pkg = MagicMock()
+                 mock_pkg.stem = "package-query-1.9-1-any"
+                 mock_iterdir.return_value = [mock_pkg]
+                 
+                 # Run
+                 # Mock os.getuid to avoid AttributeError on Windows
+                 with patch('os.getuid', return_value=1000, create=True):
+                     installer._build_pkg({'Name': 'package-query', 'Version': '1.9'}, verbose=False, auto_confirm=True)
              
              # Verify GPG called
              # We should see call to gpg --recv-keys D1483FA6C3C07136

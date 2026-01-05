@@ -3,6 +3,7 @@ import sys
 import shutil
 import os
 import re
+import tarfile
 from . import ui # Needed for ui.set_force_colors
 from .ui import (
     console, print_error, print_info, print_command, 
@@ -120,12 +121,15 @@ def show_summary(apt_cmd, extra_args, auto_confirm=False, aur_new=None, aur_upgr
     """
     Show APT-style installation summary with accurate package sizes using pacman dry-run.
     """
+    from .ui import console as c_console
+    # print(f"DEBUG: ...", flush=True) # Debug removed for clean code
     # Use pacman -Sp to get list of downloadable packages (URLs)
     # This resolves dependencies effectively for official repos.
     # For AUR, our separate logic handles it, so this is mostly for official packages.
 
-    from rich.table import Table
+    from rich.table import Table, box
     from rich.padding import Padding
+    from rich.panel import Panel
     import urllib.parse
     
     # ... (rest of function)
@@ -536,6 +540,7 @@ def show_summary(apt_cmd, extra_args, auto_confirm=False, aur_new=None, aur_upgr
     if auto_confirm:
          console.print(prompt_msg + "[bold green]Yes[/bold green]")
     else:
+        print("DEBUG: prompting now", flush=True)
         if not console.input(prompt_msg).lower().startswith('y'):
             print_info(_("Aborted."))
             sys.exit(0)
@@ -791,6 +796,10 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
 
 
 def execute_command(apt_cmd, extra_args):
+    # Log the action system-wide
+    from . import logger
+    logger.log_action(apt_cmd, extra_args)
+
     if apt_cmd not in COMMAND_MAP:
         import difflib
         matches = difflib.get_close_matches(apt_cmd, COMMAND_MAP.keys(), n=1, cutoff=0.6)
@@ -983,9 +992,8 @@ def execute_command(apt_cmd, extra_args):
             pacman_cmd = ["pacman", "-Q"] + extra_args
     elif apt_cmd == "install":
         # Check if we are installing a local file
-        # NOTE: a pacman package actually is a compressed TAR file therefore
-        #       they content is what matters, not the extension
-        if any(a.endswith((".pkg.tar.zst", ".pkg.tar.xz")) for a in extra_args):
+        # We check content (.PKGINFO in tar) to be sure
+        if any(aur.is_valid_package(a) for a in extra_args):
             pacman_cmd = ["pacman", "-U"] + extra_args
         else:
             # Check for AUR packages
@@ -1284,7 +1292,7 @@ def execute_command(apt_cmd, extra_args):
             with open("/etc/pacman.conf", "r") as f:
                 content = f.read()
                 # Show in a panel
-                from rich.panel import Panel
+                # Show in a panel
                 console.print(Panel(content, title="/etc/pacman.conf", border_style="blue"))
         except FileNotFoundError:
             print_error(f"[red]{_('E:')}[/red] {_('Cannot read /etc/pacman.conf')}")

@@ -53,3 +53,6 @@ apt-pac-*/
 # i18n compiled files
 *.mo
 
+# Test Logs
+test_logs/*
+

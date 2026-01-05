@@ -14,8 +14,31 @@ from pathlib import Path
 # For development: repo/locales
 def _get_locale_dir():
     # Try installed location first
-    #NOTE: This is the default location for installed i18n but not the only possible location and we shouldn't depend on it as built-in but as default search path and check other or make it configurable somehow, some better solution sould be used.
-    system_locale = Path("/usr/share/locale")
+    # Try reading from user config manually to avoid circular import with config.py
+    # Look for [directories] locale_dir = "..."
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    user_config = config_home / "apt-pac" / "config.toml"
+    
+    if user_config.exists():
+        try:
+            with open(user_config, "r", encoding="utf-8") as f:
+                for line in f:
+                    if "locale_dir" in line and "=" in line:
+                         # Very basic parsing: locale_dir = "path/to/locales"
+                         import shlex
+                         parts = line.split("=", 1)
+                         key = parts[0].strip()
+                         if key == "locale_dir":
+                             val = parts[1].strip().strip('"\'')
+                             custom_locale = Path(val)
+                             if custom_locale.exists():
+                                 return str(custom_locale)
+        except Exception:
+            pass
+    
+    import sys
+    # Try installed location based on python prefix (works for /usr, /usr/local, venvs)
+    system_locale = Path(sys.prefix) / "share" / "locale"
     if system_locale.exists():
         return str(system_locale)
     
