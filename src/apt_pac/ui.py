@@ -136,27 +136,28 @@ def format_show(output):
     text = Text()
     
     # APT Mapping (pacman output forced to English with LC_ALL=C)
+    # APT Mapping (pacman output forced to English with LC_ALL=C)
     key_map = {
-        "Name": "Package",
-        "Version": "Version",
-        "Description": "Description",
-        "Architecture": "Architecture",
-        "URL": "Homepage",
-        "Licenses": "Section",
-        "Groups": "Tag",
-        "Provides": "Provides",
-        "Depends On": "Depends",
-        "Optional Deps": "Suggests",
-        "Required By": "Reverse-Depends",
-        "Conflicts With": "Conflicts",
-        "Replaces": "Replaces",
-        "Download Size": "Download-Size",
-        "Installed Size": "Installed-Size",
-        "Packager": "Maintainer",
-        "Build Date": "Build-Date",
-        "Install Date": "Install-Date",
-        "Install Reason": "APT-Manual-Installed",
-        "Repository": "Section",
+        "Name": _("Package"),
+        "Version": _("Version"),
+        "Description": _("Description"),
+        "Architecture": _("Architecture"),
+        "URL": _("Homepage"),
+        "Licenses": _("Section"),
+        "Groups": _("Tag"),
+        "Provides": _("Provides"),
+        "Depends On": _("Depends"),
+        "Optional Deps": _("Suggests"),
+        "Required By": _("Reverse-Depends"),
+        "Conflicts With": _("Conflicts"),
+        "Replaces": _("Replaces"),
+        "Download Size": _("Download-Size"),
+        "Installed Size": _("Installed-Size"),
+        "Packager": _("Maintainer"),
+        "Build Date": _("Build-Date"),
+        "Install Date": _("Install-Date"),
+        "Install Reason": _("APT-Manual-Installed"),
+        "Repository": _("Section"),
     }
 
     current_key = None
@@ -224,25 +225,25 @@ def format_aur_info(packages):
                 text.append(f": {value}\n")
         
         # APT-like fields
-        add_field("Package", pkg.get("Name"))
-        add_field("Version", pkg.get("Version"))
-        add_field("Priority", "optional") # Dummy
-        add_field("Section", "aur")
-        add_field("Maintainer", pkg.get("Maintainer"))
-        add_field("Homepage", pkg.get("URL"))
-        add_field("Description", pkg.get("Description"))
-        add_field("Architecture", " ".join(pkg.get("Architectures", [])) if pkg.get("Architectures") else "any")
+        add_field(_("Package"), pkg.get("Name"))
+        add_field(_("Version"), pkg.get("Version"))
+        add_field(_("Priority"), "optional") # Dummy
+        add_field(_("Section"), "aur")
+        add_field(_("Maintainer"), pkg.get("Maintainer"))
+        add_field(_("Homepage"), pkg.get("URL"))
+        add_field(_("Description"), pkg.get("Description"))
+        add_field(_("Architecture"), " ".join(pkg.get("Architectures", [])) if pkg.get("Architectures") else "any")
         
         depends = pkg.get("Depends", [])
         if depends:
-             add_field("Depends", ", ".join(depends))
+             add_field(_("Depends"), ", ".join(depends))
         
         makedeps = pkg.get("MakeDepends", [])
         if makedeps:
-             add_field("Build-Depends", ", ".join(makedeps))
+             add_field(_("Build-Depends"), ", ".join(makedeps))
              
-        add_field("Vote-Count", str(pkg.get("NumVotes", 0)))
-        add_field("Popularity", str(pkg.get("Popularity", 0)))
+        add_field(_("Vote-Count"), str(pkg.get("NumVotes", 0)))
+        add_field(_("Popularity"), str(pkg.get("Popularity", 0)))
         
         console.print(Panel(text, title=f"{_('Package Information')} (AUR)", border_style="magenta"))
 

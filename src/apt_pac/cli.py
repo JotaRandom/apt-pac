@@ -3,18 +3,21 @@ import sys
 import subprocess
 
 def parse_args():
+    from . import __version__
+    from .i18n import _
+
+    description = _("APT-style wrapper for pacman")
+    # We can't easily translate argparse internals but we can translate our help
     parser = argparse.ArgumentParser(
-        description="APT-style wrapper for pacman",
-        add_help=False # Disable default help
+        description=description,
+        add_help=False 
     )
     
-    from . import __version__
     parser.add_argument("-v", "--version", nargs="?", const="default", default=None)
     parser.add_argument("-h", "--help", action="store_true")
     
-    # We want to capture the command and all trailing arguments
-    parser.add_argument("command", nargs="?", help="The apt command (install, remove, etc.)")
-    parser.add_argument("args", nargs=argparse.REMAINDER, help="Arguments for the command")
+    parser.add_argument("command", nargs="?", help=_("The apt command (install, remove, etc.)"))
+    parser.add_argument("args", nargs=argparse.REMAINDER, help=_("Arguments for the command"))
     
     args = parser.parse_args()
     
@@ -44,7 +47,7 @@ def parse_args():
         else:
             # Unknown option
             print(f"apt-pac {__version__}")
-            print(f"Unknown version option: {args.version}", file=sys.stderr)
+            print(f"{_('Unknown version option:')} {args.version}", file=sys.stderr)
         
         sys.exit(0)
         

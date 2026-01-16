@@ -487,8 +487,8 @@ class AurInstaller:
             return
 
         if not skip_summary:
-            ui.console.print("Building dependency tree... Done")
-            ui.console.print("Reading state information... Done")
+            ui.console.print(_("Building dependency tree... Done"))
+            ui.console.print(_("Reading state information... Done"))
             
             # Prepare list of (name, version) for summary
             install_info = get_resolved_package_info(build_queue, official_deps)
@@ -505,7 +505,7 @@ class AurInstaller:
             ui.console.print(_(f"0 upgraded, {count} newly installed, 0 to remove and 0 not upgraded."))
             
             if auto_confirm:
-                ui.console.print(f"{_('Do you want to continue?')} [Y/n] [bold green]Yes[/bold green]")
+                ui.console.print(f"{_('Do you want to continue?')} [Y/n] [bold green]{_('Yes')}[/bold green]")
             elif not ui.console.input(f"{_('Do you want to continue?')} [Y/n] ").lower().startswith('y'):
                 print_info(_("Aborted."))
                 sys.exit(0)
@@ -662,7 +662,7 @@ class AurInstaller:
             # Prompt if not auto_confirm
             if not auto_confirm:
                 from rich.text import Text
-                prompt = Text(f"Do you want to continue? [Y/n] ", style="bold yellow")
+                prompt = Text(_("Do you want to continue? [Y/n] "), style="bold yellow")
                 response = ui.console.input(prompt)
                 if response and not response.lower().startswith('y'):
                     ui.console.print(_("Aborted."))
