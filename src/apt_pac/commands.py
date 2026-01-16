@@ -540,7 +540,6 @@ def show_summary(apt_cmd, extra_args, auto_confirm=False, aur_new=None, aur_upgr
     if auto_confirm:
          console.print(prompt_msg + "[bold green]Yes[/bold green]")
     else:
-        print("DEBUG: prompting now", flush=True)
         if not console.input(prompt_msg).lower().startswith('y'):
             print_info(_("Aborted."))
             sys.exit(0)
@@ -657,48 +656,118 @@ def get_editor():
 def simulate_apt_download_output(pacman_cmd, config):
     """
     Simulates APT's "Get:1 ..." output by running pacman -Sp first.
+    Parses URLs to shorten them and matches packages to get Epoch/Version info.
     """
-    # Only applicable for install/upgrade/dist-upgrade
-    # We construct a dry-run URL fetch command
-    # Remove flags that might conflict or be irrelevant for -Sp (like -v, -q if handled)
-    # Actually -Sp works with most.
+    import urllib.parse
     
-    # We need to construct the command. pacman_cmd is ["pacman", "-S", ...]
-    # We want ["pacman", "-Sp", ...]
-    # But wait, pacman_cmd might already have -Syu.
-    
-    # Check if we can just append -p
+    # Construct simulation command: pacman_cmd + -p
+    # Note: pacman_cmd usually has -S or -Syu. Adding -p makes it a dry run printing URLs.
     cmd = list(pacman_cmd)
     
-    # Insert -p after the operation flag (usually index 1, e.g. -S or -Syu or -U)
-    # A bit naive, but let's try appending -p to the command args. 
-    # Actually pacman -Syu -p works.
-    cmd.append("-p")
+    # Ensure -p is added. 
+    # If -w (download only) is present, -p still works to print URLs.
+    if "-p" not in cmd and "--print" not in cmd:
+        cmd.append("-p")
     
-    # Run it
-    # Run it
     try:
-        # We need to suppress stderr or handle it? 
-        # If -Sp fails (e.g. conflicts), we probably shouldn't show "Get:..." yet 
-        # or we might fail silent here and let the real command show the error.
+        # Run pacman -Sp ...
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             return # Fail silently on simulation
             
         lines = result.stdout.strip().splitlines()
-        urls = [line for line in lines if "://" in line]
+        urls = [line.strip() for line in lines if "://" in line]
         
         if not urls:
             return
             
-        # Print "Get:X" lines
+        # 1. Parse Names from Filenames
+        # Filename format: name-version-release-arch.pkg.tar.zst
+        # We need 'name' to query -Si for the proper Version string (with Epoch)
+        
+        pkg_map = {} # filename -> name
+        names_to_query = set()
+        
+        url_info = [] # list of (url, filename, pkg_name)
+        
+        for url in urls:
+            parsed = urllib.parse.urlparse(url)
+            filename = parsed.path.split('/')[-1]
+            
+            # Shorten URL to scheme://netloc/
+            short_url = f"{parsed.scheme}://{parsed.netloc}/"
+            if not short_url.endswith('/'): short_url += "/"
+            
+            # Parse filename
+            # Heuristic: strip known extensions, then reverse split
+            base = filename
+            for ext in ['.pkg.tar.zst', '.pkg.tar.xz', '.pkg.tar.gz', '.pkg.tar', '.pkg.tar.zst.sig']:
+                if base.endswith(ext):
+                    base = base[:-len(ext)]
+                    break
+            
+            # base is now "name-ver-rel-arch"
+            # Split by '-'
+            parts = base.split('-')
+            pkg_name = base # fallback
+            
+            if len(parts) >= 4:
+                # Last part: arch
+                # 2nd last: rel
+                # 3rd last: ver
+                # Rest: name (joined by -)
+                pkg_name = "-".join(parts[:-3])
+                names_to_query.add(pkg_name)
+            
+            url_info.append({
+                'full_url': url,
+                'short_url': short_url,
+                'filename': filename,
+                'pkg_name': pkg_name
+            })
+
+        # 2. Batch Query Version Info (including Epoch)
+        # We query -Si for all these names
+        version_map = {} # name -> full_version (with epoch)
+        
+        if names_to_query:
+            # We can pass multiple args to -Si
+            # Split into chunks if too many? typical cmdline limits ~32k chars.
+            # 100 packages is fine.
+            q_cmd = ["pacman", "-Si"] + list(names_to_query)
+            si_res = run_pacman(q_cmd, capture_output=True, text=True)
+            
+            if si_res.returncode == 0:
+                curr_name = None
+                for line in si_res.stdout.splitlines():
+                    line = line.strip()
+                    if line.startswith("Name"):
+                        curr_name = line.split(":", 1)[1].strip()
+                    elif line.startswith("Version") and curr_name:
+                        ver = line.split(":", 1)[1].strip()
+                        version_map[curr_name] = ver
+                        curr_name = None # Reset to wait for next name
+
+        # 3. Print Output
         total = len(urls)
-        for i, url in enumerate(urls, 1):
-            filename = url.split('/')[-1]
-            # Try to get size? -Sp doesn't give size.
-            # We skip size or fake it? APT usually has it.
-            # Without significant overhead (-Si for each), we skip size.
-            print_apt_download_line(i, total, url, filename)
+        for i, info in enumerate(url_info, 1):
+            name = info['pkg_name']
+            
+            # Get version from -Si if available, otherwise fallback to filename parsing if possible?
+            # Or just name.
+            if name in version_map:
+                version_str = version_map[name]
+                # Format: name-version
+                # version_str includes epoch if present (e.g. 1:2.0-3)
+                final_str = f"{name}-{version_str}"
+            else:
+                # Fallback: display filename? or just name
+                # If we couldn't parse name correctly, using filename is safer than nothing.
+                # But info['filename'] is bulky.
+                # Use name we parsed from filename
+                final_str = f"{name} [?]"
+            
+            print_apt_download_line(i, total, info['short_url'], final_str)
             
     except Exception:
         pass
