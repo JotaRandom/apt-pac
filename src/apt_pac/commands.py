@@ -798,70 +798,131 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
             bufsize=1,
             env=env
         )
-        
-        installing_packages = []
-        
-        for line in iter(process.stdout.readline, ''):
-            if not line:
-                break
-            
-            line = line.rstrip()
-            
-            # Show confirmation prompts and user-facing questions as-is
-            if any(prompt in line for prompt in ['[Y/n]', '[y/N]', 'Proceed with', 'Do you want to']):
-                console.print(line)
-                continue
-            
-            # Detect package installation: "installing package-name..."
-            install_match = re.search(r'installing ([a-zA-Z0-9._+-]+)\.\.\.', line, re.IGNORECASE)
-            if install_match:
-                pkg_name = install_match.group(1)
-                installing_packages.append(pkg_name)
-                console.print(f"{_('Setting up')} {pkg_name} ...")
-                continue
-            
-            # Detect package upgrade: "upgrading package-name..."
-            upgrade_match = re.search(r'upgrading ([a-zA-Z0-9._+-]+)\.\.\.', line, re.IGNORECASE)
-            if upgrade_match:
-                pkg_name = upgrade_match.group(1)
-                console.print(f"{_('Setting up')} {pkg_name} ...")
-                continue
-            
-            # Detect package removal: "removing package-name..."
-            remove_match = re.search(r'removing ([a-zA-Z0-9._+-]+)\.\.\.', line, re.IGNORECASE)
-            if remove_match:
-                pkg_name = remove_match.group(1)
-                console.print(f"{_('Removing')} {pkg_name} ...")
-                continue
-            
-            # Detect hooks: "running 'hook-name.hook'..."
-            if show_hooks:
-                hook_match = re.search(r"running ['\"]?([^'\"]+\.hook)['\"]?\.\.\.", line, re.IGNORECASE)
-                if hook_match:
-                    hook_name = hook_match.group(1)
-                    # Convert hook name to trigger-like name
-                    # e.g., "systemd-update.hook" -> "systemd-update"
-                    trigger_name = hook_name.replace('.hook', '')
-                    console.print(f"{_('Processing triggers for')} {trigger_name} ...")
-                    continue
-            
-            # Detect "target not found" error and mimic APT output
-            not_found_match = re.search(r'error: target not found: (.+)', line, re.IGNORECASE)
-            if not_found_match:
-                pkg_name = not_found_match.group(1).strip()
-                console.print(f"[bold red]E:[/bold red] {_('Unable to locate package')} {pkg_name}")
-                continue
 
-            # For any other important output (errors, warnings), show as-is
-            if any(keyword in line.lower() for keyword in ['error', 'warning', 'failed', 'conflict']):
-                console.print(line)
+        current_action = _("Processing...")
+        
+        # Regex for progress: ( 1/15) or 25%
+        # Pacman style: "( 1/ 5) Installing package"
+        progress_re = re.compile(r'\(\s*(\d+)/(\d+)\s*\)')
+        percent_re = re.compile(r'(\d+)%')
+
+        with console.status(f"[bold blue]{current_action}[/bold blue]", spinner="dots") as status:
+            for line in iter(process.stdout.readline, ''):
+                if not line:
+                    break
+                    
+                line_lower = line.lower()
+                
+                # Check for progress info in the line
+                p_match = progress_re.search(line)
+                pct_match = percent_re.search(line)
+                
+                progress_info = ""
+                if p_match:
+                    curr, total = p_match.groups()
+                    # Calculate percentage?
+                    try:
+                        pct = int(curr) / int(total) * 100
+                        progress_info = f" {int(pct)}% ({curr}/{total})"
+                    except ZeroDivisionError:
+                        progress_info = f" ({curr}/{total})"
+                elif pct_match:
+                    progress_info = f" {pct_match.group(1)}%"
+
+                # Determine action
+                if "downloading" in line_lower:
+                    current_action = _("Downloading")
+                    status.update(f"[bold blue]{current_action}{progress_info}...[/bold blue]")
+                elif "installing" in line_lower:
+                    current_action = _("Installing")
+                    status.update(f"[bold blue]{current_action}{progress_info}...[/bold blue]")
+                elif "upgrading" in line_lower:
+                    current_action = _("Upgrading")
+                    status.update(f"[bold blue]{current_action}{progress_info}...[/bold blue]")
+                elif "removing" in line_lower:
+                    current_action = _("Removing")
+                    status.update(f"[bold blue]{current_action}{progress_info}...[/bold blue]")
+                elif "checking keys" in line_lower or "keyring" in line_lower:
+                    current_action = _("Checking keys")
+                    status.update(f"[bold blue]{current_action}{progress_info}...[/bold blue]")
+                elif "checking" in line_lower:
+                    # Generic checking
+                    pass 
+                elif progress_info:
+                    # Update just progress if action didn't change
+                    status.update(f"[bold blue]{current_action}{progress_info}...[/bold blue]")
+
+                # APT Style Output Parsing
+                
+                # Case 1: "(N/M) Installing foo (1.0-1)..."
+                # Pacman often prints this.
+                # We want: "Unpacking foo (1.0-1) ..."
+                # Or "Selecting previously unselected package foo..."
+                
+                clean_line = line.strip()
+                
+                if "installing" in line_lower and formatting_is_ok(line):
+                     # Extract pkg name
+                     # "( 1/ 4) installing python (3.11...)"
+                     parts = line.split()
+                     if len(parts) >= 4 and parts[2] == "installing":
+                         pkg = parts[3]
+                         ver = parts[4].strip('()') if len(parts) > 4 else ""
+                         console.print(f"{_('Selecting previously unselected package')} {pkg}.")
+                         console.print(f"({_('Reading database')} ... 100% {_('files and directories currently installed')}.)")
+                         console.print(f"{_('Unpacking')} {pkg} ({ver}) ...")
+                         continue
+                
+                if "upgrading" in line_lower and formatting_is_ok(line):
+                     parts = line.split()
+                     if len(parts) >= 4 and parts[2] == "upgrading":
+                         pkg = parts[3]
+                         ver = parts[4].strip('()') if len(parts) > 4 else ""
+                         console.print(f"{_('Preparing to unpack')} .../{pkg}_{ver}_... ...")
+                         console.print(f"{_('Unpacking')} {pkg} ({ver}) over ({ver}) ...") # Approximate
+                         continue
+
+                # Hooks / Triggers
+                # ":: Running post-transaction hooks..."
+                if "running" in line_lower and "hooks" in line_lower:
+                     # APT: "Processing triggers for man-db (2.12.0-1) ..."
+                     # Pacman: ":: Running post-transaction hooks..."
+                     # We can't know exactly which trigger maps to which package easily.
+                     # But we can show it as Processing triggers.
+                     console.print(f"{_('Processing triggers for system')} ...")
+                     continue
+                
+                if show_hooks and line.strip().startswith("("):
+                     # Hook output: "(1/5) Arming ConditionNeedsUpdate..."
+                     # Show as "Setting up ..."
+                     parts = line.split(')', 1)
+                     if len(parts) > 1:
+                         desc = parts[1].strip()
+                         console.print(f"{_('Setting up system')} ({desc}) ...")
+                         continue
+
+                # Default: Don't print internal pacman messages unless error or important
+                if "error" in line_lower or "warning" in line_lower:
+                    console.print(line.strip())
         
         process.wait()
+        
+        # Sync filesystem on success
+        if process.returncode == 0:
+            try:
+                subprocess.run(["sync"], check=False)
+            except FileNotFoundError:
+                pass # sync not found (e.g. non-standard env)
+
         return process.returncode == 0
         
     except Exception as e:
         print_error(f"[red]{_('E:')}[/red] {_(f'Error running pacman: {e}')}")
         return False
+
+def formatting_is_ok(line):
+    # Heuristic to check if line is structured as expected for parsing
+    return True # Simplified for now
 
 
 def execute_command(apt_cmd, extra_args):
