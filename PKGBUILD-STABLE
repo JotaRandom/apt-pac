@@ -9,7 +9,7 @@ url="https://github.com/JotaRandom/apt-pac"
 license=('MIT')
 depends=('python'
          'python-rich'
-         'python-pyalpm'
+         'pyalpm'
          'python-tomli'
          'devtools'
          'pacman-contrib')
