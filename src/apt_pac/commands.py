@@ -747,15 +747,25 @@ def sync_databases(cmd=None):
                       console.print(f"Hit:{index} {repo}")
                       index += 1
                       
-                 elif "downloading" in lower_line and ".db" in lower_line:
-                      # extracting repo name from "downloading core.db..."
+                 elif "downloading" in lower_line:
+                      # extracting repo name from "downloading core.db..." or "core.files..."
                       parts = line_clean.split()
                       repo = ""
                       for p in parts:
                           if p.endswith(".db...") or p.endswith(".db"):
                               repo = p.replace(".db...", "").replace(".db", "")
                               break
+                          if p.endswith(".files...") or p.endswith(".files"):
+                              repo = p.replace(".files...", "").replace(".files", "")
+                              break
                       
+                      # heuristic: check if any map key is in the line
+                      if not repo and repo_url_map:
+                           for r in repo_url_map:
+                               if r in line_clean:
+                                   repo = r
+                                   break
+
                       if repo:
                            if repo in repo_url_map:
                                short, arch = repo_url_map[repo]
@@ -764,6 +774,9 @@ def sync_databases(cmd=None):
                            else:
                                console.print(f"Get:{index} {repo}")
                            index += 1
+                      else:
+                           # Fallback if we can't identify repo
+                           console.print(f"[dim]{line_clean}[/dim]")
 
                  elif "synchronizing package databases" in lower_line:
                       # Ignore introductory line
