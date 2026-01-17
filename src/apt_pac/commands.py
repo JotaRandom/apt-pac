@@ -653,6 +653,79 @@ def get_editor():
             return cmd
     return "vi"  # Ultimate fallback as it's likely in base
 
+def sync_databases(cmd=None):
+    """
+    Runs pacman -Sy (or similar) with APT-like progress output (Hit/Get).
+    """
+    if cmd is None:
+        cmd = ["pacman", "-Sy"]
+    
+    # Force C locale for parsing
+    env = os.environ.copy()
+    env["LC_ALL"] = "C"
+    
+    # Regex to strip ANSI codes
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    
+    try:
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            env=env
+        )
+        
+        index = 1
+        with console.status(f"[bold blue]{_('Updating package databases...')}[/bold blue]", spinner="dots"):
+             for line in iter(process.stdout.readline, ''):
+                 if not line: break
+                 
+                 # Strip ANSI for parsing
+                 line_clean = ansi_escape.sub('', line).strip()
+                 if not line_clean: continue
+                 
+                 lower_line = line_clean.lower()
+                 
+                 # Parse
+                 if "is up to date" in lower_line:
+                      repo = line_clean.split(" is up to date")[0].strip()
+                      # Cleaning ":: " prefix
+                      if "::" in repo: 
+                           repo = repo.split("::")[-1].strip()
+                      
+                      console.print(f"Hit:{index} {repo}")
+                      index += 1
+                      
+                 elif "downloading" in lower_line and ".db" in lower_line:
+                      # extracting repo name from "downloading core.db..."
+                      parts = line_clean.split()
+                      for p in parts:
+                          if p.endswith(".db...") or p.endswith(".db"):
+                              repo = p.replace(".db...", "").replace(".db", "")
+                              console.print(f"Get:{index} {repo}")
+                              index += 1
+                              break
+                 elif "synchronizing package databases" in lower_line:
+                      # Ignore introductory line
+                      pass
+                 else:
+                      # Fallback: print unknown lines (dimmed) so user sees progress/errors
+                      # This handles "error: ...", "warning: ...", or unexpected formats
+                      console.print(f"[dim]{line_clean}[/dim]")
+        
+        process.wait()
+        if process.returncode != 0:
+            # If we printed errors above, maybe we don't need generic message?
+            # But standard apt-pac behavior is explicit error.
+            print_error(_("Failed to synchronize databases"))
+            sys.exit(1)
+            
+    except subprocess.CalledProcessError:
+        print_error(_("Failed to run pacman"))
+        sys.exit(1)
+
 def simulate_apt_download_output(pacman_cmd, config):
     """
     Simulates APT's "Get:1 ..." output by running pacman -Sp first.
@@ -1718,13 +1791,12 @@ def execute_command(apt_cmd, extra_args):
         
         # Special case for update and upgrade: sync files as well
         if apt_cmd == "update":
-            with console.status("[bold blue]Updating package databases...", spinner="dots"):
-                # Run the main pacman -Sy
-                current_cmd = list(pacman_cmd)
-                subprocess.run(current_cmd, check=True, capture_output=True)
-                
-                # Run the file sync pacman -Fy
-                if config.get("ui", "always_sync_files", True):
+            # Run the main pacman -Sy
+            sync_databases(pacman_cmd)
+            
+            # Run the file sync pacman -Fy
+            if config.get("ui", "always_sync_files", True):
+                with console.status(f"[bold blue]{_('Syncing file database...')}[/bold blue]", spinner="dots"):
                     sync_cmd = ["pacman", "-Fy"]
                     subprocess.run(sync_cmd, check=False, capture_output=True)
                 
@@ -1767,8 +1839,7 @@ def execute_command(apt_cmd, extra_args):
             
             if run_official:
                 # 1. Sync DB first
-                with console.status("[bold blue]Updating package databases...[/bold blue]", spinner="dots"):
-                    subprocess.run(["pacman", "-Sy"], check=True, capture_output=True)
+                sync_databases()
 
             # Check for AUR updates EARLY (Pre-calc)
             if run_aur:
