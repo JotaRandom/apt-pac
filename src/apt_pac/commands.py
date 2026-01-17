@@ -748,16 +748,29 @@ def sync_databases(cmd=None):
                       index += 1
                       
                  elif "downloading" in lower_line:
-                      # extracting repo name from "downloading core.db..." or "core.files..."
+                      # extracting repo name. Format could be:
+                      # "downloading core.db..."
+                      # "downloading core..."
+                      # ":: downloading core..."
+                      
                       parts = line_clean.split()
                       repo = ""
-                      for p in parts:
-                          if p.endswith(".db...") or p.endswith(".db"):
-                              repo = p.replace(".db...", "").replace(".db", "")
-                              break
-                          if p.endswith(".files...") or p.endswith(".files"):
-                              repo = p.replace(".files...", "").replace(".files", "")
-                              break
+                      
+                      # Find word after "downloading"
+                      try:
+                          # Use lower parts for finding index, but original parts for extraction
+                          lower_parts = [p.lower() for p in parts]
+                          if "downloading" in lower_parts:
+                              idx = lower_parts.index("downloading")
+                              if idx + 1 < len(parts):
+                                  candidate = parts[idx + 1]
+                                  # Clean candidate
+                                  repo = candidate.replace("...", "").replace(".db", "").replace(".files", "")
+                      except ValueError:
+                          pass
+
+                      # heuristic: check if any map key is in the line (fallback)
+                      if not repo and repo_url_map:
                       
                       # heuristic: check if any map key is in the line
                       if not repo and repo_url_map:
