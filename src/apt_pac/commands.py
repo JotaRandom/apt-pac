@@ -4,6 +4,7 @@ import shutil
 import os
 import re
 import tarfile
+import platform
 from . import ui # Needed for ui.set_force_colors
 from .ui import (
     console, print_error, print_info, print_command, 
@@ -653,6 +654,13 @@ def get_editor():
             return cmd
     return "vi"  # Ultimate fallback as it's likely in base
 
+def get_short_url(url):
+    import urllib.parse
+    parsed = urllib.parse.urlparse(url)
+    short_url = f"{parsed.scheme}://{parsed.netloc}/"
+    if not short_url.endswith('/'): short_url += "/"
+    return short_url
+
 def sync_databases(cmd=None):
     """
     Runs pacman -Sy (or similar) with APT-like progress output (Hit/Get).
@@ -660,6 +668,47 @@ def sync_databases(cmd=None):
     if cmd is None:
         cmd = ["pacman", "-Sy"]
     
+    # 1. Pre-fetch URLs using --print
+    # We use this to map repo names to URLs for the "Get:" lines
+    repo_url_map = {} # repo -> (short_url, arch)
+    
+    try:
+        # pacman -Sy --print prints the URIs for the databases
+        print_cmd = list(cmd) + ["--print"]
+        
+        # This might fail if not root, but if we are here we expect to be able to run it?
+        # Or if we rely on sudo in the real cmd, here we might fail if not wrapped?
+        # But 'cmd' usually contains 'pacman'. If 'apt-pac' was run with sudo, this inherits it.
+        result = subprocess.run(print_cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            urls = [line.strip() for line in result.stdout.splitlines() if "://" in line]
+            for url in urls:
+                # Format: http://mirror/repo/os/arch/repo.db
+                # We need to extract repo name and arch
+                try:
+                    filename = url.split('/')[-1]
+                    # core.db -> core
+                    repo_name = filename.replace('.db', '').replace('.files', '')
+                    
+                    # Arch: usually 2nd to last part? /os/x86_64/core.db
+                    # But structure varies.
+                    # Heuristic: verify if any part matches current machine arch
+                    parts = url.split('/')
+                    arch = platform.machine() # fallback
+                    if arch in parts:
+                        pass # confirmed
+                    elif "x86_64" in parts:
+                        arch = "x86_64"
+                    elif "aarch64" in parts:
+                        arch = "aarch64"
+                        
+                    short = get_short_url(url)
+                    repo_url_map[repo_name] = (short, arch)
+                except Exception:
+                    pass
+    except Exception:
+        pass # Ignore errors in pre-fetch, fallback to basic output
+
     # Force C locale for parsing
     env = os.environ.copy()
     env["LC_ALL"] = "C"
@@ -701,24 +750,30 @@ def sync_databases(cmd=None):
                  elif "downloading" in lower_line and ".db" in lower_line:
                       # extracting repo name from "downloading core.db..."
                       parts = line_clean.split()
+                      repo = ""
                       for p in parts:
                           if p.endswith(".db...") or p.endswith(".db"):
                               repo = p.replace(".db...", "").replace(".db", "")
-                              console.print(f"Get:{index} {repo}")
-                              index += 1
                               break
+                      
+                      if repo:
+                           if repo in repo_url_map:
+                               short, arch = repo_url_map[repo]
+                               # Get:NUMERO web repo arquitectura ...
+                               console.print(f"Get:{index} {short} {repo} {arch}")
+                           else:
+                               console.print(f"Get:{index} {repo}")
+                           index += 1
+
                  elif "synchronizing package databases" in lower_line:
                       # Ignore introductory line
                       pass
                  else:
-                      # Fallback: print unknown lines (dimmed) so user sees progress/errors
-                      # This handles "error: ...", "warning: ...", or unexpected formats
+                      # Fallback: print unknown lines (dimmed)
                       console.print(f"[dim]{line_clean}[/dim]")
         
         process.wait()
         if process.returncode != 0:
-            # If we printed errors above, maybe we don't need generic message?
-            # But standard apt-pac behavior is explicit error.
             print_error(_("Failed to synchronize databases"))
             sys.exit(1)
             
