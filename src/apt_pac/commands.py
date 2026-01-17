@@ -1338,19 +1338,52 @@ def execute_command(apt_cmd, extra_args):
         if not extra_args:
             print_error(f"[bold red]{_('E')}[/bold red]: {_('No package specified')}")
             sys.exit(1)
-        # Check if pactree is installed
-        if subprocess.run(["command -v pactree"], shell=True, capture_output=True).returncode == 0:
-            pacman_cmd = ["pactree", "-u"] + extra_args
+        
+        # Use native pyalpm for dependency listing
+        from . import alpm_helper
+        pkgname = extra_args[0]
+        
+        # Try installed package first, then sync repos
+        pkg = alpm_helper.get_local_package(pkgname)
+        if not pkg:
+            pkg = alpm_helper.get_package(pkgname)
+        
+        if pkg:
+            console.print(f"[bold]{pkgname}[/bold]")
+            if pkg.depends:
+                for dep in pkg.depends:
+                    console.print(f"  {dep}")
+            else:
+                console.print(f"  {_('(no dependencies)')}")
         else:
-            pacman_cmd = ["pacman", "-Qi"] + extra_args
+            print_error(f"{_('Package not found:')} {pkgname}")
+            sys.exit(1)
+        return
     elif apt_cmd == "rdepends":
         if not extra_args:
             print_error(f"[bold red]{_('E')}[/bold red]: {_('No package specified')}")
             sys.exit(1)
-        if subprocess.run(["command -v pactree"], shell=True, capture_output=True).returncode == 0:
-            pacman_cmd = ["pactree", "-ru"] + extra_args
+        
+        # Use native pyalpm for reverse dependency listing
+        from . import alpm_helper
+        pkgname = extra_args[0]
+        
+        # Only installed packages have reverse dependencies
+        pkg = alpm_helper.get_local_package(pkgname)
+        
+        if pkg:
+            console.print(f"[bold]{pkgname}[/bold]")
+            # compute_requiredby returns list of package names that depend on this package
+            rdeps = pkg.compute_requiredby()
+            if rdeps:
+                for dep in rdeps:
+                    console.print(f"  {dep}")
+            else:
+                console.print(f"  {_('(no reverse dependencies)')}")
         else:
-            pacman_cmd = ["pacman", "-Sii"] + extra_args
+            print_error(f"{_('Package not installed:')} {pkgname}")
+            sys.exit(1)
+        return
     elif apt_cmd == "scripts":
         if subprocess.run(["command -v pacscripts"], shell=True, capture_output=True).returncode == 0:
             pacman_cmd = ["pacscripts"] + extra_args
@@ -1728,12 +1761,36 @@ def execute_command(apt_cmd, extra_args):
 
         # Official Search
         if scope in ["both", "official"] and apt_cmd == "search":
-             result = subprocess.run(pacman_cmd, capture_output=True, text=True)
-             if result.returncode == 0 and result.stdout.strip():
-                 if show_output in ["apt-pac", "apt"]:
-                     format_search_results(result.stdout)
-                 else:
-                     print(result.stdout, end="")
+            # Use native pyalpm search instead of subprocess
+            from . import alpm_helper
+            
+            # Extract query from extra_args
+            queries = [arg for arg in extra_args if not arg.startswith("-")]
+            if queries:
+                query = queries[0]
+                try:
+                    results = alpm_helper.search_packages(query)
+                    if results:
+                        if show_output in ["apt-pac", "apt"]:
+                            # Format results APT-style
+                            for pkg in results:
+                                repo = pkg.db.name if hasattr(pkg, 'db') else 'unknown'
+                                console.print(f"[green]{repo}/{pkg.name}[/green] [bold]{pkg.version}[/bold]")
+                                console.print(f"  {pkg.desc}")
+                        else:
+                            # Pacman-style output
+                            for pkg in results:
+                                repo = pkg.db.name if hasattr(pkg, 'db') else 'unknown'
+                                print(f"{repo}/{pkg.name} {pkg.version}")
+                                print(f"    {pkg.desc}")
+                except Exception as e:
+                    # Fallback to subprocess if pyalpm fails
+                    result = subprocess.run(pacman_cmd, capture_output=True, text=True)
+                    if result.returncode == 0 and result.stdout.strip():
+                        if show_output in ["apt-pac", "apt"]:
+                            format_search_results(result.stdout)
+                        else:
+                            print(result.stdout, end="")
         
         # AUR Search
         if scope in ["both", "aur"] and apt_cmd == "search":
