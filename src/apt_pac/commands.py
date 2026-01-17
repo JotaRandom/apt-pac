@@ -14,6 +14,7 @@ from .ui import (
 )
 from .config import get_config
 from . import aur
+from . import alpm_helper
 from rich.text import Text
 from rich.table import Table
 from rich.padding import Padding
@@ -1337,7 +1338,6 @@ def execute_command(apt_cmd, extra_args):
             sys.exit(1)
         
         # Use native pyalpm for dependency listing
-        from . import alpm_helper
         pkgname = extra_args[0]
         
         # Try installed package first, then sync repos
@@ -1362,7 +1362,6 @@ def execute_command(apt_cmd, extra_args):
             sys.exit(1)
         
         # Use native pyalpm for reverse dependency listing
-        from . import alpm_helper
         pkgname = extra_args[0]
         
         # Only installed packages have reverse dependencies
@@ -1759,7 +1758,6 @@ def execute_command(apt_cmd, extra_args):
         # Official Search
         if scope in ["both", "official"] and apt_cmd == "search":
             # Use native pyalpm search instead of subprocess
-            from . import alpm_helper
             
             # Extract query from extra_args
             queries = [arg for arg in extra_args if not arg.startswith("-")]
