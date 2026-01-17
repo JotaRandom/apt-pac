@@ -20,9 +20,9 @@ makedepends=('python-build'
 source=("$_pkgname::git+https://github.com/JotaRandom/$pkgname.git#tag=$pkgver")
 sha256sums=('SKIP')
 
-version() {
+pkgver() {
   cd "$srcdir/$pkgname"
-  git describe --tags --long
+  git describe --tags --long | sed 's/^v//;s/-/+/g'
 }
 
 build() {
