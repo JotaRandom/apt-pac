@@ -42,6 +42,9 @@ venv.bak/
 *.pkg.tar.xz
 *.pkg.tar.*
 src/*.egg-info/
+pkg/*
+apt-pac/*
+# Note src/ is also makepkg specific
 
 # makepkg / PKGBUILD
 pkg/
