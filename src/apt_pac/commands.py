@@ -917,7 +917,7 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
         return process.returncode == 0
         
     except Exception as e:
-        print_error(f"[red]{_('E:')}[/red] {_(f'Error running pacman: {e}')}")
+        print_error(f"[red]{_('E:')}[/red] {f'{_('Error running pacman: ')}{e}'}")
         return False
 
 def formatting_is_ok(line):
@@ -934,10 +934,10 @@ def execute_command(apt_cmd, extra_args):
         import difflib
         matches = difflib.get_close_matches(apt_cmd, COMMAND_MAP.keys(), n=1, cutoff=0.6)
         if matches:
-            print_error(f"[red]{_('E:')}[/red] {_(f'Invalid operation {apt_cmd}')}")
+            print_error(f"[red]{_('E:')}[/red] {f'{_('Invalid operation ')}{apt_cmd}'}")
             console.print(f"[info]{_('Did you mean:')}[/info] [bold white]{matches[0]}[/bold white]?")
         else:
-            print_error(f"[red]{_('E:')}[/red] {_(f'Invalid operation {apt_cmd}')}")
+            print_error(f"[red]{_('E:')}[/red] {f'{_('Invalid operation ')}{apt_cmd}'}")
         sys.exit(1)
     
     # Get configuration for flag defaults
@@ -1149,7 +1149,7 @@ def execute_command(apt_cmd, extra_args):
             if aur_pkgs:
                 # If we have official packages, install them first
                 if official_pkgs:
-                    console.print(f"[bold]Installing official packages:[/bold] {' '.join(official_pkgs)}")
+                    console.print(f"[bold]{_('Installing official packages:')}[/bold] {' '.join(official_pkgs)}")
                     cmd = ["pacman", "-S"] + official_pkgs
                     if auto_confirm:
                         cmd.append("--noconfirm")
@@ -1163,19 +1163,25 @@ def execute_command(apt_cmd, extra_args):
                     print_error(_("\nInterrupted."))
                     sys.exit(1)
                 except Exception as e:
-                    print_error(_(f"AUR Installation failed: {e}"))
+                    print_error(f"{_("AUR Installation failed: ")}{e}")
                     sys.exit(1)
                 return # Exit after AUR install handling
             
             # If no AUR packages, just proceed with normal pacman -S
             pacman_cmd = ["pacman", "-S"] + extra_args
     elif apt_cmd == "depends":
+        if not extra_args:
+            print_error(f"[bold red]{_('E')}[/bold red]: {_('No package specified')}")
+            sys.exit(1)
         # Check if pactree is installed
         if subprocess.run(["command -v pactree"], shell=True, capture_output=True).returncode == 0:
             pacman_cmd = ["pactree", "-u"] + extra_args
         else:
             pacman_cmd = ["pacman", "-Qi"] + extra_args
     elif apt_cmd == "rdepends":
+        if not extra_args:
+            print_error(f"[bold red]{_('E')}[/bold red]: {_('No package specified')}")
+            sys.exit(1)
         if subprocess.run(["command -v pactree"], shell=True, capture_output=True).returncode == 0:
             pacman_cmd = ["pactree", "-ru"] + extra_args
         else:
@@ -1194,12 +1200,12 @@ def execute_command(apt_cmd, extra_args):
         # Clean apt-pac cache
         cache_dir = config.cache_dir
         if cache_dir.exists():
-            console.print(f"\n[bold]Cleaning apt-pac cache ({cache_dir})...[/bold]")
+            console.print(f"\n[bold]{_('Cleaning apt-pac cache')} ({cache_dir})...[/bold]")
             sources_dir = cache_dir / "sources"
             if sources_dir.exists():
                 import shutil
                 shutil.rmtree(sources_dir)
-                console.print(f"[green]Removed {sources_dir}[/green]")
+                console.print(f"[green]{_('Removed')} {sources_dir}[/green]")
         return
 
     elif apt_cmd == "autoclean":
@@ -1241,7 +1247,7 @@ def execute_command(apt_cmd, extra_args):
             print_info(_("Consider adding these packages to IgnorePkg manually."))
             return
         else:
-            print_info(_(f"Subcommand {sub} not yet implemented."))
+            print_info(f"{_("Subcommand ")}{sub}{_(" not yet implemented.")}")
             return
     elif apt_cmd == "check":
         print_reading_status()
@@ -1250,12 +1256,12 @@ def execute_command(apt_cmd, extra_args):
         if result_db.returncode == 0:
             console.print(f"{_('Database integrity:')} [green]{_('OK')}[/green]")
         else:
-            console.print(f"[error]E:[/error] Database errors:\n{result_db.stdout}")
+            console.print(f"[{_('error')}]{_('E')}:[/{_('error')}] {_('Database errors')}:\n{result_db.stdout}")
         
         result_deps = subprocess.run(["pacman", "-Qk"], capture_output=True, text=True)
         dep_issues = [line for line in result_deps.stdout.splitlines() if "warning" in line.lower()]
         if dep_issues:
-            console.print(f"\nW: {len(dep_issues)} package warnings found")
+            console.print(f"\nW: {len(dep_issues)} {_('package warnings found')}")
         else:
             console.print(f"{_('All packages:')} [green]{_('OK')}[/green]")
         
@@ -1288,33 +1294,33 @@ def execute_command(apt_cmd, extra_args):
         
         total_avail = subprocess.run(["pacman", "-Slq"], capture_output=True, text=True)
         num_avail = len(total_avail.stdout.splitlines())
-        console.print(f"  Total packages:          [pkg]{num_avail}[/pkg]")
+        console.print(f"  {_('Total packages')}:          [pkg]{num_avail}[/pkg]")
         
         total_installed = subprocess.run(["pacman", "-Qq"], capture_output=True, text=True)
         num_installed = len(total_installed.stdout.splitlines())
-        console.print(f"  Installed packages:      [pkg]{num_installed}[/pkg]")
+        console.print(f"  {_('Installed packages')}:      [pkg]{num_installed}[/pkg]")
         
         explicit = subprocess.run(["pacman", "-Qeq"], capture_output=True, text=True)
         num_explicit = len(explicit.stdout.splitlines())
-        console.print(f"  Explicitly installed:    [pkg]{num_explicit}[/pkg]")
+        console.print(f"  {_('Explicitly installed')}:    [pkg]{num_explicit}[/pkg]")
         
         deps = subprocess.run(["pacman", "-Qdq"], capture_output=True, text=True)
         num_deps = len(deps.stdout.splitlines())
-        console.print(f"  Installed as deps:       [pkg]{num_deps}[/pkg]")
+        console.print(f"  {_('Installed as deps')}:       [pkg]{num_deps}[/pkg]")
         
         orphans = subprocess.run(["pacman", "-Qdtq"], capture_output=True, text=True)
         num_orphans = len(orphans.stdout.strip().splitlines()) if orphans.stdout.strip() else 0
-        console.print(f"  Orphaned packages:       [pkg]{num_orphans}[/pkg]")
+        console.print(f"  {_('Orphaned packages')}:       [pkg]{num_orphans}[/pkg]")
         
         updates = subprocess.run(["pacman", "-Qu"], capture_output=True, text=True)
         num_updates = len(updates.stdout.splitlines()) if updates.returncode == 0 else 0
-        console.print(f"  Upgradable packages:     [pkg]{num_updates}[/pkg]")
+        console.print(f"  {_('Upgradable packages')}:     [pkg]{num_updates}[/pkg]")
         
         cache_path = "/var/cache/pacman/pkg"
         if os.path.exists(cache_path):
             cache_files = os.listdir(cache_path)
             num_cached = len([f for f in cache_files if f.endswith('.pkg.tar.zst') or f.endswith('.pkg.tar.xz')])
-            console.print(f"\n  Cached package files:    [pkg]{num_cached}[/pkg]")
+            console.print(f"\n  {_('Cached package files')}:    [pkg]{num_cached}[/pkg]")
         return
     
     elif apt_cmd == "source":
@@ -1364,7 +1370,7 @@ def execute_command(apt_cmd, extra_args):
         
         text.append(f"[magenta]{_('N:')}[/magenta] {_('You may need to import GPG keys first using apt-key (pacman-key).')}\n", style="magenta")
         
-        console.print(Panel(text, title="How to add a repository", border_style="blue"))
+        console.print(Panel(text, title=_("How to add a repository"), border_style="blue"))
         
         if console.input(f"\n{_('Do you want to edit /etc/pacman.conf now?')} [Y/n] ").lower().startswith('y'):
             # Reuse edit-sources logic
@@ -1457,7 +1463,7 @@ def execute_command(apt_cmd, extra_args):
             # Pass through to gpg
             pacman_cmd = ["pacman-key"] + extra_args
         else:
-            print_error(f"[red]{_('E:')}[/red] {_(f'Unknown apt-key command: {sub}')}")
+            print_error(f"[red]{_('E:')}[/red] {f'{_('Unknown apt-key command: ')}{sub}'}")
             return
         
         # For add/del, apt-key only prints "OK" on success
