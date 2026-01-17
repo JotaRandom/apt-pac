@@ -1777,13 +1777,8 @@ def execute_command(apt_cmd, extra_args):
                                 print(f"{repo}/{pkg.name} {pkg.version}")
                                 print(f"    {pkg.desc}")
                 except Exception as e:
-                    # Fallback to subprocess if pyalpm fails
-                    result = subprocess.run(pacman_cmd, capture_output=True, text=True)
-                    if result.returncode == 0 and result.stdout.strip():
-                        if show_output in ["apt-pac", "apt"]:
-                            format_search_results(result.stdout)
-                        else:
-                            print(result.stdout, end="")
+                    # Log error but don't fall back (pyalpm is required)
+                    print_error(f"Search error: {e}")
         
         # AUR Search
         if scope in ["both", "aur"] and apt_cmd == "search":
