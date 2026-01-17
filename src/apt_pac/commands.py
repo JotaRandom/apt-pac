@@ -589,9 +589,9 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
     if apt_cmd in ["remove", "purge", "autoremove"] and not is_simulation:
         pacman_args = COMMAND_MAP[apt_cmd]
         if apt_cmd == "autoremove":
-            check_orphans = subprocess.run(["pacman", "-Qdtq"], capture_output=True, text=True)
-            if check_orphans.stdout.strip():
-                orphans = check_orphans.stdout.split()
+            orphan_pkgs = alpm_helper.get_orphan_packages()
+            if orphan_pkgs:
+                orphans = [pkg.name for pkg in orphan_pkgs]
                 print_cmd = ["pacman", "-Rns"] + orphans + ["--print"]
             else:
                 return # No orphans, no removal
@@ -1412,20 +1412,19 @@ def execute_command(apt_cmd, extra_args):
         # Simulate apt-cache policy: show installed version and repo version
         pkg = extra_args[0] if extra_args else ""
         if pkg:
-            local = run_pacman(["pacman", "-Qi", pkg], capture_output=True, text=True)
-            remote = run_pacman(["pacman", "-Si", pkg], capture_output=True, text=True)
             console.print(f"[bold]{pkg}:[/bold]")
-            if local.returncode == 0:
-                for line in local.stdout.splitlines():
-                    if line.startswith("Version"):
-                        console.print(f"  Installed: {line.split(':', 1)[1].strip()}")
+            
+            # Check installed version
+            local_pkg = alpm_helper.get_local_package(pkg)
+            if local_pkg:
+                console.print(f"  Installed: {local_pkg.version}")
             else:
                 console.print(f"  {_('Installed:')} ({_('none')})")
             
-            if remote.returncode == 0:
-                for line in remote.stdout.splitlines():
-                    if line.startswith("Version"):
-                        console.print(f"  Candidate: {line.split(':', 1)[1].strip()}")
+            # Check candidate (repo) version
+            remote_pkg = alpm_helper.get_package(pkg)
+            if remote_pkg:
+                console.print(f"  Candidate: {remote_pkg.version}")
             return
     elif apt_cmd == "apt-mark":
         if not extra_args:
@@ -1733,11 +1732,11 @@ def execute_command(apt_cmd, extra_args):
     # If pacman_cmd was not set by a special handler above, set it now
     if 'pacman_cmd' not in locals():
         if apt_cmd == "autoremove":
-            check_orphans = subprocess.run(["pacman", "-Qdtq"], capture_output=True, text=True)
-            if not check_orphans.stdout.strip():
+            orphan_pkgs = alpm_helper.get_orphan_packages()
+            if not orphan_pkgs:
                 print_info(_("No orphaned packages to remove."))
                 return
-            orphans = check_orphans.stdout.split()
+            orphans = [pkg.name for pkg in orphan_pkgs]
             pacman_cmd = ["pacman", "-Rns"] + orphans
         else:
             pacman_cmd = ["pacman"] + pacman_args + extra_args
