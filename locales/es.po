@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: apt-pac 1.0\n"
 "Report-Msgid-Bugs-To: https://github.com/JotaRandom/apt-pac/issues\n"
-"POT-Creation-Date: 2026-01-04 23:11-0300\n"
+"POT-Creation-Date: 2026-01-17 00:08-0300\n"
 "PO-Revision-Date: 2025-12-31 01:48:00-0300\n"
 "Last-Translator: Auto-generated\n"
 "Language-Team: Spanish\n"
@@ -19,351 +19,432 @@ msgstr ""
 "X-Poedit-SearchPath-0: src/apt_pac\n"
 "X-Poedit-KeywordsList: _\n"
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:230
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:251
 msgid "Checking"
 msgstr ""
 
 # Common messages
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:230
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:251
 #, fuzzy
 msgid "foreign packages for updates..."
 msgstr "Leyendo lista de paquetes..."
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:310
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:331
 msgid "Pull failed for"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:310
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:331
 msgid "re-cloning..."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:314
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:335
 msgid "Removing incomplete directory for"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:449
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:472
 msgid "Possible solutions:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:450
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:473
 msgid "One of these packages may list the other as a dependency incorrectly"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:451
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:474
 msgid "Try installing packages individually"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:452
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:475
 msgid "Report this to"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:452
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:475
 msgid "maintainers:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:463
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:486
 msgid "Nothing to do."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:485
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:486
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:638
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:490
+#, fuzzy
+msgid "Building dependency tree... Done"
+msgstr "Creando árbol de dependencias..."
+
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:491
+#, fuzzy
+msgid "Reading state information... Done"
+msgstr "Leyendo la información de estado..."
+
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:508
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:509
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:642
 #, fuzzy
 msgid "Do you want to continue?"
 msgstr "¿Desea continuar? [S/n]"
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:487
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:629
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:540
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:582
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:635
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:639
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1552
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/__main__.py:16
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:508
+msgid "Yes"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:510
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:668
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:544
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:586
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:639
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:643
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1694
+#: /home/jota/Público/apt-pac/src/apt_pac/__main__.py:16
 msgid "Aborted."
 msgstr "Abortado."
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:510
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:512
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:533
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:535
 msgid "Processing"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:510
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:533
 msgid "split package"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:536
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:538
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:559
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:561
 msgid "Building"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:536
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:559
 msgid "provides"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:578
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:789
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:798
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:801
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:946
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:947
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:949
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:950
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1185
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1195
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1250
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1256
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1290
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1292
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1308
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1315
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1322
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:21
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:30
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:65
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:86
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:95
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:230
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:317
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:608
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:920
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:937
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:940
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1085
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1086
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1088
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1089
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1329
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1339
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1394
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1400
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1434
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1436
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1452
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1459
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1466
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:21
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:30
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:65
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:86
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:95
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:230
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:317
 msgid "E:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:578
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:608
 msgid "Cannot build"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:578
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:608
 msgid "packages as root without SUDO_USER set."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:579
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:609
 msgid "Please run as a normal user or via sudo."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:643
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:645
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:665
+#, fuzzy
+msgid "Do you want to continue? [Y/n] "
+msgstr "¿Desea continuar? [S/n]"
+
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:682
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:684
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:767
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:769
 msgid "Successfully installed"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:661
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:701
 msgid "GPG verification failed. Missing keys detected:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:665
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:705
 msgid "Importing key"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/aur.py:675
+#: /home/jota/Público/apt-pac/src/apt_pac/aur.py:715
 msgid "Retrying build..."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:377
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1652
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1655
+#: /home/jota/Público/apt-pac/src/apt_pac/cli.py:9
+msgid "APT-style wrapper for pacman"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/cli.py:19
+msgid "The apt command (install, remove, etc.)"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/cli.py:20
+msgid "Arguments for the command"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/cli.py:50
+msgid "Unknown version option:"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:381
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1794
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1797
 msgid "unknown"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:382
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:913
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:386
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1052
 msgid "0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:427
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:431
 msgid "Suggested packages:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:436
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:440
 msgid "The following packages are no longer required:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:438
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:442
 msgid "Use"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:438
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:442
 msgid "to remove them."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:448
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:452
 msgid "Summary:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:448
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:452
 msgid "Upgrading:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:448
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:452
 msgid "Installing:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:448
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:452
 msgid "Removals:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:448
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:452
 msgid "Not Upgrading:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:464
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:470
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:468
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:474
 msgid "Unknown"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:482
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:486
 msgid "Download Size:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:484
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:488
 msgid "Freed Space:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:486
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:490
 msgid "Installed Size:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:525
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:529
 msgid "Continue?"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:531
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:535
 msgid "Space needed:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:531
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:535
 msgid "available"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:532
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:536
 msgid "More space needed in"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:532
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:536
 msgid "than available"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:534
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:538
 msgid "Installation may fail, Continue?"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:578
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:582
 msgid "You are trying to remove a core system package:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:579
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:583
 msgid "Removing this package may render your system unbootable."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:580
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:584
 msgid "Yes, I know what I am doing"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:581
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:585
 msgid "To proceed, type"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:633
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:889
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1545
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/config.py:225
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/config.py:226
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:31
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:637
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1028
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1687
+#: /home/jota/Público/apt-pac/src/apt_pac/config.py:229
+#: /home/jota/Público/apt-pac/src/apt_pac/config.py:230
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:31
 msgid "W:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:633
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:637
 msgid "You are about to remove"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:633
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:637
 msgid "packages"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:634
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:638
 #, fuzzy
 msgid "Are you sure you want to proceed?"
 msgstr "¿Desea continuar? [S/n]"
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:746
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:753
-msgid "Setting up"
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:802
+msgid "Processing..."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:760
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:834
+msgid "Downloading"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:837
+msgid "Installing"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:840
+msgid "Upgrading"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:843
 msgid "Removing"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:771
-msgid "Processing triggers for"
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:846
+msgid "Checking keys"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:778
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1008
-msgid "Unable to locate package"
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:871
+msgid "Selecting previously unselected package"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:799
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:872
+msgid "Reading database"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:872
+msgid "files and directories currently installed"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:873
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:882
+msgid "Unpacking"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:881
+msgid "Preparing to unpack"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:892
+msgid "Processing triggers for system"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:901
+msgid "Setting up system"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:920
+msgid "Error running pacman: "
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:937
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:940
+msgid "Invalid operation "
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:938
 msgid "Did you mean:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:874
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1013
 msgid "Simulation mode enabled."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:880
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1019
 #, fuzzy
 msgid "Correcting dependencies..."
 msgstr "Creando árbol de dependencias..."
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:883
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1022
 msgid "Attempting to resolve broken dependencies via system upgrade..."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:887
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1590
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1734
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:49
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:50
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:51
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1026
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1732
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1876
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:49
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:50
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:51
 msgid "Done"
 msgstr "Listo"
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:889
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1028
 msgid "Run as root to attempt automatic fixes"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:896
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1102
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1227
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1302
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1356
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1592
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1035
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1246
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1371
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1446
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1500
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1734
 msgid "N:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:896
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1035
 msgid "Pacman doesn't install optional dependencies by default"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:910
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1728
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1049
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1870
 msgid "Skipping"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:910
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1049
 msgid "not installed"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:928
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1067
 msgid "...\"Have you mooed today?\"..."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:936
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1075
 msgid "...Waka waka!..."
 msgstr ""
 
 # Permission errors
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:946
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:949
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1085
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1088
 #, fuzzy
 msgid ""
 "Could not open lock file /var/lib/pacman/db.lck - open (13: Permission "
@@ -372,12 +453,12 @@ msgstr ""
 "E: No se pudo abrir el fichero de bloqueo /var/lib/pacman/db.lck - open (13: "
 "Permiso denegado)"
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:947
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1086
 #, fuzzy
 msgid "Unable to lock directory /var/lib/pacman/"
 msgstr "E: Imposible bloquear el directorio /var/lib/pacman/"
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:950
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1089
 #, fuzzy
 msgid ""
 "Unable to lock the administration directory (/var/lib/pacman/), are you root?"
@@ -385,398 +466,712 @@ msgstr ""
 "E: Imposible bloquear el directorio de administración (/var/lib/pacman/), "
 "¿es superusuario?"
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1025
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1146
+msgid "Unable to locate package"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1152
+msgid "Installing official packages:"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1163
 msgid ""
 "\n"
 "Interrupted."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1084
-msgid "Installed:"
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1166
+msgid "AUR Installation failed: "
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1084
-msgid "none"
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1174
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1183
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1259
+msgid "E"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1093
-msgid "Usage: apt-mark [auto|manual|hold|unhold] [package]"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1102
-msgid "Arch handles 'hold' via IgnorePkg in /etc/pacman.conf."
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1103
-msgid "Consider adding these packages to IgnorePkg manually."
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1113
-msgid "Database integrity:"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1113
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1122
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1131
-msgid "OK"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1122
-msgid "All packages:"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1129
-msgid "Broken libraries detected"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1131
-msgid "Library links:"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1149
-msgid "Package Statistics:"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1185
-msgid "No packages specified for source download"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1186
-msgid "Usage: apt source <package>"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1195
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1256
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1174
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1183
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1339
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1400
 msgid "No package specified"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1196
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1203
+msgid "Cleaning apt-pac cache"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1208
+msgid "Removed"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1228
+msgid "Installed:"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1228
+msgid "none"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1237
+msgid "Usage: apt-mark [auto|manual|hold|unhold] [package]"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1246
+msgid "Arch handles 'hold' via IgnorePkg in /etc/pacman.conf."
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1247
+msgid "Consider adding these packages to IgnorePkg manually."
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1250
+msgid "Subcommand "
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1250
+msgid " not yet implemented."
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1257
+msgid "Database integrity:"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1257
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1266
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1275
+msgid "OK"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1259
+msgid "error"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1259
+msgid "Database errors"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1264
+msgid "package warnings found"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1266
+msgid "All packages:"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1273
+msgid "Broken libraries detected"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1275
+msgid "Library links:"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1293
+msgid "Package Statistics:"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1297
+msgid "Total packages"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1301
+msgid "Installed packages"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1305
+msgid "Explicitly installed"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1309
+msgid "Installed as deps"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1313
+msgid "Orphaned packages"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1317
+msgid "Upgradable packages"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1323
+msgid "Cached package files"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1329
+msgid "No packages specified for source download"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1330
+msgid "Usage: apt source <package>"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1340
 msgid "Usage: apt build-dep <package>"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1207
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1351
 msgid "pactree (pacman-contrib) is required for dotty."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1215
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1344
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1359
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1488
 msgid "Adding repositories in Arch Linux differs from Debian/Ubuntu."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1216
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1345
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1360
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1489
 msgid "You need to edit /etc/pacman.conf and add a [section]."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1218
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1347
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1351
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1362
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1491
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1495
 msgid "Example"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1222
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1366
 msgid "Example (Generic)"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1227
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1356
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1371
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1500
 msgid "You may need to import GPG keys first using apt-key (pacman-key)."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1231
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1360
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1373
+msgid "How to add a repository"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1375
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1504
 msgid "Do you want to edit /etc/pacman.conf now?"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1250
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1394
 msgid "This command requires 'pacman-contrib' package"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1251
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:22
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1395
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:22
 msgid "Install with:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1282
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1426
 msgid "Pacman Configuration:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1290
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1434
 msgid "Cannot read /etc/pacman.conf"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1292
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1436
 msgid "Permission denied reading /etc/pacman.conf"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1297
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:373
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1441
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:374
 msgid "Usage:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1298
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1442
 msgid "Examples:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1299
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1443
 msgid "Import GPG key"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1300
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1444
 msgid "List all keys"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1301
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1445
 msgid "Remove key"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1302
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1446
 msgid "This is a wrapper for pacman-key"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1308
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1452
 msgid "No keyfile specified"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1315
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1459
 msgid "No key ID specified"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1351
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1466
+msgid "Unknown apt-key command: "
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1495
 msgid "Generic"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1377
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1521
 msgid "Usage: apt-cache showsrc <package>"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1398
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1542
 msgid "No orphaned packages to remove."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1484
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1626
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:141
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:228
 msgid "Package"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1484
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1626
 msgid "not found in repositories, local database, or"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1546
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1688
 msgid ""
 "Performing partial upgrades is [bold]unsupported[/bold] on Arch Linux and "
 "may break your system."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1547
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1689
 msgid "It is recommended to run"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1547
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1689
 msgid "first."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1550
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1692
 msgid "Proceed with partial operation?"
 msgstr ""
 
 # Common messages
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1590
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:49
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1732
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:49
 msgid "Reading package lists..."
 msgstr "Leyendo lista de paquetes..."
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1592
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1734
 msgid "'update --aur' simply checks official DBs as"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1592
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1734
 msgid "has no central DB to sync."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1611
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1753
 msgid "Ignoring selective flags for"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1611
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1753
 msgid "performing full system upgrade."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1633
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1775
 msgid "Checking for"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1633
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1775
 msgid "updates..."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1641
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1783
 msgid "Resolving"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1641
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1783
 #, fuzzy
 msgid "dependencies..."
 msgstr "Creando árbol de dependencias..."
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1662
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1804
 msgid "All"
 msgstr ""
 
 # Common messages
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1662
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1804
 #, fuzzy
 msgid "packages are up to date."
 msgstr "Leyendo lista de paquetes..."
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1664
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1806
 msgid "Failed to check"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1664
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1806
 msgid "updates:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1705
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1847
 msgid "Upgrade failed"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1709
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1851
 msgid "Skipping official packages upgrade (--aur provided)"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1728
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1870
 msgid "updates (--official provided)"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1732
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1874
 msgid "Syncing file database..."
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/commands.py:1734
+#: /home/jota/Público/apt-pac/src/apt_pac/commands.py:1876
 msgid "File database:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/config.py:225
+#: /home/jota/Público/apt-pac/src/apt_pac/config.py:229
 msgid "Cannot create cache directory - system appears to be read-only"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/config.py:226
+#: /home/jota/Público/apt-pac/src/apt_pac/config.py:230
 msgid "features will not be available"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/__main__.py:11
+#: /home/jota/Público/apt-pac/src/apt_pac/__main__.py:11
 msgid "Usage: apt <command> [arguments]"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:21
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:21
 msgid "pkgctl not installed"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:30
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:30
 msgid "Cache directory not available"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:31
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:31
 msgid "Cannot download source packages on read-only system"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:72
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:72
 msgid "Updating source for"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:75
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:75
 msgid "Getting source for"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:92
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:92
 msgid "Source downloaded to:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:221
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:221
 msgid ""
 "\n"
 "You can build this package with:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:241
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:241
 msgid "Downloading source for"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:262
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:262
 msgid "No build dependencies required for"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:267
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:267
 msgid "The following packages will be installed:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:296
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:296
 msgid "Source not cached, downloading"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/sources.py:317
+#: /home/jota/Público/apt-pac/src/apt_pac/sources.py:317
 msgid "Failed to parse PKGBUILD"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:50
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:50
 msgid "Building dependency tree..."
 msgstr "Creando árbol de dependencias..."
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:51
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:51
 msgid "Reading state information..."
 msgstr "Leyendo la información de estado..."
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:212
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:247
-msgid "Package Information"
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:142
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:229
+msgid "Version"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:314
-msgid "The following packages will be REMOVED:"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:325
-msgid "The following packages will be upgraded:"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:353
-msgid "The following NEW packages will be installed:"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:361
-msgid "The following extra packages will be installed:"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:373
-msgid "options"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:373
-msgid "command"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:375
-msgid "apt-pac is a commandline package manager wrapper for pacman."
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:376
-msgid "It provides an APT-like experience while ensuring system safety."
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:379
-msgid "Command"
-msgstr ""
-
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:380
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:143
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:234
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:381
 msgid "Description"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:422
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:144
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:235
+msgid "Architecture"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:145
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:233
+msgid "Homepage"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:146
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:160
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:231
+msgid "Section"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:147
+msgid "Tag"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:148
+msgid "Provides"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:149
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:239
+msgid "Depends"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:150
+msgid "Suggests"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:151
+msgid "Reverse-Depends"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:152
+msgid "Conflicts"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:153
+msgid "Replaces"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:154
+msgid "Download-Size"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:155
+msgid "Installed-Size"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:156
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:232
+msgid "Maintainer"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:157
+msgid "Build-Date"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:158
+msgid "Install-Date"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:159
+msgid "APT-Manual-Installed"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:213
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:248
+msgid "Package Information"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:230
+msgid "Priority"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:243
+msgid "Build-Depends"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:245
+msgid "Vote-Count"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:246
+msgid "Popularity"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:315
+msgid "The following packages will be REMOVED:"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:326
+msgid "The following packages will be upgraded:"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:354
+msgid "The following NEW packages will be installed:"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:362
+msgid "The following extra packages will be installed:"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:374
+msgid "options"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:374
+msgid "command"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:376
+msgid "apt-pac is a commandline package manager wrapper for pacman."
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:377
+msgid "It provides an APT-like experience while ensuring system safety."
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:380
+msgid "Command"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:384
+msgid "update list of available packages (syncs -Sy and -Fy)"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:385
+msgid "upgrade the system by installing/upgrading packages"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:386
+msgid "same as upgrade"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:387
+msgid "install packages (supports local .pkg.tar.zst files)"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:388
+msgid "reinstall packages"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:389
+msgid "remove packages"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:390
+msgid "remove packages and their configurations"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:391
+msgid "remove automatically all unused packages"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:392
+msgid "search in package descriptions (default: Official + AUR)"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:393
+msgid "show package details"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:394
+msgid ""
+"list packages (--installed, --upgradable, --manual-installed, --all-"
+"versions, --repo)"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:395
+msgid "show package dependencies (uses pactree if available)"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:396
+#, fuzzy
+msgid "show reverse dependencies"
+msgstr "Creando árbol de dependencias..."
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:397
+msgid "show package install/removal scripts"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:398
+msgid "view package changelog"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:399
+msgid "show package version and candidate information"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:400
+msgid "mark/unmark packages as auto/manual"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:401
+msgid "verify package database and system integrity"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:402
+msgid "list all available package names"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:403
+msgid "show package statistics"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:404
+msgid "generate dependency graph in GraphViz format"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:405
+msgid "show available versions of a package"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:406
+msgid "display pacman configuration"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:407
+msgid "manage GPG keys for package verification"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:408
+msgid "show how to add repositories"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:409
+msgid "download packages without installing (pacman -Sw)"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:410
+msgid "download package source (uses pkgctl)"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:411
+msgid "show source package information"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:412
+msgid "show how to install build dependencies"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:413
+msgid "edit the pacman.conf information file"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:414
+msgid "remove all cached package files (pacman -Scc)"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:415
+msgid "erase old downloaded archives (keeps last 3)"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:416
+msgid "search for packages containing a file"
+msgstr ""
+
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:423
 msgid "Most used commands:"
 msgstr ""
 
-#: /mnt/c/Users/Usuario/source/repos/apt-pac/src/apt_pac/ui.py:424
+#: /home/jota/Público/apt-pac/src/apt_pac/ui.py:425
 msgid "This APT has Super Pacman Powers."
 msgstr ""
 
