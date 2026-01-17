@@ -771,9 +771,6 @@ def sync_databases(cmd=None):
 
                       # heuristic: check if any map key is in the line (fallback)
                       if not repo and repo_url_map:
-                      
-                      # heuristic: check if any map key is in the line
-                      if not repo and repo_url_map:
                            for r in repo_url_map:
                                if r in line_clean:
                                    repo = r
