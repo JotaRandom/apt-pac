@@ -37,15 +37,20 @@ class TestUpgrade(unittest.TestCase):
                 return sim_mock
             elif "-Qi" in cmd:
                 return qi_mock
+            elif "-Qdtq" in cmd: return MagicMock(returncode=1, stdout="")
             elif "-Q" in cmd and "-Qi" not in cmd and "-Qq" not in cmd: 
                 # Check installed (pacman -Q args)
                 # Output format: name version
                 return MagicMock(returncode=0, stdout="pkg 1.0\n")
+            elif "-Qu" in cmd:
+                return MagicMock(returncode=0, stdout="pkg 1.0 -> 2.0\n")
             return MagicMock(returncode=0)
 
         with patch.object(commands, 'run_pacman', side_effect=side_effect) as mock_run, \
              patch.object(commands, 'run_pacman_with_apt_output', return_value=True) as mock_run_apt, \
-             patch('subprocess.run', return_value=MagicMock(returncode=0)):
+             patch('subprocess.run') as mock_sub:
+             
+             mock_sub.side_effect = side_effect
              
              # Run upgrade (interactive)
              commands.execute_command("upgrade", [])
@@ -73,13 +78,17 @@ class TestUpgrade(unittest.TestCase):
         def side_effect(cmd, **kwargs):
             if "-Sp" in cmd: return sim_mock
             if "-Qi" in cmd: return qi_mock
+            if "-Qdtq" in cmd: return MagicMock(returncode=1, stdout="")
             if "-Q" in cmd and "-Qi" not in cmd and "-Qq" not in cmd:
                  return MagicMock(returncode=0, stdout="pkg 1.0\n")
+            if "-Qu" in cmd: return MagicMock(returncode=0, stdout="pkg 1.0 -> 2.0\n")
             return MagicMock(returncode=0)
 
         with patch.object(commands, 'run_pacman', side_effect=side_effect) as mock_run, \
              patch.object(commands, 'run_pacman_with_apt_output', return_value=True) as mock_run_apt, \
-             patch('subprocess.run', return_value=MagicMock(returncode=0)):
+             patch('subprocess.run') as mock_sub:
+             
+             mock_sub.side_effect = side_effect
              
              # Update global auto_confirm via flag? No, pass extra_args=["-y"]?
              # But run_pacman parses args internally?

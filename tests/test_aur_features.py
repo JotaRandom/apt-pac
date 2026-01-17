@@ -200,7 +200,8 @@ class TestAurFeatures(unittest.TestCase):
              # Fix: Mock pathlib.Path.iterdir to avoid FileNotFoundError
              # and return a dummy package file for the install step
              with patch('pathlib.Path.iterdir') as mock_iterdir, \
-                  patch('apt_pac.aur.is_valid_package', return_value=True):
+                  patch('apt_pac.aur.is_valid_package', return_value=True), \
+                  patch('apt_pac.commands.run_pacman_with_apt_output', return_value=True):
                  
                  mock_pkg = MagicMock()
                  mock_pkg.stem = "package-query-1.9-1-any"
@@ -281,7 +282,8 @@ class TestAurFeatures(unittest.TestCase):
              
         mock_run.side_effect = side_effect
         
-        execute_command("install", ["testpkg"])
+        with patch('apt_pac.commands.run_pacman_with_apt_output', return_value=True):
+             execute_command("install", ["testpkg"])
         
         # Verify ui.print_apt_download_line called
         # It uses ui.console, so proper mock is mock_ui_console
@@ -478,7 +480,10 @@ class TestPrivileges(unittest.TestCase):
              mock_conf_obj.get.side_effect = lambda s, k, d: "sudo" if k == "privilege_tool" else d
              mock_config.return_value = mock_conf_obj
              
-             installer._build_pkg(pkg_info, verbose=False, auto_confirm=True)
+             # Mock built package findings
+             with patch.object(Path, 'glob', return_value=[Path("test-pkg-1.0-1-any.pkg.tar.zst")]), \
+                  patch('apt_pac.commands.run_pacman_with_apt_output', return_value=True): 
+                  installer._build_pkg(pkg_info, verbose=False, auto_confirm=True)
         
         # Check that subprocess.run was called with sudo
         found_sudo = False
@@ -535,7 +540,7 @@ class TestEasterEggs(unittest.TestCase):
         
         found_pacman = False
         for call_args in mock_console.print.call_args_list:
-            if ".--." in str(call_args[0][0]): # Top of head
+            if "Waka waka" in str(call_args[0][0]): 
                 found_pacman = True
                 break
         self.assertTrue(found_pacman)

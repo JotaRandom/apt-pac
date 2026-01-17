@@ -277,7 +277,7 @@ class TestUpgradeLogic(unittest.TestCase):
         # using str(call) to match rich markup
         printed = False
         for call in mock_console.print.call_args_list:
-            if "WARNING:" in str(call):
+            if "W:" in str(call) or "You are about to remove" in str(call):
                 printed = True
                 break
         self.assertTrue(printed, "Mass removal warning not displayed")

@@ -57,7 +57,7 @@ class TestAurInstallLogic(unittest.TestCase):
         print("  Official package 'git' passed to pacman.")
         
         # Verify AUR installer called for google-chrome
-        mock_installer_instance.install.assert_called_with(["google-chrome"], verbose=False)
+        mock_installer_instance.install.assert_called_with(["google-chrome"], verbose=False, auto_confirm=False)
         print("  AUR package 'google-chrome' passed to AurInstaller.")
 
     @patch('apt_pac.aur.AurInstaller')
@@ -71,7 +71,8 @@ class TestAurInstallLogic(unittest.TestCase):
         
         mock_is_official.return_value = True
         
-        commands.execute_command("install", ["git"])
+        with patch('apt_pac.commands.run_pacman_with_apt_output', return_value=True):
+             commands.execute_command("install", ["git"])
         
         # Should set pacman_cmd standard flow, not trigger installer directly
         # Wait, my logic calls installer directly ONLY if aur_pkgs list is not empty.

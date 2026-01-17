@@ -682,6 +682,7 @@ class AurInstaller:
                 ui.console.print(f"[success]{_('Successfully installed')} {', '.join(split_pkgs)}[/success]")
             else:
                 ui.console.print(f"[success]{_('Successfully installed')} {name}[/success]")
+            return
             
         except subprocess.CalledProcessError as e:
             # Check for GPG errors
@@ -761,6 +762,13 @@ class AurInstaller:
                         if not success:
                             print_error(_(f"Failed to install {name}"))
                             sys.exit(1)
+                        
+                        if is_split:
+                             ui.console.print(f"[success]{_('Successfully installed')} {', '.join(split_pkgs)}[/success]")
+                        else:
+                             ui.console.print(f"[success]{_('Successfully installed')} {name}[/success]")
+                        return
+                        
                     except subprocess.CalledProcessError:
                          pass # Fallthrough to failure message
 

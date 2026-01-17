@@ -1,6 +1,6 @@
 [project]
 name = "apt-pac"
-version = "2026.01.01"
+version = "2026.01.17"
 description = "An APT-style wrapper for pacman with beautiful output"
 readme = "README.md"
 authors = [

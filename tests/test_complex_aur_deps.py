@@ -102,17 +102,13 @@ class TestComplexAurDeps(unittest.TestCase):
 
         # Execute
         installer = aur.AurInstaller()
-        try:
-             installer.install(['target-pkg'])
-        except Exception as e:
-             print(f"DEBUG: Exception during install: {e}")
-             import traceback
-             traceback.print_exc()
-             pass # Installer exits or fails on build, but we verify summary first.
-             
+        with patch('sys.exit') as mock_exit:
+            installer.install(['target-pkg'])
         # VERIFICATION
-        self.mock_summary.assert_called_once()
-        kwargs = self.mock_summary.call_args.kwargs
+        # It may be called multiple times (once for plan, once per package build)
+        self.assertTrue(self.mock_summary.called)
+        # Check the first call (the plan)
+        kwargs = self.mock_summary.call_args_list[0].kwargs
         
         new_pkgs = kwargs.get('new_pkgs', [])
         explicit_names = kwargs.get('explicit_names', set())

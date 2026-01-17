@@ -1554,12 +1554,10 @@ def execute_command(apt_cmd, extra_args):
         
         # Determine Search Scope
         scope = "both"
-        if "--aur" in extra_args:
+        if only_aur:
             scope = "aur"
-            extra_args = [a for a in extra_args if a != "--aur"]
-        elif "--official" in extra_args:
+        elif only_official:
             scope = "official"
-            extra_args = [a for a in extra_args if a != "--official"]
             
         pacman_cmd = ["pacman"] + pacman_args + extra_args
 
@@ -1881,6 +1879,8 @@ def execute_command(apt_cmd, extra_args):
         else:
             # For install/reinstall/remove/purge/autoremove: use APT-style output with hooks
             if apt_cmd in ["install", "reinstall", "remove", "purge", "autoremove"]:
+                if not is_simulation:
+                    simulate_apt_download_output(current_cmd, config)
                 success = run_pacman_with_apt_output(current_cmd, show_hooks=True)
                 if not success:
                     sys.exit(1)
