@@ -84,3 +84,93 @@ def get_local_package(pkgname: str):
     """Get an installed package by name."""
     handle = get_handle()
     return handle.get_localdb().get_pkg(pkgname)
+
+def get_installed_packages(foreign_only=False, explicit_only=False, deps_only=False) -> List:
+    """
+    Get list of installed packages.
+    
+    Args:
+        foreign_only: Only packages not in any sync repo (AUR packages)
+        explicit_only: Only explicitly installed packages
+        deps_only: Only packages installed as dependencies
+    
+    Returns:
+        List of Package objects
+    """
+    handle = get_handle()
+    localdb = handle.get_localdb()
+    packages = list(localdb.pkgcache)
+    
+    if foreign_only:
+        # Filter to packages not in any sync DB
+        sync_pkgs = set()
+        for db in handle.get_syncdbs():
+            sync_pkgs.update(pkg.name for pkg in db.pkgcache)
+        packages = [pkg for pkg in packages if pkg.name not in sync_pkgs]
+    
+    if explicit_only:
+        packages = [pkg for pkg in packages if pkg.reason == pyalpm.PKG_REASON_EXPLICIT]
+    
+    if deps_only:
+        packages = [pkg for pkg in packages if pkg.reason == pyalpm.PKG_REASON_DEPEND]
+    
+    return packages
+
+def get_orphan_packages() -> List:
+    """
+    Get orphaned packages (installed as deps but no longer required).
+    
+    Returns:
+        List of Package objects
+    """
+    handle = get_handle()
+    localdb = handle.get_localdb()
+    
+    orphans = []
+    for pkg in localdb.pkgcache:
+        if pkg.reason == pyalpm.PKG_REASON_DEPEND:
+            # Check if any package requires this one
+            rdeps = pkg.compute_requiredby()
+            if not rdeps:
+                orphans.append(pkg)
+    
+    return orphans
+
+def get_available_updates() -> List[tuple]:
+    """
+    Get list of packages with available updates.
+    
+    Returns:
+        List of tuples: (package_name, current_version, new_version)
+    """
+    handle = get_handle()
+    localdb = handle.get_localdb()
+    updates = []
+    
+    for local_pkg in localdb.pkgcache:
+        # Find this package in sync repos
+        new_pkg = None
+        for syncdb in handle.get_syncdbs():
+            new_pkg = syncdb.get_pkg(local_pkg.name)
+            if new_pkg:
+                break
+        
+        if new_pkg:
+            # Compare versions
+            cmp = pyalpm.vercmp(new_pkg.version, local_pkg.version)
+            if cmp > 0:  # new version is greater
+                updates.append((local_pkg.name, local_pkg.version, new_pkg.version))
+    
+    return updates
+
+def get_all_repo_packages() -> List:
+    """Get all packages available in sync repos."""
+    handle = get_handle()
+    packages = []
+    for db in handle.get_syncdbs():
+        packages.extend(db.pkgcache)
+    return packages
+
+def is_package_installed(pkgname: str) -> bool:
+    """Check if a package is installed."""
+    return get_local_package(pkgname) is not None

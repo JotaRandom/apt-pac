@@ -433,11 +433,9 @@ def show_summary(apt_cmd, extra_args, auto_confirm=False, aur_new=None, aur_upgr
              print_columnar_list(final_suggestions, "default")
 
     # Show Orphans / No longer required
-    # Only if NOT upgrading specific packages? Usually 'upgrade' shows this. 'install' sometimes does too.
-    # Logic: simple run of pacman -Qdtq
-    orphans_res = subprocess.run(["pacman", "-Qdtq"], capture_output=True, text=True)
-    if orphans_res.returncode == 0 and orphans_res.stdout.strip():
-        orphans = orphans_res.stdout.splitlines()
+    orphan_pkgs = alpm_helper.get_orphan_packages()
+    if orphan_pkgs:
+        orphans = [pkg.name for pkg in orphan_pkgs]
         console.print(f"\n[bold]{_('The following packages are no longer required:')}[/bold]")
         print_columnar_list(orphans, "dim")
         console.print(f"{_('Use')} [bold]apt-pac autoremove[/bold] {_('to remove them.')}")
@@ -552,7 +550,8 @@ def get_protected_packages():
     
     # Detect kernels
     try:
-        kernels = subprocess.run(["pacman", "-Qq"], capture_output=True, text=True).stdout.splitlines()
+        installed = alpm_helper.get_installed_packages()
+        kernels = [pkg.name for pkg in installed]
         detected_kernels = {pkg for pkg in kernels if pkg.startswith("linux")}
         core_packages.update(detected_kernels)
     except Exception:
@@ -561,8 +560,7 @@ def get_protected_packages():
     # Detect bootloaders
     bootloader_hints = ["grub", "limine", "syslinux", "efibootmgr"]
     try:
-        pkgs = subprocess.run(["pacman", "-Qq"], capture_output=True, text=True).stdout.splitlines()
-        detected_bootloaders = {pkg for pkg in pkgs if any(hint in pkg for hint in bootloader_hints)}
+        detected_bootloaders = {pkg for pkg in kernels if any(hint in pkg for hint in bootloader_hints)}
         core_packages.update(detected_bootloaders)
     except Exception:
         pass
@@ -1207,8 +1205,7 @@ def execute_command(apt_cmd, extra_args):
         if apt_cmd == "install":
             pkgs_to_upgrade = []
             for pkg in extra_args:
-                check = subprocess.run(["pacman", "-Qq", pkg], capture_output=True)
-                if check.returncode == 0:
+                if alpm_helper.is_package_installed(pkg):
                     pkgs_to_upgrade.append(pkg)
                 else:
                     console.print(f"[info]{_('Skipping')} {pkg} ({_('not installed')})[/info]")
@@ -1490,28 +1487,29 @@ def execute_command(apt_cmd, extra_args):
     elif apt_cmd == "stats":
         console.print(f"\n[bold]{_('Package Statistics:')}[/bold]\n")
         
-        total_avail = subprocess.run(["pacman", "-Slq"], capture_output=True, text=True)
-        num_avail = len(total_avail.stdout.splitlines())
+        # Use pyalpm for all queries
+        all_repo_pkgs = alpm_helper.get_all_repo_packages()
+        num_avail = len(all_repo_pkgs)
         console.print(f"  {_('Total packages')}:          [pkg]{num_avail}[/pkg]")
         
-        total_installed = subprocess.run(["pacman", "-Qq"], capture_output=True, text=True)
-        num_installed = len(total_installed.stdout.splitlines())
+        installed_pkgs = alpm_helper.get_installed_packages()
+        num_installed = len(installed_pkgs)
         console.print(f"  {_('Installed packages')}:      [pkg]{num_installed}[/pkg]")
         
-        explicit = subprocess.run(["pacman", "-Qeq"], capture_output=True, text=True)
-        num_explicit = len(explicit.stdout.splitlines())
+        explicit_pkgs = alpm_helper.get_installed_packages(explicit_only=True)
+        num_explicit = len(explicit_pkgs)
         console.print(f"  {_('Explicitly installed')}:    [pkg]{num_explicit}[/pkg]")
         
-        deps = subprocess.run(["pacman", "-Qdq"], capture_output=True, text=True)
-        num_deps = len(deps.stdout.splitlines())
+        deps_pkgs = alpm_helper.get_installed_packages(deps_only=True)
+        num_deps = len(deps_pkgs)
         console.print(f"  {_('Installed as deps')}:       [pkg]{num_deps}[/pkg]")
         
-        orphans = subprocess.run(["pacman", "-Qdtq"], capture_output=True, text=True)
-        num_orphans = len(orphans.stdout.strip().splitlines()) if orphans.stdout.strip() else 0
+        orphan_pkgs = alpm_helper.get_orphan_packages()
+        num_orphans = len(orphan_pkgs)
         console.print(f"  {_('Orphaned packages')}:       [pkg]{num_orphans}[/pkg]")
         
-        updates = subprocess.run(["pacman", "-Qu"], capture_output=True, text=True)
-        num_updates = len(updates.stdout.splitlines()) if updates.returncode == 0 else 0
+        updates = alpm_helper.get_available_updates()
+        num_updates = len(updates)
         console.print(f"  {_('Upgradable packages')}:     [pkg]{num_updates}[/pkg]")
         
         cache_path = "/var/cache/pacman/pkg"
@@ -1897,10 +1895,10 @@ def execute_command(apt_cmd, extra_args):
     # Check for Partial Upgrades (Arch Best Practice)
     # If installing/removing software while system is out of date, warn user.
     if apt_cmd in ["install", "reinstall", "remove", "purge", "autoremove"] and not is_simulation:
-        # Check updates without syncing (-Qu)
-        check_updates = subprocess.run(["pacman", "-Qu"], capture_output=True, text=True)
-        if check_updates.returncode == 0 and check_updates.stdout.strip():
-             num_updates = len(check_updates.stdout.splitlines())
+        # Check updates without syncing
+        updates = alpm_helper.get_available_updates()
+        if updates:
+             num_updates = len(updates)
              
              prog_name = os.path.basename(sys.argv[0])
              if prog_name.endswith(".py"): # Fallback if running via python -m

@@ -198,31 +198,22 @@ def get_installed_packages() -> Dict[str, str]:
     Get all installed packages and their versions.
     Returns: Dict[package_name, version]
     """
+    from . import alpm_helper
     try:
-        result = subprocess.run(["pacman", "-Q"], capture_output=True, text=True)
         packages = {}
-        for line in result.stdout.splitlines():
-            if not line.strip(): continue
-            parts = line.split()
-            if len(parts) >= 2:
-                packages[parts[0]] = parts[1]
+        for pkg in alpm_helper.get_installed_packages():
+            packages[pkg.name] = pkg.version
         return packages
     except Exception:
         return {}
 
 def get_installed_aur_packages() -> List[str]:
     """
-    Get list of installed packages that are NOT in official repos.
-    Uses 'pacman -Qm' (foreign packages).
+    Get list of installed packages that are NOT in official repos (AUR packages).
     """
+    from . import alpm_helper
     try:
-        result = subprocess.run(["pacman", "-Qm"], capture_output=True, text=True)
-        packages = []
-        for line in result.stdout.splitlines():
-            if not line.strip(): continue
-            parts = line.split()
-            if len(parts) >= 1:
-                packages.append(parts[0])
+        packages = [pkg.name for pkg in alpm_helper.get_installed_packages(foreign_only=True)]
         return packages
     except Exception:
         return []
