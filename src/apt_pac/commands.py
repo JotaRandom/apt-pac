@@ -1472,14 +1472,19 @@ def execute_command(apt_cmd, extra_args):
         return
     
     elif apt_cmd == "pkgnames":
+        # Use pyalpm to list package names
+        all_pkgs = alpm_helper.get_all_repo_packages()
+        
         if extra_args:
-            result = run_pacman(["pacman", "-Slq"], capture_output=True, text=True)
+            # Filter by prefix
             prefix = extra_args[0]
-            filtered = [line for line in result.stdout.splitlines() if line.startswith(prefix)]
-            for pkg in filtered:
-                print(pkg)
+            for pkg in all_pkgs:
+                if pkg.name.startswith(prefix):
+                    print(pkg.name)
         else:
-            subprocess.run(["pacman", "-Slq"])
+            # Print all package names
+            for pkg in all_pkgs:
+                print(pkg.name)
         return
     
     elif apt_cmd == "stats":
@@ -1598,22 +1603,15 @@ def execute_command(apt_cmd, extra_args):
         console.print(f"[bold]{pkg}:[/bold]")
         
         # Show installed version
-        local = subprocess.run(["pacman", "-Qi", pkg], capture_output=True, text=True)
-        if local.returncode == 0:
-            for line in local.stdout.splitlines():
-                if line.startswith("Version"):
-                    version = line.split(':', 1)[1].strip()
-                    console.print(f"  {version} | Installed")
+        local_pkg = alpm_helper.get_local_package(pkg)
+        if local_pkg:
+            console.print(f"  {local_pkg.version} | Installed")
         
         # Show repo version
-        remote = subprocess.run(["pacman", "-Si", pkg], capture_output=True, text=True)
-        if remote.returncode == 0:
-            for line in remote.stdout.splitlines():
-                if line.startswith("Repository"):
-                    repo = line.split(':', 1)[1].strip()
-                if line.startswith("Version"):
-                    version = line.split(':', 1)[1].strip()
-                    console.print(f"  {version} | {repo}")
+        remote_pkg = alpm_helper.get_package(pkg)
+        if remote_pkg:
+            repo = remote_pkg.db.name if hasattr(remote_pkg, 'db') else 'unknown'
+            console.print(f"  {remote_pkg.version} | {repo}")
         return
     
     elif apt_cmd == "config":
