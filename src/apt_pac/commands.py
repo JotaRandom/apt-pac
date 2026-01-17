@@ -756,17 +756,31 @@ def sync_databases(cmd=None):
                       parts = line_clean.split()
                       repo = ""
                       
-                      # Find word after "downloading"
+                      # Find word containing "downloading"
                       try:
-                          # Use lower parts for finding index, but original parts for extraction
-                          lower_parts = [p.lower() for p in parts]
-                          if "downloading" in lower_parts:
-                              idx = lower_parts.index("downloading")
+                          # Find index of word matching "downloading"
+                          idx = -1
+                          for i, p in enumerate(parts):
+                              if "downloading" in p.lower():
+                                  idx = i
+                                  break
+                          
+                          if idx != -1:
+                              # Check word After (downloading core...)
                               if idx + 1 < len(parts):
                                   candidate = parts[idx + 1]
-                                  # Clean candidate
-                                  repo = candidate.replace("...", "").replace(".db", "").replace(".files", "")
-                      except ValueError:
+                                  # Heuristic: usually repo names are alphanumeric. 
+                                  # If candidate is "...", skip.
+                                  if "..." not in candidate: 
+                                       repo = candidate.replace("...", "").replace(".db", "").replace(".files", "")
+                              
+                              # Check word Before (core downloading...) if not found after
+                              if not repo and idx - 1 >= 0:
+                                  candidate = parts[idx - 1]
+                                  # Ignore "::"
+                                  if candidate != "::":
+                                       repo = candidate.replace("...", "").replace(".db", "").replace(".files", "")
+                      except Exception:
                           pass
 
                       # heuristic: check if any map key is in the line (fallback)
