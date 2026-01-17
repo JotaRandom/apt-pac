@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.8"
 dependencies = [
     "rich>=10.0.0",
+    "pyalpm",
 ]
 
 [project.scripts]

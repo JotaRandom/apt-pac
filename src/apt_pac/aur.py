@@ -232,11 +232,17 @@ def version_compare(ver1: str, ver2: str) -> int:
     Compare two versions using vercmp.
     Returns: <0 if ver1<ver2, 0 if equal, >0 if ver1>ver2
     """
+    # Try using pyalpm for native performance
     try:
-        result = subprocess.run(["vercmp", ver1, ver2], capture_output=True, text=True)
-        return int(result.stdout.strip())
-    except (ValueError, Exception):
-        return 0
+        import pyalpm
+        return pyalpm.vercmp(ver1, ver2)
+    except (ImportError, AttributeError):
+        # Fallback to subprocess if pyalpm not available
+        try:
+            result = subprocess.run(["vercmp", ver1, ver2], capture_output=True, text=True)
+            return int(result.stdout.strip())
+        except (ValueError, Exception):
+            return 0
 
 def check_updates(verbose=False) -> List[Dict]:
     """
