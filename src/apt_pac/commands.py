@@ -1281,7 +1281,8 @@ def execute_command(apt_cmd, extra_args):
                     sync_pkg = alpm_helper.get_package(pkg_name)
                     repo = sync_pkg.db.name if sync_pkg else 'unknown'
                     # Use consistent format: pkgname/repo old_ver -> new_ver
-                    console.print(f"[bold green]{pkg_name}[/bold green]/[bold blue]{repo}[/bold blue] {old_ver} -> [bold]{new_ver}[/bold]")
+                    console.print(f"[bold green]{pkg_name}[/bold green]/[bold blue]{repo}[/bold blue] [bold]{old_ver}[/bold] -> [bold]{new_ver}[/bold]", highlight=False)
+
             else:
                 console.print(_("All packages are up to date."))
             
@@ -1334,7 +1335,7 @@ def execute_command(apt_cmd, extra_args):
                 else:
                     install_type = "[installed]"
                 
-                console.print(f"{name_repo} [bold]{pkg.version}[/bold] {arch} {install_type}")
+                console.print(f"{name_repo} [bold]{pkg.version}[/bold] {arch} {install_type}", highlight=False)
             
             extra_args = [a for a in extra_args if a != "--installed"]
             return
@@ -1350,9 +1351,10 @@ def execute_command(apt_cmd, extra_args):
                     repo = sync_pkg.db.name
                 
                 # Use consistent format
-                console.print(f"[bold green]{pkg.name}[/bold green]/[bold blue]{repo}[/bold blue] [bold]{pkg.version}[/bold]")
+                console.print(f"[bold green]{pkg.name}[/bold green]/[bold blue]{repo}[/bold blue] [bold]{pkg.version}[/bold]", highlight=False)
             
             extra_args = [a for a in extra_args if a != "--manual-installed"]
+
             return
         elif "--all-versions" in extra_args:
             # Use native pyalpm to show all available versions from repos
@@ -1360,10 +1362,14 @@ def execute_command(apt_cmd, extra_args):
             
             for pkg in sorted(all_packages, key=lambda p: p.name):
                 repo = pkg.db.name
-                # Use consistent format
-                console.print(f"[bold green]{pkg.name}[/bold green]/[bold blue]{repo}[/bold blue] [bold]{pkg.version}[/bold]")
+                arch = pkg.arch
+                if arch == 'any':
+                    arch = 'all'
+                # Use consistent format with architecture
+                console.print(f"[bold green]{pkg.name}[/bold green]/[bold blue]{repo}[/bold blue] [bold]{pkg.version}[/bold] {arch}", highlight=False)
             
             extra_args = [a for a in extra_args if a != "--all-versions"]
+
             return
         elif any(a.startswith("--repo") for a in extra_args):
             repo = next((a.split("=")[1] for a in extra_args if a.startswith("--repo=")), None)

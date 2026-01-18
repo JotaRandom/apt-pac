@@ -2,7 +2,7 @@
 
 pkgname=apt-pac-git
 _pkgname=apt-pac
-pkgver=2026.01.18.r62.e44a8ac
+pkgver=2026.01.18.r64.99a9e3a
 pkgrel=1
 pkgdesc="An APT-style wrapper for pacman with APT-like output"
 arch=('any')
