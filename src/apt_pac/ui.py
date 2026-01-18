@@ -265,9 +265,9 @@ def print_columnar_list(pkgs, color_tag="green"):
     max_len = max(Text.from_markup(p).cell_len for p in pkgs)
     
     # Calculate columns vs width
-    # Account for: indentation (3) + minimal spacing between columns
+    # Account for: indentation (4) + minimal spacing between columns
     # Table uses padding=(0, 1) which adds 2 spaces per column
-    available_width = width - 3  # Just the left indent
+    available_width = width - 4  # Left indent
     
     # Calculate how many columns fit with spacing
     # Each column takes: max_len + 2 (table padding)
@@ -294,8 +294,8 @@ def print_columnar_list(pkgs, color_tag="green"):
             row_buffer.append("")
         table.add_row(*row_buffer)
     
-    # Indent by 3 spaces
-    console.print(Padding(table, (0, 0, 0, 3)))
+    # Indent by 4 spaces
+    console.print(Padding(table, (0, 0, 0, 4)))
     console.print()
 
 def print_transaction_summary(
