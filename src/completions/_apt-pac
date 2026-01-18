@@ -40,6 +40,7 @@ _apt_pac() {
         'key:Manage GPG keys (alias)'
         'add-repository:Add repository info'
         'download:Download packages without installing'
+        'help:Show package manpage'
         'moo:Have you mooed today?'
         'pacman:Waka waka!'
     )

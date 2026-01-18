@@ -144,6 +144,13 @@ Shows comprehensive details about a package. It attempts to find the package in 
 .br
 The output fields are remapped to match standard APT output (e.g. 'Name' becomes 'Package', 'URL' becomes 'Homepage').
 .TP
+.B help \fIPACKAGE\fR
+(man \fIPACKAGE\fR)
+.br
+Display the manual page for a package
+.br
+Opens the manual page for the specified package (man <package>). If the package is not installed or has no manpage, it will display an error or fallback to suggesting 'apt-pac show'.
+.TP
 .B list [\fIOPTIONS\fR]
 (pacman -Q, -Qu, -Qe, -Sl)
 .br
