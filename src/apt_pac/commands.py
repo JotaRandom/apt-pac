@@ -1348,8 +1348,9 @@ def execute_command(apt_cmd, extra_args):
         if pkg:
             console.print(f"[bold]{pkgname}[/bold]")
             if pkg.depends:
-                for dep in pkg.depends:
-                    console.print(f"  {dep}")
+                # Convert to list and display in columns
+                deps_list = [str(dep) for dep in pkg.depends]
+                print_columnar_list(deps_list, "default")
             else:
                 console.print(f"  {_('(no dependencies)')}")
         else:
@@ -1372,8 +1373,8 @@ def execute_command(apt_cmd, extra_args):
             # compute_requiredby returns list of package names that depend on this package
             rdeps = pkg.compute_requiredby()
             if rdeps:
-                for dep in rdeps:
-                    console.print(f"  {dep}")
+                # Display in columns
+                print_columnar_list(rdeps, "default")
             else:
                 console.print(f"  {_('(no reverse dependencies)')}")
         else:
