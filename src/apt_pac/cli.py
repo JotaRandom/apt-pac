@@ -27,9 +27,16 @@ def parse_args():
         try:
             result = subprocess.run(["pacman", "--version"], capture_output=True, text=True)
             if result.returncode == 0:
-                # Extract version from first line (format: "Pacman v6.0.1 - libalpm v13.0.1")
+                # Extract version from first line (format: " .--.                  Pacman v6.0.1 - libalpm v13.0.1")
                 first_line = result.stdout.strip().split('\n')[0]
-                pacman_version = first_line
+                # Filter out ASCII art
+                if "Pacman v" in first_line:
+                    start_idx = first_line.find("Pacman v")
+                    clean_line = first_line[start_idx:]
+                    # Split into lines (Pacman vX - libalpm vY -> Pacman vX\nlibalpm vY)
+                    pacman_version = clean_line.replace(" - ", "\n")
+                else:
+                    pacman_version = first_line
         except:
             pacman_version = "unknown"
         
