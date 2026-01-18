@@ -1280,8 +1280,13 @@ def execute_command(apt_cmd, extra_args):
                     # Get repo from sync package
                     sync_pkg = alpm_helper.get_package(pkg_name)
                     repo = sync_pkg.db.name if sync_pkg else 'unknown'
+                    
+                    # Determine arrow color
+                    import pyalpm
+                    arrow_color = "red" if pyalpm.vercmp(new_ver, old_ver) < 0 else "green"
+                    
                     # Use consistent format: pkgname/repo old_ver -> new_ver
-                    console.print(f"[bold green]{pkg_name}[/bold green]/[bold blue]{repo}[/bold blue] [bold]{old_ver}[/bold] -> [bold]{new_ver}[/bold]", highlight=False)
+                    console.print(f"[bold green]{pkg_name}[/bold green]/[bold blue]{repo}[/bold blue] [bold]{old_ver}[/bold] [{arrow_color}]->[/{arrow_color}] [bold]{new_ver}[/bold]", highlight=False)
 
             else:
                 console.print(_("All packages are up to date."))
