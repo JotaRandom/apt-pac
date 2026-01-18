@@ -1765,16 +1765,35 @@ def execute_command(apt_cmd, extra_args):
                     results = alpm_helper.search_packages(query)
                     if results:
                         if show_output in ["apt-pac", "apt"]:
-                            # Format results APT-style
+                            # Get installed packages once for efficient lookup
+                            installed_pkgs = set(pkg.name for pkg in alpm_helper.get_installed_packages())
+                            
+                            # Convert pyalpm results to pacman -Ss format for format_search_results
+                            pacman_style_output = []
                             for pkg in results:
                                 repo = pkg.db.name if hasattr(pkg, 'db') else 'unknown'
-                                console.print(f"[green]{repo}/{pkg.name}[/green] [bold]{pkg.version}[/bold]")
-                                console.print(f"  {pkg.desc}")
+                                # Check if package is installed
+                                is_installed = pkg.name in installed_pkgs
+                                status = " [installed]" if is_installed else ""
+                                
+                                # Line 1: repo/pkgname version [installed]
+                                header = f"{repo}/{pkg.name} {pkg.version}{status}"
+                                # Line 2: description
+                                desc = f"    {pkg.desc}"
+                                
+                                pacman_style_output.append(header)
+                                pacman_style_output.append(desc)
+                            
+                            # Pass to format_search_results
+                            format_search_results("\n".join(pacman_style_output))
                         else:
                             # Pacman-style output
+                            installed_pkgs = set(pkg.name for pkg in alpm_helper.get_installed_packages())
                             for pkg in results:
                                 repo = pkg.db.name if hasattr(pkg, 'db') else 'unknown'
-                                print(f"{repo}/{pkg.name} {pkg.version}")
+                                is_installed = pkg.name in installed_pkgs
+                                status = " [installed]" if is_installed else ""
+                                print(f"{repo}/{pkg.name} {pkg.version}{status}")
                                 print(f"    {pkg.desc}")
                 except Exception as e:
                     # Log error but don't fall back (pyalpm is required)
