@@ -1392,7 +1392,38 @@ def execute_command(apt_cmd, extra_args):
             else:
                 pacman_cmd = ["pacman", "-Q"] + extra_args
         else:
-            pacman_cmd = ["pacman", "-Q"] + extra_args
+            # Default list behavior (mimics pacman -Q behavior -> installed packages)
+            # This handles 'apt-pac list' and 'apt-pac list <pkg>'
+            
+            # Filter args that are not flags
+            pkg_patterns = [arg for arg in extra_args if not arg.startswith("-")]
+            
+            installed_pkgs = alpm_helper.get_installed_packages()
+            
+            # Filter if patterns provided
+            if pkg_patterns:
+                import fnmatch
+                filtered = []
+                for pkg in installed_pkgs:
+                    for pattern in pkg_patterns:
+                        if fnmatch.fnmatch(pkg.name, pattern):
+                            filtered.append(pkg)
+                            break
+                installed_pkgs = filtered
+            
+            for pkg in sorted(installed_pkgs, key=lambda p: p.name):
+                # Find real repository
+                sync_pkg = alpm_helper.get_package(pkg.name)
+                repo = sync_pkg.db.name if sync_pkg else 'local'
+                
+                # Architecture
+                arch = pkg.arch
+                if arch == 'any': arch = 'all'
+                
+                # Format: pkgname/repo version arch [installed]
+                console.print(f"[bold green]{pkg.name}[/bold green]/[bold blue]{repo}[/bold blue] [bold]{pkg.version}[/bold] {arch} [installed]", highlight=False)
+            
+            return
     elif apt_cmd == "install":
         # Check if we are installing a local file
         # We check content (.PKGINFO in tar) to be sure
