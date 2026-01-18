@@ -1255,6 +1255,17 @@ def execute_command(apt_cmd, extra_args):
 
     # Handle apt list with all options
     if apt_cmd == "list":
+        # Show help with pacman -Q options
+        if "--help" in extra_args or "-h" in extra_args:
+            console.print("[bold]Usage:[/bold] apt list [options]")
+            console.print("\n[bold]apt-specific options:[/bold]")
+            console.print("  --installed         List installed packages")
+            console.print("  --upgradable        List upgradable packages")  
+            console.print("  --manual-installed  List manually installed packages")
+            console.print("  --all-versions      List all available versions")
+            console.print("\n[bold]Run 'pacman -Q --help' for additional pacman options[/bold]")
+            return
+        
         if "--upgradable" in extra_args:
             pacman_cmd = ["pacman", "-Qu"]
             extra_args = [a for a in extra_args if a != "--upgradable"]
@@ -1273,9 +1284,14 @@ def execute_command(apt_cmd, extra_args):
                     pass
             
             for pkg in sorted(installed_pkgs, key=lambda p: p.name):
-                # Package name/repo
-                repo = pkg.db.name if hasattr(pkg, 'db') and pkg.db else 'local'
-                name_repo = f"{pkg.name}/{repo}"
+                # Find real repository by looking up in sync databases
+                repo = 'local'
+                sync_pkg = alpm_helper.get_package(pkg.name)
+                if sync_pkg:
+                    repo = sync_pkg.db.name
+                
+                # Format with colorization
+                name_repo = f"[green]{pkg.name}[/green]/[bold blue]{repo}[/bold blue]"
                 
                 # Architecture - use 'all' for 'any', 'multilib' if from multilib repo
                 arch = pkg.arch
@@ -1287,20 +1303,20 @@ def execute_command(apt_cmd, extra_args):
                 # Installation type
                 import pyalpm
                 if pkg.name in orphans:
-                    install_type = "[installed, huerfano]"
+                    install_type = "[dim][installed, huerfano][/dim]"
                 elif pkg.reason == pyalpm.PKG_REASON_DEPEND:
                     # Find what installed it (first requiredby)
                     requiredby = pkg.compute_requiredby()
                     if requiredby:
-                        install_type = f"[installed by {requiredby[0]}]"
+                        install_type = f"[dim][installed by {requiredby[0]}][/dim]"
                     else:
                         install_type = "[installed]"
                 elif pkg.name in aur_outdated:
-                    install_type = "[installed, outdated]"
+                    install_type = "[yellow][installed, outdated][/yellow]"
                 else:
                     install_type = "[installed]"
                 
-                print(f"{name_repo} {pkg.version} {arch} {install_type}")
+                console.print(f"{name_repo} [bold]{pkg.version}[/bold] {arch} {install_type}")
             
             extra_args = [a for a in extra_args if a != "--installed"]
             return
