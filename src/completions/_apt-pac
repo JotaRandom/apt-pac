@@ -41,6 +41,7 @@ _apt_pac() {
         'add-repository:Add repository info'
         'download:Download packages without installing'
         'help:Show package manpage'
+        'news:Show Arch Linux news'
         'moo:Have you mooed today?'
         'pacman:Waka waka!'
     )

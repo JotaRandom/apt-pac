@@ -144,6 +144,13 @@ Shows comprehensive details about a package. It attempts to find the package in 
 .br
 The output fields are remapped to match standard APT output (e.g. 'Name' becomes 'Package', 'URL' becomes 'Homepage').
 .TP
+.B news
+(feeds.archlinux.org)
+.br
+Read the latest Arch Linux news
+.br
+Fetches the latest news from the official Arch Linux RSS feed and displays it in a pager. It intelligently filters items to show only news from the last 6 months, or the single latest item if no recent news exists. Useful for checking for manual intervention requirements before an upgrade.
+.TP
 .B help \fIPACKAGE\fR
 (man \fIPACKAGE\fR)
 .br

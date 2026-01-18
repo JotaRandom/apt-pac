@@ -5,6 +5,10 @@ import os
 import re
 import tarfile
 import platform
+import urllib.request
+import xml.etree.ElementTree as ET
+import html
+from datetime import datetime, timedelta, timezone
 from . import ui # Needed for ui.set_force_colors
 from .ui import (
     console, print_error, print_info, print_command, 
@@ -70,6 +74,7 @@ COMMAND_MAP = {
     "add-repository": ["add-repository"],  # Educational message
     "showsrc": ["showsrc"],  # Placeholder for ABS+AUR
     "help": ["help"],  # Show package manpage
+    "news": ["news"],  # Show Arch Linux news
     # Easter Eggs
     "moo": [], 
     "pacman": [],
@@ -102,6 +107,8 @@ def parse_pacman_size(size_str):
             return int(value * 1024 * 1024)
         elif unit == 'GiB':
             return int(value * 1024 * 1024 * 1024)
+        elif unit == 'TiB':
+            return int(value * 1024 * 1024 * 1024 * 1024)
         else:
             return 0
     except (ValueError, IndexError):
@@ -1539,7 +1546,6 @@ def execute_command(apt_cmd, extra_args):
             console.print(f"\n[bold]{_('Cleaning apt-pac cache')} ({cache_dir})...[/bold]")
             sources_dir = cache_dir / "sources"
             if sources_dir.exists():
-                import shutil
                 shutil.rmtree(sources_dir)
                 console.print(f"[green]{_('Removed')} {sources_dir}[/green]")
         return
@@ -1664,6 +1670,117 @@ def execute_command(apt_cmd, extra_args):
             console.print(f"\n  {_('Cached package files')}:    [pkg]{num_cached}[/pkg]")
         return
     
+    elif apt_cmd == "news":
+        url = "https://archlinux.org/feeds/news/"
+        with console.status(f"[bold blue]{_('Fetching Arch Linux news...')}[/bold blue]", spinner="dots"):
+             try:
+                 with urllib.request.urlopen(url, timeout=10) as response:
+                     xml_content = response.read()
+             except Exception as e:
+                 print_error(f"{_('Failed to fetch news:')} {e}")
+                 sys.exit(1)
+
+        try:
+             root = ET.fromstring(xml_content)
+             channel = root.find('channel')
+             items = channel.findall('item') if channel else []
+        except Exception as e:
+             print_error(f"{_('Failed to parse news feed:')} {e}")
+             sys.exit(1)
+             
+        if not items:
+             print_info(_("No news found."))
+             return
+
+        # Build output string
+        output_lines = []
+        output_lines.append(f"[bold yellow]{_('Latest Arch Linux News')}[/bold yellow]\n")
+        
+        # Parse Dates and Filter
+        parsed_items = []
+        for item in items:
+            pubDateStr = item.findtext('pubDate', '')
+            try:
+                # Arch RSS date format: Sat, 20 Dec 2025 18:53:42 +0000
+                pubDate = datetime.strptime(pubDateStr, "%a, %d %b %Y %H:%M:%S %z")
+                parsed_items.append((pubDate, item))
+            except ValueError:
+                # If parsing fails, just treat as very old (or keep?)
+                # Let's keep valid dates only for correct sorting
+                continue
+                
+        # Sort desc (should be already, but ensure)
+        parsed_items.sort(key=lambda x: x[0], reverse=True)
+        
+        # Filter logic: Max 6 months
+        cutoff = datetime.now(timezone.utc) - timedelta(days=6*30)
+        filtered_items = [item for date, item in parsed_items if date > cutoff]
+        
+        # Fallback logic: If no items in last 6 months, show latest one
+        if not filtered_items and parsed_items:
+            filtered_items = [parsed_items[0][1]] # Take the absolute latest
+        elif filtered_items:
+             # Just unpack items
+             filtered_items = [x[1] for x in filtered_items]
+        else:
+             # No valid items at all?
+             filtered_items = []
+
+        if not filtered_items:
+             print_info(_("No news found."))
+             return
+
+        for item in filtered_items:
+             title = item.findtext('title', 'No Title')
+             link = item.findtext('link', '')
+             pubDate = item.findtext('pubDate', '')
+             desc = item.findtext('description', '')
+             
+             # Clean HTML
+             desc_clean = re.sub(r'<[^>]+>', '', desc)
+             desc_clean = html.unescape(desc_clean).strip()
+             
+             output_lines.append(f"[bold yellow]{title}[/bold yellow]")
+             output_lines.append(f"[cyan]{pubDate}[/cyan]")
+             output_lines.append(f"[blue underline]{link}[/blue underline]")
+             output_lines.append(f"{desc_clean}")
+             output_lines.append(f"[dim]{'-'*40}[/dim]")
+        
+        full_text = "\n".join(output_lines)
+        
+        # Pager logic
+        use_pager = True
+        pager_cmd = ["less", "-R"]
+        
+        pager_env = os.environ.get("PAGER")
+        
+        if shutil.which("less"):
+             pass 
+        elif pager_env:
+             pager_cmd = pager_env.split()
+        else:
+             use_pager = False
+        
+        if use_pager:
+             try:
+                  from io import StringIO
+                  from rich.console import Console as RichConsole
+                  
+                  buf = StringIO()
+                  str_console = RichConsole(file=buf, force_terminal=True, width=80) 
+                  str_console.print(full_text)
+                  rendered = buf.getvalue()
+                  
+                  proc = subprocess.Popen(pager_cmd, stdin=subprocess.PIPE)
+                  proc.communicate(input=rendered.encode('utf-8'))
+             except Exception:
+                  console.print(full_text)
+        else:
+             console.print(f"[dim]{_('Note: No pager defined, printing to stdout')}[/dim]")
+             console.print(full_text)
+             
+        return
+     
     elif apt_cmd == "source":
         from .sources import handle_apt_source
         if not extra_args:

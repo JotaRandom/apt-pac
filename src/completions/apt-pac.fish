@@ -55,6 +55,7 @@ complete -f -c apt-pac -n '__fish_apt_pac_needs_command' -a key -d 'Manage GPG k
 complete -f -c apt-pac -n '__fish_apt_pac_needs_command' -a add-repository -d 'Add repository info'
 complete -f -c apt-pac -n '__fish_apt_pac_needs_command' -a download -d 'Download packages without installing'
 complete -f -c apt-pac -n '__fish_apt_pac_needs_command' -a help -d 'Show package manpage'
+complete -f -c apt-pac -n '__fish_apt_pac_needs_command' -a news -d 'Show Arch Linux news'
 
 complete -f -c apt-pac -n '__fish_apt_pac_needs_command' -a moo -d 'Have you mooed today?'
 complete -f -c apt-pac -n '__fish_apt_pac_needs_command' -a pacman -d 'Waka waka!'
