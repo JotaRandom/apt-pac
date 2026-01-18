@@ -484,11 +484,11 @@ def show_summary(apt_cmd, extra_args, auto_confirm=False, aur_new=None, aur_upgr
         show_freed = total_inst_size_change < 0
 
 
-    console.print(f"   {_('Download Size:')} {dl_str}{dl_suffix}")
+    console.print(f"   {_('Download Size:')} {dl_str}{dl_suffix}", highlight=False)
     if show_freed:
-        console.print(f"   {_('Freed Space:')} {inst_str}{inst_suffix}")
+        console.print(f"   {_('Freed Space:')} {inst_str}{inst_suffix}", highlight=False)
     else:
-        console.print(f"   {_('Installed Size:')} {inst_str}{inst_suffix}")
+        console.print(f"   {_('Installed Size:')} {inst_str}{inst_suffix}", highlight=False)
     
     # Check Disk Space
     warnings = []
@@ -533,8 +533,8 @@ def show_summary(apt_cmd, extra_args, auto_confirm=False, aur_new=None, aur_upgr
         for w in warnings:
             needed_str = fmt_adaptive_size(w['needed'])
             avail_str = fmt_adaptive_size(w['avail'])
-            console.print(f"{_('Space needed:')} {needed_str} / {avail_str} {_('available')}")
-            console.print(f"[bold red]W: {_('More space needed in')} {w['path']} {_('than available')}: {needed_str} > {avail_str}[/bold red]")
+            console.print(f"{_('Space needed:')} {needed_str} / {avail_str} {_('available')}", highlight=False)
+            console.print(f"[bold red]W: {_('More space needed in')} {w['path']} {_('than available')}: {needed_str} > {avail_str}[/bold red]", highlight=False)
         
         prompt_msg = f"\n[bold red]{_('Installation may fail, Continue?')} [Y/n] [/bold red]"
     
@@ -580,7 +580,7 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
         protected = get_protected_packages()
         for pkg in extra_args:
             if pkg in protected:
-                console.print(f"\n[bold red]E:[/bold red] {_('You are trying to remove a core system package:')} {pkg}[/bold red]")  
+                console.print(f"\n[bold red]E:[/bold red] {_('You are trying to remove a core system package:')} {pkg}[/bold red]", highlight=False)  
                 console.print(_("Removing this package may render your system unbootable."))
                 required_phrase = _("Yes, I know what I am doing")
                 if console.input(f"{_('To proceed, type')} '{required_phrase}': ") != required_phrase:
@@ -635,7 +635,7 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
                  count = len(remove_pkgs_info)
                  
                  if count >= threshold:
-                     console.print(f"\n[yellow]{_('W:')}[/yellow] {_('You are about to remove')} [bold]{count}[/bold] {_('packages')} (Threshold: {threshold}).")
+                     console.print(f"\n[yellow]{_('W:')}[/yellow] {_('You are about to remove')} [bold]{count}[/bold] {_('packages')} (Threshold: {threshold}).", highlight=False)
                      if not console.input(f"{_('Are you sure you want to proceed?')} [Y/n] ").lower().startswith('y'):
                          print_info(_("Aborted."))
                          sys.exit(0)
@@ -744,7 +744,7 @@ def sync_databases(cmd=None):
                       if "::" in repo: 
                            repo = repo.split("::")[-1].strip()
                       
-                      console.print(f"Hit:{index} {repo}")
+                      console.print(f"Hit:{index} {repo}", highlight=False)
                       index += 1
                       
                  elif "downloading" in lower_line:
@@ -794,13 +794,13 @@ def sync_databases(cmd=None):
                            if repo in repo_url_map:
                                short, arch = repo_url_map[repo]
                                # Get:NUMERO web repo arquitectura ...
-                               console.print(f"Get:{index} {short} {repo} {arch}")
+                               console.print(f"Get:{index} {short} {repo} {arch}", highlight=False)
                            else:
-                               console.print(f"Get:{index} {repo}")
+                               console.print(f"Get:{index} {repo}", highlight=False)
                            index += 1
                       else:
                            # Fallback if we can't identify repo
-                           console.print(f"[dim]{line_clean}[/dim]")
+                           console.print(f"[dim]{line_clean}[/dim]", highlight=False)
 
                  elif "synchronizing package databases" in lower_line:
                       # Ignore introductory line
@@ -1033,9 +1033,9 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
                      if len(parts) >= 4 and parts[2] == "installing":
                          pkg = parts[3]
                          ver = parts[4].strip('()') if len(parts) > 4 else ""
-                         console.print(f"{_('Selecting previously unselected package')} {pkg}.")
-                         console.print(f"({_('Reading database')} ... 100% {_('files and directories currently installed')}.)")
-                         console.print(f"{_('Unpacking')} {pkg} ({ver}) ...")
+                         console.print(f"{_('Selecting previously unselected package')} {pkg}.", highlight=False)
+                         console.print(f"({_('Reading database')} ... 100% {_('files and directories currently installed')}.)", highlight=False)
+                         console.print(f"{_('Unpacking')} {pkg} ({ver}) ...", highlight=False)
                          continue
                 
                 if "upgrading" in line_lower and formatting_is_ok(line):
@@ -1043,8 +1043,8 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
                      if len(parts) >= 4 and parts[2] == "upgrading":
                          pkg = parts[3]
                          ver = parts[4].strip('()') if len(parts) > 4 else ""
-                         console.print(f"{_('Preparing to unpack')} .../{pkg}_{ver}_... ...")
-                         console.print(f"{_('Unpacking')} {pkg} ({ver}) over ({ver}) ...") # Approximate
+                         console.print(f"{_('Preparing to unpack')} .../{pkg}_{ver}_... ...", highlight=False)
+                         console.print(f"{_('Unpacking')} {pkg} ({ver}) over ({ver}) ...", highlight=False) # Approximate
                          continue
 
                 # Hooks / Triggers
@@ -1054,7 +1054,7 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
                      # Pacman: ":: Running post-transaction hooks..."
                      # We can't know exactly which trigger maps to which package easily.
                      # But we can show it as Processing triggers.
-                     console.print(f"{_('Processing triggers for system')} ...")
+                     console.print(f"{_('Processing triggers for system')} ...", highlight=False)
                      continue
                 
                 if show_hooks and line.strip().startswith("("):
