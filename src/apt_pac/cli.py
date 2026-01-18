@@ -36,10 +36,10 @@ def parse_args():
         # Handle different version options
         if args.version == "default":
             # Just --version (default behavior)
-            print(f"apt-pac {__version__}")
+            print(f"apt-pac {__version__} (All)")
         elif args.version == "full":
             # --version full (show both)
-            print(f"apt-pac {__version__}")
+            print(f"apt-pac {__version__} (All)")
             print(pacman_version if pacman_version else "pacman: unknown")
         elif args.version == "pacman":
             # --version pacman (only pacman)
