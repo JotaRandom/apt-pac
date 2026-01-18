@@ -1255,15 +1255,14 @@ def execute_command(apt_cmd, extra_args):
 
     # Handle apt list with all options
     if apt_cmd == "list":
-        # Show help with pacman -Q options
+        # Show help with all list options
         if "--help" in extra_args or "-h" in extra_args:
             console.print("[bold]Usage:[/bold] apt list [options]")
-            console.print("\n[bold]apt-specific options:[/bold]")
-            console.print("  --installed         List installed packages")
+            console.print("\n[bold]Options:[/bold]")
+            console.print("  --installed         List installed packages with details")
             console.print("  --upgradable        List upgradable packages")  
             console.print("  --manual-installed  List manually installed packages")
-            console.print("  --all-versions      List all available versions")
-            console.print("\n[bold]Run 'pacman -Q --help' for additional pacman options[/bold]")
+            console.print("  --all-versions      List all available package versions")
             return
         
         
@@ -1276,14 +1275,13 @@ def execute_command(apt_cmd, extra_args):
                 console.print(f"[yellow]{_('W:')}[/yellow] {_('Partial upgrades are not supported on Arch Linux.')}")
                 console.print(f"[dim]{_('It is recommended to run a full system upgrade instead.')}[/dim]\n")
                 
-                # Display upgradable packages
-                for pkg in sorted(updates, key=lambda p: p.name):
-                    # Get sync version
-                    sync_pkg = alpm_helper.get_package(pkg.name)
-                    if sync_pkg:
-                        repo = sync_pkg.db.name
-                        new_version = sync_pkg.version
-                        console.print(f"[green]{pkg.name}[/green]/[bold blue]{repo}[/bold blue] {pkg.version} -> [bold]{new_version}[/bold]")
+                # Display upgradable packages (updates are tuples: name, old_ver, new_ver)
+                for pkg_name, old_ver, new_ver in sorted(updates, key=lambda x: x[0]):
+                    # Get repo from sync package
+                    sync_pkg = alpm_helper.get_package(pkg_name)
+                    repo = sync_pkg.db.name if sync_pkg else 'unknown'
+                    # Use consistent format: pkgname/repo old_ver -> new_ver
+                    console.print(f"[bold green]{pkg_name}[/bold green]/[bold blue]{repo}[/bold blue] {old_ver} -> [bold]{new_ver}[/bold]")
             else:
                 console.print(_("All packages are up to date."))
             
@@ -1310,8 +1308,8 @@ def execute_command(apt_cmd, extra_args):
                 if sync_pkg:
                     repo = sync_pkg.db.name
                 
-                # Format with colorization
-                name_repo = f"[green]{pkg.name}[/green]/[bold blue]{repo}[/bold blue]"
+                # Use consistent format matching search
+                name_repo = f"[bold green]{pkg.name}[/bold green]/[bold blue]{repo}[/bold blue]"
                 
                 # Architecture - use 'all' for 'any', 'multilib' if from multilib repo
                 arch = pkg.arch
@@ -1341,11 +1339,32 @@ def execute_command(apt_cmd, extra_args):
             extra_args = [a for a in extra_args if a != "--installed"]
             return
         elif "--manual-installed" in extra_args:
-            pacman_cmd = ["pacman", "-Qe"]
+            # Use native pyalpm for manual/explicit packages
+            explicit_pkgs = alpm_helper.get_installed_packages(explicit_only=True)
+            
+            for pkg in sorted(explicit_pkgs, key=lambda p: p.name):
+                # Find real repository
+                repo = 'local'
+                sync_pkg = alpm_helper.get_package(pkg.name)
+                if sync_pkg:
+                    repo = sync_pkg.db.name
+                
+                # Use consistent format
+                console.print(f"[bold green]{pkg.name}[/bold green]/[bold blue]{repo}[/bold blue] [bold]{pkg.version}[/bold]")
+            
             extra_args = [a for a in extra_args if a != "--manual-installed"]
+            return
         elif "--all-versions" in extra_args:
-            pacman_cmd = ["pacman", "-Sl"]
+            # Use native pyalpm to show all available versions from repos
+            all_packages = alpm_helper.get_all_repo_packages()
+            
+            for pkg in sorted(all_packages, key=lambda p: p.name):
+                repo = pkg.db.name
+                # Use consistent format
+                console.print(f"[bold green]{pkg.name}[/bold green]/[bold blue]{repo}[/bold blue] [bold]{pkg.version}[/bold]")
+            
             extra_args = [a for a in extra_args if a != "--all-versions"]
+            return
         elif any(a.startswith("--repo") for a in extra_args):
             repo = next((a.split("=")[1] for a in extra_args if a.startswith("--repo=")), None)
             if not repo and "--repo" in extra_args:
