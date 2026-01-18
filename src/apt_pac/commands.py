@@ -744,7 +744,7 @@ def sync_databases(cmd=None):
                       if "::" in repo: 
                            repo = repo.split("::")[-1].strip()
                       
-                      console.print(f"Hit:{index} {repo}", highlight=False)
+                      console.print(f"Hit:[bold yellow]{index}[/bold yellow] [bold blue]{repo}[/bold blue]", highlight=False)
                       index += 1
                       
                  elif "downloading" in lower_line:
@@ -794,9 +794,9 @@ def sync_databases(cmd=None):
                            if repo in repo_url_map:
                                short, arch = repo_url_map[repo]
                                # Get:NUMERO web repo arquitectura ...
-                               console.print(f"Get:{index} {short} {repo} {arch}", highlight=False)
+                               console.print(f"Get:[bold yellow]{index}[/bold yellow] {short} [bold blue]{repo}[/bold blue] {arch}", highlight=False)
                            else:
-                               console.print(f"Get:{index} {repo}", highlight=False)
+                               console.print(f"Get:[bold yellow]{index}[/bold yellow] [bold blue]{repo}[/bold blue]", highlight=False)
                            index += 1
                       else:
                            # Fallback if we can't identify repo
