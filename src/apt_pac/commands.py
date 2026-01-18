@@ -1266,9 +1266,29 @@ def execute_command(apt_cmd, extra_args):
             console.print("\n[bold]Run 'pacman -Q --help' for additional pacman options[/bold]")
             return
         
+        
         if "--upgradable" in extra_args:
-            pacman_cmd = ["pacman", "-Qu"]
+            # Use native pyalpm for upgradable packages
+            updates = alpm_helper.get_available_updates()
+            
+            if updates:
+                # Show partial upgrade warning
+                console.print(f"[yellow]{_('W:')}[/yellow] {_('Partial upgrades are not supported on Arch Linux.')}")
+                console.print(f"[dim]{_('It is recommended to run a full system upgrade instead.')}[/dim]\n")
+                
+                # Display upgradable packages
+                for pkg in sorted(updates, key=lambda p: p.name):
+                    # Get sync version
+                    sync_pkg = alpm_helper.get_package(pkg.name)
+                    if sync_pkg:
+                        repo = sync_pkg.db.name
+                        new_version = sync_pkg.version
+                        console.print(f"[green]{pkg.name}[/green]/[bold blue]{repo}[/bold blue] {pkg.version} -> [bold]{new_version}[/bold]")
+            else:
+                console.print(_("All packages are up to date."))
+            
             extra_args = [a for a in extra_args if a != "--upgradable"]
+            return
         elif "--installed" in extra_args:
             # Use native pyalpm for richer output
             installed_pkgs = alpm_helper.get_installed_packages()
