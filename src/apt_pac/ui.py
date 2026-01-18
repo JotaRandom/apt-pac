@@ -89,6 +89,9 @@ def format_search_results(output):
              
              # Reconstruct meta (groups/status)
              meta = " ".join(parts[2:]) if len(parts) > 2 else ""
+             # Escape markup characters in meta
+             from rich.markup import escape
+             meta = escape(meta)
              
              # APT Style: pkgname/repo
              # We color pkgname in specific apt-like color (usually green or bold)
