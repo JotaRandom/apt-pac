@@ -2,7 +2,7 @@
 
 pkgname=apt-pac-git
 _pkgname=apt-pac
-pkgver=2026.01.18.r57.cc6a057
+pkgver=2026.01.18.r62.e44a8ac
 pkgrel=1
 pkgdesc="An APT-style wrapper for pacman with APT-like output"
 arch=('any')
@@ -19,6 +19,7 @@ makedepends=('python-build'
              'python-setuptools'
              'python-wheel'
              'git')
+optdepends=('man: For apt help command to display package manpages')
 source=("$_pkgname::git+https://github.com/JotaRandom/$_pkgname.git")
 sha256sums=('SKIP')
 

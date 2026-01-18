@@ -69,6 +69,7 @@ COMMAND_MAP = {
     "key": ["pacman-key"],  # Alias for apt-key
     "add-repository": ["add-repository"],  # Educational message
     "showsrc": ["showsrc"],  # Placeholder for ABS+AUR
+    "help": ["help"],  # Show package manpage
     # Easter Eggs
     "moo": [], 
     "pacman": [],
@@ -1258,8 +1259,51 @@ def execute_command(apt_cmd, extra_args):
             pacman_cmd = ["pacman", "-Qu"]
             extra_args = [a for a in extra_args if a != "--upgradable"]
         elif "--installed" in extra_args:
-            pacman_cmd = ["pacman", "-Q"]
+            # Use native pyalpm for richer output
+            installed_pkgs = alpm_helper.get_installed_packages()
+            orphans = set(pkg.name for pkg in alpm_helper.get_orphan_packages())
+            
+            # Get AUR updates if requested (for [outdated] tag)
+            aur_outdated = set()
+            if hasattr(aur, 'check_updates'):
+                try:
+                    aur_updates = aur.check_updates(verbose=False)
+                    aur_outdated = set(u['name'] for u in aur_updates)
+                except:
+                    pass
+            
+            for pkg in sorted(installed_pkgs, key=lambda p: p.name):
+                # Package name/repo
+                repo = pkg.db.name if hasattr(pkg, 'db') and pkg.db else 'local'
+                name_repo = f"{pkg.name}/{repo}"
+                
+                # Architecture - use 'all' for 'any', 'multilib' if from multilib repo
+                arch = pkg.arch
+                if arch == 'any':
+                    arch = 'all'
+                elif repo == 'multilib':
+                    arch = 'multilib'
+                
+                # Installation type
+                import pyalpm
+                if pkg.name in orphans:
+                    install_type = "[installed, huerfano]"
+                elif pkg.reason == pyalpm.PKG_REASON_DEPEND:
+                    # Find what installed it (first requiredby)
+                    requiredby = pkg.compute_requiredby()
+                    if requiredby:
+                        install_type = f"[installed by {requiredby[0]}]"
+                    else:
+                        install_type = "[installed]"
+                elif pkg.name in aur_outdated:
+                    install_type = "[installed, outdated]"
+                else:
+                    install_type = "[installed]"
+                
+                print(f"{name_repo} {pkg.version} {arch} {install_type}")
+            
             extra_args = [a for a in extra_args if a != "--installed"]
+            return
         elif "--manual-installed" in extra_args:
             pacman_cmd = ["pacman", "-Qe"]
             extra_args = [a for a in extra_args if a != "--manual-installed"]
@@ -1716,6 +1760,29 @@ def execute_command(apt_cmd, extra_args):
         package_name = extra_args[0]
         success = handle_showsrc(package_name, verbose=verbose)
         sys.exit(0 if success else 1)
+    
+    elif apt_cmd == "help":
+        if not extra_args:
+            print_error("E: No package specified")
+            print_info(_("Usage: apt help <package>"))
+            sys.exit(1)
+        
+        package_name = extra_args[0]
+        
+        # Check if man command is installed
+        if subprocess.run(["command", "-v", "man"], shell=True, capture_output=True).returncode != 0:
+            print_error(_("E: man is not installed"))
+            print_info(_("Install man-db or man-pages to use this feature"))
+            sys.exit(1)
+        
+        # Try to show manpage for package
+        result = subprocess.run(["man", package_name], capture_output=False)
+        if result.returncode != 0:
+            # Manpage not found
+            console.print(f"[yellow]W:[/yellow] {_('No manual entry for')} {package_name}")
+            console.print(f"{_('Try:')} apt-pac show {package_name}")
+            sys.exit(1)
+        return
     
     elif apt_cmd == "edit-sources":
         editor = get_editor()
