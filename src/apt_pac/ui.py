@@ -261,25 +261,25 @@ def print_columnar_list(pkgs, color_tag="green"):
         
     width = console.size.width
     # Determine max length of package names (ignoring markup)
-    # Add minimal padding between columns (e.g. 2 spaces)
-    max_len = max(Text.from_markup(p).cell_len for p in pkgs) + 2
+    # We'll use table padding for spacing, so don't add extra here
+    max_len = max(Text.from_markup(p).cell_len for p in pkgs)
     
     # Calculate columns vs width
-    # 4 columns is standard for APT if space allows? 
-    # Actually APT uses varying columns.
-    # Let's try to fit as many as possible.
+    # Account for: indentation (3) + minimal spacing between columns
+    # Table uses padding=(0, 1) which adds 2 spaces per column
+    available_width = width - 3  # Just the left indent
     
-    # We want slight indentation (3 spaces)
-    available_width = width - 4 
-    
-    cols = available_width // max_len
+    # Calculate how many columns fit with spacing
+    # Each column takes: max_len + 2 (table padding)
+    col_width = max_len + 2
+    cols = available_width // col_width
     if cols < 1: cols = 1
     
     # Calculate rows
     # We fill by row for readability? Or by column?
     # APT fills by row. (a b c d \n e f g h)
     
-    table = Table(show_header=False, box=None, padding=(0, 2), pad_edge=False)
+    table = Table(show_header=False, box=None, padding=(0, 1), pad_edge=False)
     for _ in range(cols):
         table.add_column()
         
