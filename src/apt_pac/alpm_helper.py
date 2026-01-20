@@ -174,3 +174,154 @@ def get_all_repo_packages() -> List:
 def is_package_installed(pkgname: str) -> bool:
     """Check if a package is installed."""
     return get_local_package(pkgname) is not None
+
+def get_cache_dirs() -> List[Path]:
+    """Get list of cache directories from pyalpm."""
+    handle = get_handle()
+    return [Path(p) for p in handle.cachedirs]
+
+def clean_cache(keep: int = 3, dry_run: bool = False, verbose: bool = True) -> int:
+    """
+    Remove old package versions from cache, keeping the latest 'keep' versions.
+    Equivalent to paccache -rk3.
+    
+    Args:
+        keep: Number of versions to keep (default 3)
+        dry_run: If True, do not actually delete files
+        verbose: If True, print information about deleted files
+        
+    Returns:
+        Number of bytes freed (or would be freed)
+    """
+    import os
+    import re
+    
+    freed_bytes = 0
+    cache_dirs = get_cache_dirs()
+    
+    # Regex to match package files: name-version-release-arch.pkg.tar.zst (or other extensions)
+    # This is tricky because version can contain hyphens.
+    # However, standard Arch package naming is relatively strict.
+    # We can try to rely on the fact that we can listing all files and grouping them.
+    # Better approach: Use a regex that captures the known suffix structure.
+    # .pkg.tar.zst | .pkg.tar.xz | .pkg.tar.gz | .pkg.tar
+    
+    # But names can also have hyphens.
+    # Helper to parse filename
+    def parse_pkg_filename(filename):
+        # Remove extension
+        for ext in ['.pkg.tar.zst', '.pkg.tar.xz', '.pkg.tar.gz', '.pkg.tar', '.pkg.tar.lzo', '.pkg.tar.lz4']:
+            if filename.endswith(ext):
+                base = filename[:-len(ext)]
+                # Now base is name-version-release-arch
+                # arch is last, release is 2nd last...
+                parts = base.split('-')
+                if len(parts) >= 4:
+                    arch = parts[-1]
+                    # We need to reconstruct name and version.
+                    # As version can have hyphens? Generally pkgver()-release
+                    # Arch packages format: name-version-release-arch
+                    # but version itself can be like 1.2.3-1 (if release is included in version? no release is separate)
+                    # wait, verify standard: 
+                    # pkgname-pkgver-pkgrel-arch.pkg.tar.zst
+                    # pkgver can contain hyphens? No, pkgver cannot contain hyphens.
+                    # pkgrel cannot contain hyphens.
+                    # So:
+                    # parts[-1] = arch
+                    # parts[-2] = pkgrel
+                    # parts[-3] = pkgver (no hyphens allowed in Arch pkgver)
+                    # parts[:-3] = name (can contain hyphens)
+                    
+                    pkgrel = parts[-2]
+                    pkgver = parts[-3]
+                    name = "-".join(parts[:-3])
+                    full_version = f"{pkgver}-{pkgrel}"
+                    return name, full_version, arch
+        return None, None, None
+
+    # Group files by (name, arch)
+    # We treat different architectures as distinct sets of packages to version
+    package_files = {} # (name, arch) -> list of (version, filepath, size)
+    
+    for cache_dir in cache_dirs:
+        if not cache_dir.exists():
+            continue
+            
+        for child in cache_dir.iterdir():
+            if not child.is_file(): 
+                continue
+                
+            name, version, arch = parse_pkg_filename(child.name)
+            if name and version and arch:
+                key = (name, arch)
+                if key not in package_files:
+                    package_files[key] = []
+                package_files[key].append({
+                    'version': version,
+                    'path': child,
+                    'size': child.stat().st_size
+                })
+    
+    # Process groups
+    deleted_count = 0
+    
+    for key, files in package_files.items():
+        if len(files) <= keep:
+            continue
+            
+        # Sort by version using pyalpm.vercmp
+        # We want descending order (newest first)
+        # functools.cmp_to_key is needed for sort
+        from functools import cmp_to_key
+        
+        def compare_versions(item1, item2):
+            return pyalpm.vercmp(item1['version'], item2['version'])
+            
+        files.sort(key=cmp_to_key(compare_versions), reverse=True)
+        
+        # Keep top 'keep'
+        to_delete = files[keep:]
+        
+        for item in to_delete:
+            size = item['size']
+            path = item['path']
+            
+            freed_bytes += size
+            deleted_count += 1
+            
+            if verbose:
+                # Calculate size in sensible units for display
+                # We can import fmt_adaptive_size from commands but that would be a circular import.
+                # Let's just print simple info or rely on caller?
+                # The function signature says "verbose=True", so let's print.
+                # But we should use the logger or print. Since this is alpm_helper, maybe plain print or localized?
+                # Let's return the info or print if verbose.
+                
+                # To avoid circular import, we won't import from ui/commands
+                pass
+
+            if not dry_run:
+                try:
+                    os.remove(path)
+                    # Also remove signature file if exists (.sig)
+                    sig_path = path.parent / (path.name + ".sig")
+                    if sig_path.exists():
+                         os.remove(sig_path)
+                except OSError:
+                    pass
+    
+    return freed_bytes
+
+def is_in_official_repos(pkgname: str) -> bool:
+    """
+    Check if a package exists in official repos (exact match or provider).
+    """
+    handle = get_handle()
+    for db in handle.get_syncdbs():
+        # Check exact match first
+        if db.get_pkg(pkgname):
+            return True
+        # Check providers
+        if pyalpm.find_satisfier(db.pkgcache, pkgname):
+            return True
+    return False

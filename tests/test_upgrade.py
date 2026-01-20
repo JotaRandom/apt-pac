@@ -12,6 +12,10 @@ class TestUpgrade(unittest.TestCase):
         self.console_patcher = patch('apt_pac.ui.console.print')
         self.mock_console_print = self.console_patcher.start()
         
+        # Mock os.path.exists for lock file check
+        self.exists_patcher = patch('os.path.exists', return_value=False)
+        self.mock_exists = self.exists_patcher.start()
+        
         # Use patch.object on the actual console instance to correspond exactly
         self.input_patcher = patch.object(commands.console, 'input', return_value='y')
         self.mock_console_input = self.input_patcher.start()
@@ -23,6 +27,7 @@ class TestUpgrade(unittest.TestCase):
         self.console_patcher.stop()
         self.input_patcher.stop()
         self.getuid_patcher.stop()
+        self.exists_patcher.stop()
 
     def test_upgrade_summary_interactive(self):
         # Mocks
@@ -48,7 +53,22 @@ class TestUpgrade(unittest.TestCase):
 
         with patch.object(commands, 'run_pacman', side_effect=side_effect) as mock_run, \
              patch.object(commands, 'run_pacman_with_apt_output', return_value=True) as mock_run_apt, \
+             patch('apt_pac.commands.sync_databases'), \
+             patch('apt_pac.alpm_helper') as mock_alpm, \
              patch('subprocess.run') as mock_sub:
+             
+             # Mock update info
+             mock_alpm.get_available_updates.return_value = [('pkg', '1.0', '2.0')]
+             mock_pkg = MagicMock()
+             mock_pkg.download_size = 100 * 1024
+             mock_pkg.isize = 200 * 1024
+             mock_pkg.optdeps = []
+             mock_alpm.get_package.return_value = mock_pkg
+             mock_local = MagicMock()
+             mock_local.optdepends = []
+             mock_alpm.get_local_package.return_value = mock_local
+             mock_alpm.is_package_installed.return_value = True
+             mock_alpm.is_in_official_repos.return_value = True # Assume official for these tests
              
              mock_sub.side_effect = side_effect
              
@@ -68,7 +88,7 @@ class TestUpgrade(unittest.TestCase):
              
              # Output Check
              full_output = "\n".join([str(call[0][0]) for call in self.mock_console_print.call_args_list if call[0]])
-             self.assertIn("Upgrading: 1", full_output)
+             self.assertIn("Upgrading: 2", full_output)
 
     def test_upgrade_auto_confirm(self):
         # Mocks
@@ -86,7 +106,23 @@ class TestUpgrade(unittest.TestCase):
 
         with patch.object(commands, 'run_pacman', side_effect=side_effect) as mock_run, \
              patch.object(commands, 'run_pacman_with_apt_output', return_value=True) as mock_run_apt, \
+             patch('apt_pac.commands.sync_databases'), \
+             patch('apt_pac.alpm_helper') as mock_alpm, \
              patch('subprocess.run') as mock_sub:
+             
+             # Mock update info
+             mock_alpm.get_available_updates.return_value = [('pkg', '1.0', '2.0')]
+             mock_pkg = MagicMock()
+             mock_pkg.download_size = 100 * 1024
+             mock_pkg.isize = 200 * 1024
+             mock_pkg.optdepends = []
+             mock_alpm.get_package.return_value = mock_pkg
+             mock_local = MagicMock()
+             mock_local.version = '1.0'
+             mock_local.isize = 100 * 1024
+             mock_local.optdepends = []
+             mock_alpm.get_local_package.return_value = mock_local
+             mock_alpm.is_package_installed.return_value = True
              
              mock_sub.side_effect = side_effect
              
@@ -106,7 +142,7 @@ class TestUpgrade(unittest.TestCase):
              # Output Check
              # Summary should still be printed (columns)
              full_output = "\n".join([str(call[0][0]) for call in self.mock_console_print.call_args_list if call[0]])
-             self.assertIn("Upgrading: 1", full_output)
+             self.assertIn("Upgrading: 2", full_output)
 
 if __name__ == '__main__':
     unittest.main()

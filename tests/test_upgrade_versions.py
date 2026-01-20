@@ -35,10 +35,64 @@ class TestUpgradeVersions(unittest.TestCase):
             elif "-Qu" in cmd: return MagicMock(returncode=0, stdout="core-pkg 1.0 -> 2.0-1\n")
             return MagicMock(returncode=0)
 
+    @patch('apt_pac.commands.alpm_helper')
+    @patch('apt_pac.commands.ui.print_columnar_list')
+    @patch('apt_pac.commands.console')
+    @patch('apt_pac.commands.get_config')
+    @patch('apt_pac.commands.run_pacman')
+    @patch('apt_pac.commands.subprocess.run')
+    def test_upgrade_official_version(self, mock_sub, mock_run, mock_config, mock_console, mock_print_col, mock_alpm):
+        # Mocks
+        sim_mock = MagicMock(returncode=0, stdout="http://mirror/core-pkg-2.0-1-any.pkg.tar.zst\n") 
+        qi_mock = MagicMock(returncode=0, stdout="Name : core-pkg\nInstalled Size : 100.00 KiB\n")
+        
+        def side_effect(cmd, **kwargs):
+            if "-Sp" in cmd: 
+                # Upgrades need -u
+                if "-u" not in cmd: return MagicMock(returncode=0, stdout="")
+                return sim_mock
+            elif "-Qi" in cmd: return qi_mock
+            elif "-Q" in cmd: return MagicMock(returncode=0, stdout="core-pkg 1.0\n") # Installed
+            elif "-Qu" in cmd: return MagicMock(returncode=0, stdout="core-pkg 1.0 -> 2.0-1\n")
+            return MagicMock(returncode=0)
+
         with patch.object(commands, 'run_pacman', side_effect=side_effect), \
              patch.object(commands, 'run_pacman_with_apt_output', return_value=True), \
-             patch('apt_pac.ui.print_columnar_list') as mock_print_col, \
-             patch('subprocess.run', return_value=MagicMock(returncode=0, stdout="")):
+             patch('apt_pac.commands.sync_databases'):
+             
+             # Setup alpm mock for upgrades
+             mock_update_pkg = MagicMock()
+             mock_update_pkg.name = 'core-pkg'
+             mock_update_pkg.version = '2.0-1' # New version
+             mock_update_pkg.download_size = 1024
+             mock_update_pkg.isize = 2048 # int
+             mock_update_pkg.optdepends = []
+             mock_alpm.get_package.return_value = mock_update_pkg
+             
+             mock_local = MagicMock()
+             mock_local.version = '1.0'
+             mock_local.isize = 1024 # int
+             mock_local.optdepends = []
+             mock_alpm.get_local_package.return_value = mock_local
+             
+             mock_alpm.is_package_installed.return_value = True
+             mock_alpm.is_in_official_repos.return_value = True
+
+             # Config Mock
+             mock_config.return_value = MagicMock()
+             mock_config.return_value.get.return_value = 1
+
+             # Mock get_available_updates to return our package
+             # returns list of (pkgname, current, new)
+             mock_alpm.get_available_updates.return_value = [('core-pkg', '1.0', '2.0-1')]
+             
+             mock_local = MagicMock()
+             mock_local.version = '1.0'
+             mock_local.isize = 1024 # int
+             mock_local.optdepends = []
+             mock_alpm.get_local_package.return_value = mock_local
+             mock_alpm.is_package_installed.return_value = True
+             mock_alpm.is_in_official_repos.return_value = True # Ensure official checks pass
              
              try:
                  commands.execute_command("upgrade", [])
@@ -61,6 +115,8 @@ class TestUpgradeVersions(unittest.TestCase):
              patch('apt_pac.ui.print_columnar_list') as mock_print_col, \
              patch('apt_pac.commands.run_pacman_with_apt_output', return_value=True), \
              patch('subprocess.run', side_effect=side_effect_subprocess), \
+             patch('apt_pac.commands.sync_databases'), \
+             patch('apt_pac.commands.alpm_helper.get_available_updates', return_value=[]), \
              patch('apt_pac.commands.aur.AurResolver') as MockResolver:
              
              # Setup implementation of resolve

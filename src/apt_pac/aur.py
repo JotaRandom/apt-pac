@@ -177,21 +177,13 @@ def get_aur_info(package_names: List[str]) -> List[Dict]:
 
 def is_installed(package: str) -> bool:
     """Check if a package is installed locally."""
-    return subprocess.run(
-        ["pacman", "-Qq", package], 
-        stdout=subprocess.DEVNULL, 
-        stderr=subprocess.DEVNULL
-    ).returncode == 0
+    from . import alpm_helper
+    return alpm_helper.is_package_installed(package)
 
 def is_in_official_repos(package: str) -> bool:
     """Check if a package exists in official repos (or is provided by one)."""
-    # -Si only checks exact name. -Sp checks if it can be resolved (downloadable).
-    # We use --noconfirm so it picks defaults for providers check without hanging.
-    return subprocess.run(
-        ["pacman", "-Sp", "--noconfirm", package], 
-        stdout=subprocess.DEVNULL, 
-        stderr=subprocess.DEVNULL
-    ).returncode == 0
+    from . import alpm_helper
+    return alpm_helper.is_in_official_repos(package)
 
 def get_installed_packages() -> Dict[str, str]:
     """

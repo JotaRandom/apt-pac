@@ -2,7 +2,7 @@
 
 pkgname=apt-pac-git
 _pkgname=apt-pac
-pkgver=2026.01.20.r75.575f238
+pkgver=2026.01.20.r76.8c9428f
 pkgrel=1
 pkgdesc="An APT-style wrapper for pacman with APT-like output"
 arch=('any')
@@ -12,13 +12,13 @@ depends=('python'
          'python-rich'
          'pyalpm'
          'python-tomli'
-         'devtools'
-         'pacman-contrib')
+         'devtools')
 makedepends=('python-build'
              'python-installer'
              'python-setuptools'
              'python-wheel'
-             'git')
+             'git'
+             'gettext')
 optdepends=('man: For apt help command to display package manpages')
 source=("$_pkgname::git+https://github.com/JotaRandom/$_pkgname.git")
 sha256sums=('SKIP')
@@ -42,6 +42,14 @@ prepare() {
 build() {
   cd "$srcdir/$_pkgname"
   python -m build --wheel --no-isolation
+  
+  # Compile translations
+  echo "Compiling translations..."
+  for po_file in locales/*.po; do
+    if [ -f "$po_file" ]; then
+      msgfmt -o "${po_file%.po}.mo" "$po_file"
+    fi
+  done
 }
 
 package() {

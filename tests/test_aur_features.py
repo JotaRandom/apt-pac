@@ -12,35 +12,22 @@ from apt_pac import aur, commands, sources
 
 class TestAurFeatures(unittest.TestCase):
     
-    @patch('subprocess.run')
+    @patch('apt_pac.aur.get_installed_packages')
+    @patch('apt_pac.aur.get_installed_aur_packages')
+    @patch('apt_pac.aur.version_compare')
     @patch('apt_pac.aur.get_aur_info')
-    def test_check_updates(self, mock_get_info, mock_run):
-        # Mock installed packages: local-pkg 1.0
-        # Mock AUR version: local-pkg 2.0
+    def test_check_updates(self, mock_get_info, mock_vercmp, mock_get_aur_pkgs, mock_get_pkgs):
+        # Mock installed packages: local-pkg 1.0 (AUR version 2.0)
         
-        # Mock pacman -Qm (foreign packages)
-        mock_run.side_effect = [
-             MagicMock(stdout="foreign-pkg 1.0\n", returncode=0), # get_installed_aur
-             MagicMock(stdout="foreign-pkg 1.0\n", returncode=0), # get_installed_packages
-             MagicMock(stdout="1", returncode=0), # vercmp 1.0 2.0 -> 1 (remote is newer? wait vercmp output)
-        ]
-        
-        # Verify vercmp behavior: vercmp <ver1> <ver2> returns <0 if ver1<ver2
-        # In check_updates: if version_compare(local, aur) < 0: update
-        # We need mock_run to return < 0 for the comparison to work
-        
-        def run_side_effect(cmd, **kwargs):
-            if cmd[0] == "pacman" and "-Qm" in cmd:
-                return MagicMock(stdout="foreign-pkg 1.0\n", returncode=0)
-            if cmd[0] == "pacman" and "-Q" in cmd:
-                 return MagicMock(stdout="foreign-pkg 1.0\n", returncode=0)
-            if cmd[0] == "vercmp":
-                # vercmp 1.0 2.0 -> returns -1 (1.0 is older than 2.0)
-                return MagicMock(stdout="-1\n", returncode=0)
-            return MagicMock(returncode=0)
-            
-        mock_run.side_effect = run_side_effect
+        # Mock AUR info response
         mock_get_info.return_value = [{'Name': 'foreign-pkg', 'Version': '2.0'}]
+        
+        # Mock local state
+        mock_get_aur_pkgs.return_value = ['foreign-pkg']
+        mock_get_pkgs.return_value = {'foreign-pkg': '1.0'}
+        
+        # Mock vercmp: local < remote (1.0 < 2.0) -> returns -1
+        mock_vercmp.return_value = -1
         
         updates = aur.check_updates(verbose=False)
         
@@ -261,8 +248,10 @@ class TestAurFeatures(unittest.TestCase):
     @patch('apt_pac.commands.get_config')
     @patch('apt_pac.commands.console')
     @patch('apt_pac.ui.console')
+    @patch('apt_pac.aur.is_in_official_repos', return_value=True)
+    @patch('apt_pac.commands.os.path.isfile', return_value=False)
     @patch('os.getuid', return_value=0, create=True)
-    def test_download_output(self, mock_getuid, mock_ui_console, mock_cmd_console, mock_config, mock_run, mock_stdout):
+    def test_download_output(self, mock_getuid, mock_isfile, mock_is_official, mock_ui_console, mock_cmd_console, mock_config, mock_run, mock_stdout):
         from apt_pac.commands import execute_command
         # Mock config
         mock_conf_obj = MagicMock()

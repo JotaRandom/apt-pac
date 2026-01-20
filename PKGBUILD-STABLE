@@ -11,13 +11,13 @@ depends=('python'
          'python-rich'
          'pyalpm'
          'python-tomli'
-         'devtools'
-         'pacman-contrib')
+         'devtools')
 makedepends=('python-build'
              'python-installer'
              'python-setuptools'
              'python-wheel'
-             'git')
+             'git'
+             'gettext')
 optdepends=('man: For apt help command to display package manpages')
 source=("$_pkgname::git+https://github.com/JotaRandom/$pkgname.git#tag=$pkgver")
 sha256sums=('SKIP')
@@ -30,6 +30,14 @@ pkgver() {
 build() {
   cd "$srcdir/$pkgname"
   python -m build --wheel --no-isolation
+
+  # Compile translations
+  echo "Compiling translations..."
+  for po_file in locales/*.po; do
+    if [ -f "$po_file" ]; then
+      msgfmt -o "${po_file%.po}.mo" "$po_file"
+    fi
+  done
 }
 
 package() {

@@ -22,17 +22,20 @@ class TestSearchLogic(unittest.TestCase):
         self.assertTrue(len(results) > 0)
         self.assertTrue(found)
 
-    @patch('subprocess.run')
     @patch('apt_pac.ui.console.print')
-    def test_command_dispatch_official(self, mock_print, mock_run):
+    @patch('apt_pac.commands.alpm_helper')
+    def test_command_dispatch_official(self, mock_alpm, mock_print):
         """Test normal search (Official only)"""
         print("\nTesting Dispatch: --official...")
         
-        # Mock pacman response
-        mock_proc = MagicMock()
-        mock_proc.returncode = 0
-        mock_proc.stdout = "extra/firefox 133.0-1\n    Fast browser"
-        mock_run.return_value = mock_proc
+        # Mock alpm search
+        mock_pkg = MagicMock()
+        mock_pkg.name = 'firefox'
+        mock_pkg.version = '133.0-1'
+        mock_pkg.desc = 'Fast browser'
+        mock_pkg.db.name = 'extra'
+        
+        mock_alpm.search_packages.return_value = [mock_pkg]
         
         # Mock config object
         mock_config = MagicMock()
@@ -41,12 +44,9 @@ class TestSearchLogic(unittest.TestCase):
         with patch('apt_pac.commands.get_config', return_value=mock_config):
             commands.execute_command("search", ["firefox", "--official"])
             
-        # Verify pacman was called
-        args, _ = mock_run.call_args
-        self.assertIn("pacman", args[0])
-        self.assertIn("-Ss", args[0])
-        self.assertIn("firefox", args[0])
-        print("  Pacman called correctly.")
+        # Verify alpm_helper was called
+        mock_alpm.search_packages.assert_called_with("firefox")
+        print("  ALPM search called correctly.")
 
     @patch('apt_pac.aur.search_aur')
     @patch('subprocess.run')
