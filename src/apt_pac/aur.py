@@ -572,6 +572,11 @@ class AurInstaller:
             
             if needed_by_future:
                 # Install immediately as dependency
+                # Show what we're installing
+                for f in built_files:
+                    fname = f.name
+                    ui.console.print(f"[bold cyan]Hit:[/bold cyan]1 [blue]file://{f}[/blue] {fname}", highlight=False)
+                
                 ui.console.print(f"[dim]{_('Installing intermediate dependency')} {pkg_name}...[/dim]")
                 cmd = ["pacman", "-U", "--noconfirm", "--asdeps"] + [str(f) for f in built_files]
                 
@@ -591,6 +596,11 @@ class AurInstaller:
         # -------------------------------------------------------------
         if final_batch_paths:
             ui.console.print(f"\n[bold]{_('Installing built packages...')}[/bold]")
+            # Show what we're installing
+            for i, f in enumerate(final_batch_paths, 1):
+                fname = f.name
+                ui.console.print(f"[bold cyan]Hit:[/bold cyan]{i} [blue]file://{f}[/blue] {fname}", highlight=False)
+            
             cmd = ["pacman", "-U"] + [str(f) for f in final_batch_paths]
             if auto_confirm:
                 cmd.append("--noconfirm")
@@ -614,10 +624,9 @@ class AurInstaller:
         name = pkg_info['Name']
         pkg_dir = self.build_dir / base
         
-        # Fake GET line for source download simulation
-        # Get:1 aur://aur.archlinux.org/pkgname source
-        # We don't have a real index here easily without passing it, but '1' is fine or just omit index.
-        ui.print_apt_download_line('1', '?', f"aur://aur.archlinux.org/{base}", "source")
+        # Print GET line for source download with proper formatting
+        # Format: Get:N https://aur.archlinux.org/pkgname.git pkgname-source
+        ui.console.print(f"[bold cyan]Get:[/bold cyan]1 [blue]https://aur.archlinux.org/{base}.git[/blue] {base}-source", highlight=False)
 
         # 1. Clone or Pull (using PackageBase)
         # We capture output to hide it unless verbose
