@@ -1683,7 +1683,7 @@ def execute_command(apt_cmd, extra_args):
         try:
              root = ET.fromstring(xml_content)
              channel = root.find('channel')
-             items = channel.findall('item') if channel else []
+             items = channel.findall('item') if channel is not None else []
         except Exception as e:
              print_error(f"{_('Failed to parse news feed:')} {e}")
              sys.exit(1)
@@ -1719,12 +1719,6 @@ def execute_command(apt_cmd, extra_args):
         # Fallback logic: If no items in last 6 months, show latest one
         if not filtered_items and parsed_items:
             filtered_items = [parsed_items[0][1]] # Take the absolute latest
-        elif filtered_items:
-             # Just unpack items
-             filtered_items = [x[1] for x in filtered_items]
-        else:
-             # No valid items at all?
-             filtered_items = []
 
         if not filtered_items:
              print_info(_("No news found."))
