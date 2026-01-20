@@ -1583,34 +1583,81 @@ def execute_command(apt_cmd, extra_args):
             matching = []
             for pkg in all_pkgs:
                 if pkg.name.startswith(prefix):
-                    # Use Text objects to avoid Rich auto-highlighting
-                    from rich.text import Text
-                    text = Text()
-                    text.append("    ")
-                    text.append(prefix, style="bold")  # Search term in bold
-                    text.append(pkg.name[len(prefix):])  # Rest of name normal
-                    text.append(" ")
-                    text.append(pkg.version, style="dim")  # Version in dim
-                    matching.append(text)
+                    # Build formatted string for columnar display
+                    # Bold only the search term, rest normal, version in dim
+                    formatted = f"[bold]{prefix}[/bold]{pkg.name[len(prefix):]} [dim]{pkg.version}[/dim]"
+                    matching.append(formatted)
             
             if matching:
                 console.print(f"\n{_('Packages matching search:')}")
-                for text in matching:
-                    console.print(text)
+                # Use columnar layout
+                from rich.table import Table
+                from rich.padding import Padding
+                from rich.text import Text
+                
+                width = console.size.width
+                # Calculate max length (without markup)
+                max_len = max(Text.from_markup(p).cell_len for p in matching)
+                
+                available_width = width - 4  # Left indent
+                col_width = max_len + 2
+                cols = available_width // col_width
+                if cols < 1: cols = 1
+                
+                table = Table(show_header=False, box=None, padding=(0, 1), pad_edge=False)
+                for i in range(cols):
+                    table.add_column()
+                
+                row_buffer = []
+                for pkg in matching:
+                    row_buffer.append(pkg)
+                    if len(row_buffer) == cols:
+                        table.add_row(*row_buffer)
+                        row_buffer = []
+                if row_buffer:
+                    while len(row_buffer) < cols:
+                        row_buffer.append("")
+                    table.add_row(*row_buffer)
+                
+                console.print(Padding(table, (0, 0, 0, 4)))
                 console.print()
             else:
                 console.print(f"{_('No packages found matching')} [bold]{prefix}[/bold]")
         else:
             # Print all package names (no search term to bold)
             console.print(f"\n{_('All available packages:')}")
+            all_formatted = []
             for pkg in all_pkgs:
-                from rich.text import Text
-                text = Text()
-                text.append("    ")
-                text.append(pkg.name)
-                text.append(" ")
-                text.append(pkg.version, style="dim")
-                console.print(text)
+                all_formatted.append(f"{pkg.name} [dim]{pkg.version}[/dim]")
+            
+            from rich.table import Table
+            from rich.padding import Padding
+            from rich.text import Text
+            
+            width = console.size.width
+            max_len = max(Text.from_markup(p).cell_len for p in all_formatted)
+            
+            available_width = width - 4
+            col_width = max_len + 2
+            cols = available_width // col_width
+            if cols < 1: cols = 1
+            
+            table = Table(show_header=False, box=None, padding=(0, 1), pad_edge=False)
+            for i in range(cols):
+                table.add_column()
+            
+            row_buffer = []
+            for pkg in all_formatted:
+                row_buffer.append(pkg)
+                if len(row_buffer) == cols:
+                    table.add_row(*row_buffer)
+                    row_buffer = []
+            if row_buffer:
+                while len(row_buffer) < cols:
+                    row_buffer.append("")
+                table.add_row(*row_buffer)
+            
+            console.print(Padding(table, (0, 0, 0, 4)))
             console.print()
         return
     
