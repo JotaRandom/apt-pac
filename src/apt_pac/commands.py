@@ -1003,8 +1003,9 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
                          console.print(f"{_('Setting up system')} ({desc}) ...")
                          continue
 
-                # Default: Don't print internal pacman messages unless error or important
-                if "error" in line_lower or "warning" in line_lower:
+                # Default: Don't print internal pacman messages unless error, warning, or interaction prompt
+                lower = line_lower
+                if "error" in lower or "warning" in lower or "::" in line or "[y/n]" in lower or "will be removed" in lower or "packages (" in lower:
                     console.print(line.strip())
         
         process.wait()

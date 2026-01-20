@@ -61,7 +61,7 @@ def print_apt_download_line(index, total, url, filename, size_str=""):
     # But usually just prints: Get:1 http://archive.ubuntu.com/ubuntu jammy/main amd64 bash amd64 5.1-6ubuntu1 [123 kB]
     
     size_part = f" [{size_str}]" if size_str else ""
-    console.print(f"Get:{index} {url} {filename}{size_part}")
+    console.print(f"Get:{index} {url} {filename}{size_part}", highlight=False)
 
 def format_search_results(output):
     """
