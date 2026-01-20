@@ -1822,17 +1822,69 @@ def execute_command(apt_cmd, extra_args):
         return
     
     elif apt_cmd == "config":
-        console.print(f"\n[bold]{_('Pacman Configuration:')}[/bold]\n")
-        try:
-            with open("/etc/pacman.conf", "r") as f:
-                content = f.read()
-                # Show in a panel
-                # Show in a panel
-                console.print(Panel(content, title="/etc/pacman.conf", border_style="blue"))
-        except FileNotFoundError:
-            print_error(f"[red]{_('E:')}[/red] {_('Cannot read /etc/pacman.conf')}")
-        except PermissionError:
-            print_error(f"[red]{_('E:')}[/red] {_('Permission denied reading /etc/pacman.conf')}")
+        # Get program name from arguments, default to pacman
+        program = extra_args[0] if extra_args else "pacman"
+        
+        found_configs = []
+        
+        # Special handling for specific programs
+        if program == "pacman":
+            if os.path.exists("/etc/pacman.conf"):
+                found_configs.append("/etc/pacman.conf")
+        elif program in ["apt-pac", "aptpac"]:
+            # Show apt-pac's own config files
+            if os.path.exists("/etc/apt-pac/config.toml"):
+                found_configs.append("/etc/apt-pac/config.toml")
+            user_config = os.path.expanduser("~/.config/apt-pac/config.toml")
+            if os.path.exists(user_config):
+                found_configs.append(user_config)
+        else:
+            # Generic search for other programs
+            search_paths = [
+                f"/etc/{program}.conf",
+                f"/etc/{program}/config",
+                f"/etc/{program}/{program}.conf",
+                os.path.expanduser(f"~/.config/{program}/config.toml"),
+                os.path.expanduser(f"~/.config/{program}/config"),
+                os.path.expanduser(f"~/.config/{program}/{program}.conf"),
+                os.path.expanduser(f"~/.{program}rc"),
+                os.path.expanduser(f"~/.{program}.conf"),
+            ]
+            
+            # For hyphenated programs (e.g., pacman-mirrorlist), check {base}.d/{suffix}
+            if "-" in program:
+                parts = program.split("-", 1)
+                base, suffix = parts[0], parts[1]
+                search_paths.extend([
+                    f"/etc/{base}.d/{suffix}",
+                    f"/etc/{base}.d/{suffix}.conf",
+                ])
+            
+            for path in search_paths:
+                if os.path.exists(path):
+                    found_configs.append(path)
+        
+        # Display results
+        if found_configs:
+            console.print(f"{_('Configuration files for')} [bold]{program}[/bold]")
+            console.print()
+            for config_path in found_configs:
+                console.print(f"    {config_path}")
+            console.print()
+            console.print(f"{_('Use your favorite editor to edit them.')}")
+        else:
+            # Check if program is installed
+            is_installed = subprocess.run(
+                ["command", "-v", program], 
+                shell=True, 
+                capture_output=True
+            ).returncode == 0
+            
+            if not is_installed:
+                console.print(f"{_('Program')} [bold]{program}[/bold] {_('is not installed')}")
+            else:
+                console.print(f"{_('No configuration file found for')} [bold]{program}[/bold]")
+        
         return
     
     elif apt_cmd in ["apt-key", "key"]:
