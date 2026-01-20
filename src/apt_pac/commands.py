@@ -525,13 +525,24 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
                     sys.exit(1)
 
     # 3. Large Removal Warning
+    # 3. Large Removal Warning & Autoremove Summary
     if apt_cmd in ["remove", "purge", "autoremove"] and not is_simulation:
-        pacman_args = COMMAND_MAP[apt_cmd]
+        pacman_args = list(COMMAND_MAP[apt_cmd])
+        
+        # Remove --nosave/-n from args for print simulation because it conflicts with --print
+        # pacman error: invalid option: '--nosave' (or -n) and '--print' cannot be used together
+        pacman_args = [a for a in pacman_args if a not in ["-n", "--nosave"]]
+        # Also strip combined flags like -Rns -> -Rs
+        for i, arg in enumerate(pacman_args):
+            if arg.startswith("-") and "n" in arg and "R" in arg:
+                pacman_args[i] = arg.replace("n", "")
+
         if apt_cmd == "autoremove":
             orphan_pkgs = alpm_helper.get_orphan_packages()
             if orphan_pkgs:
                 orphans = [pkg.name for pkg in orphan_pkgs]
-                print_cmd = ["pacman", "-Rns"] + orphans + ["--print"]
+                # Use -Rs for print command to be safe and accurate
+                print_cmd = ["pacman", "-Rs"] + orphans + ["--print"]
             else:
                 return # No orphans, no removal
         else:
@@ -539,8 +550,8 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
             
         print_reading_status()
             
-        result = subprocess.run(print_cmd, capture_output=True, text=True)
-        if result.returncode == 0:
+        try:
+            result = subprocess.run(print_cmd, capture_output=True, text=True, check=True)
             # Output lines are "pkgname version"
             lines = result.stdout.strip().splitlines()
             # filter empty
@@ -553,8 +564,6 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
                      parts = line.split()
                      
                      # Try to match pkgname-version-release (common in Arch)
-                     # e.g. fish-4.3.2-1 -> match(fish, 4.3.2-1)
-                     # Regex: ^(.*)-([^-]+-[^-]+)$ -> grabs last two hyphenated parts as ver-rel
                      m = re.match(r'^(.*)-([^-]+-[^-]+)$', line)
                      
                      if len(parts) >= 2:
@@ -577,9 +586,19 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
                          print_info(_("Aborted."))
                          sys.exit(0)
                  
+                 # Standard confirmation
                  if not console.input(f"\n{_('Do you want to continue?')} [Y/n] ").lower().startswith('y'):
                      print_info(_("Aborted."))
                      sys.exit(0)
+                     
+        except subprocess.CalledProcessError as e:
+            # If print fails (e.g. invalid args), we shouldn't proceed blindly
+            # Log warning and maybe let pacman handle prompt, BUT
+            # execute_command logic assumes we handled prompt if we don't exit.
+            # So if we fail here, we MUST exit or ensure execute_command doesn't auto-confirm.
+            # Safest is to error out.
+            print_error(f"[red]{_('E:')}[/red] {_('Failed to calculate removal summary: ')}{e.stderr if e.stderr else str(e)}")
+            sys.exit(1)
 
 def get_editor():
     """Detects available editor in order: $EDITOR, nano, vi."""
@@ -1003,9 +1022,8 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
                          console.print(f"{_('Setting up system')} ({desc}) ...")
                          continue
 
-                # Default: Don't print internal pacman messages unless error, warning, or interaction prompt
-                lower = line_lower
-                if "error" in lower or "warning" in lower or "::" in line or "[y/n]" in lower or "will be removed" in lower or "packages (" in lower:
+                # Default: Don't print internal pacman messages unless error or important
+                if "error" in line_lower or "warning" in line_lower:
                     console.print(line.strip())
         
         process.wait()
