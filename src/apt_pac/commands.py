@@ -1580,13 +1580,38 @@ def execute_command(apt_cmd, extra_args):
         if extra_args:
             # Filter by prefix
             prefix = extra_args[0]
+            matching = []
             for pkg in all_pkgs:
                 if pkg.name.startswith(prefix):
-                    print(pkg.name)
+                    # Use Text objects to avoid Rich auto-highlighting
+                    from rich.text import Text
+                    text = Text()
+                    text.append("    ")
+                    text.append(prefix, style="bold")  # Search term in bold
+                    text.append(pkg.name[len(prefix):])  # Rest of name normal
+                    text.append(" ")
+                    text.append(pkg.version, style="dim")  # Version in dim
+                    matching.append(text)
+            
+            if matching:
+                console.print(f"\n{_('Packages matching search:')}")
+                for text in matching:
+                    console.print(text)
+                console.print()
+            else:
+                console.print(f"{_('No packages found matching')} [bold]{prefix}[/bold]")
         else:
-            # Print all package names
+            # Print all package names (no search term to bold)
+            console.print(f"\n{_('All available packages:')}")
             for pkg in all_pkgs:
-                print(pkg.name)
+                from rich.text import Text
+                text = Text()
+                text.append("    ")
+                text.append(pkg.name)
+                text.append(" ")
+                text.append(pkg.version, style="dim")
+                console.print(text)
+            console.print()
         return
     
     elif apt_cmd == "stats":
