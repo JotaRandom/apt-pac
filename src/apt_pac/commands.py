@@ -164,24 +164,12 @@ def show_summary(apt_cmd, extra_args, auto_confirm=False, aur_new=None, aur_upgr
     total_inst_size_change = 0
     
     if apt_cmd in ["upgrade", "dist-upgrade", "full-upgrade"] and not extra_args:
-        # Check for upgrades
-        cmd = ["pacman", "-Qu"]
-        result = run_pacman(cmd, capture_output=True, text=True)
-        
-        if result.returncode == 0:
-            for line in result.stdout.splitlines():
-                parts = line.split()
-                # Format: "pkgname oldver -> newver"
-                if len(parts) >= 4 and parts[2] == "->":
-                    name = parts[0]
-                    old_ver = parts[1]
-                    new_ver = parts[3]
-                    clean_names.append(name)
-                    pkg_versions[name] = new_ver
-                    installed_map[name] = old_ver
-                else:
-                    # Fallback or weird format
-                    clean_names.append(parts[0])
+        # Check for upgrades using pyalpm
+        updates = alpm_helper.get_available_updates()
+        for name, old_ver, new_ver in updates:
+            clean_names.append(name)
+            pkg_versions[name] = new_ver
+            installed_map[name] = old_ver
     
     else:
         base_sim = ["pacman", "-Sp"]
@@ -230,123 +218,63 @@ def show_summary(apt_cmd, extra_args, auto_confirm=False, aur_new=None, aur_upgr
     
     if clean_names:
         # Check installed status and get current versions/sizes
-        q_res = run_pacman(["pacman", "-Q"] + clean_names, capture_output=True, text=True)
+        # Optimized: Use pyalpm instead of pacman -Q
         installed_set = set()
-        if q_res.returncode != 127: # 127 is command not found
-            for line in q_res.stdout.splitlines():
-                # line is "name version"
-                if " " in line:
-                    name, version = line.split(maxsplit=1)
-                    installed_set.add(name)
-                    installed_map[name] = version
+        for name in clean_names:
+            pkg = alpm_helper.get_local_package(name)
+            if pkg:
+                installed_set.add(name)
+                installed_map[name] = pkg.version
         
         # Get installed sizes for packages that are currently installed
+        # Get installed sizes for packages that are currently installed
         if installed_set:
-            qi_res = run_pacman(["pacman", "-Qi"] + list(installed_set), capture_output=True, text=True)
-            current_pkg = None
-            for line in qi_res.stdout.splitlines():
-                line = line.strip()
-                if not line: continue
-                if line.startswith("Name"):
-                    current_pkg = line.split(":", 1)[1].strip()
-                elif line.startswith("Installed Size"):
-                    size = parse_pacman_size(line.split(":", 1)[1].strip())
-                    if current_pkg:
-                        installed_size_map[current_pkg] = size
+            # Optimized: Use pyalpm instead of pacman -Qi
+            for name in list(installed_set):
+                pkg = alpm_helper.get_local_package(name)
+                if pkg:
+                     installed_size_map[name] = pkg.isize
 
-        # Calculate sizes from -Si
+        # Calculate sizes and suggestions using pyalpm
         # Note: -Si might fail for local packages not in repo?
         # But 'pacman -Sp' returned them, so they must be downloadables (repo packages).
-        
-        si_res = run_pacman(["pacman", "-Si"] + clean_names, capture_output=True, text=True)
-        
-        # Parse -Si output (blocks separated by blank lines)
         pkg_sizes = {}
-        suggested_pkgs = set()
-        current_pkg = None
-        curr_dl = 0
-        curr_inst = 0
-        
-        # Improved Parse -Si output
-        current_section = None
         new_optdeps_map = {} # pkg -> set(optdeps_names)
-        
-        for line in si_res.stdout.splitlines():
-            if not line.strip(): 
-                current_pkg = None # Reset on blank line separator
-                continue
-                
-            if line.startswith("Name"):
-                current_pkg = line.split(":", 1)[1].strip()
-                curr_dl = 0
-                curr_inst = 0
-                current_section = "Name"
-            elif line.startswith("Download Size"):
-                curr_dl = parse_pacman_size(line.split(":", 1)[1].strip())
-                current_section = "Download Size"
-            elif line.startswith("Installed Size"):
-                curr_inst = parse_pacman_size(line.split(":", 1)[1].strip())
-                if current_pkg:
-                    pkg_sizes[current_pkg] = (curr_dl, curr_inst)
-                current_section = "Installed Size"
-            elif line.startswith("Optional Deps"):
-                content = line.split(":", 1)[1].strip()
-                if content and content != "None":
-                   # content format: "pkgname: description"
-                   pkg_name = content.split(":")[0].strip()
-                   if current_pkg:
-                       if current_pkg not in new_optdeps_map: new_optdeps_map[current_pkg] = set()
-                       new_optdeps_map[current_pkg].add(pkg_name)
-                current_section = "Optional Deps"
-            elif line.startswith(" "):
-                 # Continuation line
-                 if current_section == "Optional Deps" and current_pkg:
-                     content = line.strip()
-                     if ":" in content:
-                         pkg_name = content.split(":")[0].strip()
-                         if current_pkg not in new_optdeps_map: new_optdeps_map[current_pkg] = set()
-                         new_optdeps_map[current_pkg].add(pkg_name)
-            else:
-                 current_section = line.split(":")[0].strip() # Other headers
+
+        # Batch lookup for remote packages?
+        # pyalpm doesn't have batch lookup, but get_package is fast because it searches in-memory DB references.
+        for name in clean_names:
+            pkg = alpm_helper.get_package(name)
+            if pkg:
+                pkg_sizes[name] = (pkg.download_size, pkg.isize)
+                if pkg.optdepends:
+                     new_optdeps_map[name] = set()
+                     for dep_str in pkg.optdepends:
+                          # Format is "pkgname: description" or just "pkgname"
+                          if ":" in dep_str:
+                              dname = dep_str.split(":")[0].strip()
+                              new_optdeps_map[name].add(dname)
+                          else:
+                              new_optdeps_map[name].add(dep_str.strip())
 
 
         # Now iterate clean_names to build lists and calculating diffs for suggestions
         # We need old optdeps for upgraded packages
         old_optdeps_map = {}
+
+        # Optimized: Use pyalpm to get old optdeps
         if installed_set:
-            # We already ran -Qi for sizes (lines 220), but we didn't capture optdeps.
-            # We need to parse them now or we should have parsed them earlier.
-            # To avoid re-running, let's just parsing -Qi output again if we saved it? 
-            # We didn't save the full output object, just used it. 
-            # Re-running -Qi for installed_set is cheap (local).
-            qi_res_full = run_pacman(["pacman", "-Qi"] + list(installed_set), capture_output=True, text=True)
-            curr_qi_pkg = None
-            curr_qi_section = None
-            for line in qi_res_full.stdout.splitlines():
-                if not line.strip():
-                    curr_qi_pkg = None
-                    continue
-                if line.startswith("Name"):
-                    curr_qi_pkg = line.split(":", 1)[1].strip()
-                    curr_qi_section = "Name"
-                elif line.startswith("Optional Deps"):
-                    content = line.split(":", 1)[1].strip()
-                    if content and content != "None":
-                        p = content.split(":")[0].strip()
-                        if curr_qi_pkg:
-                             if curr_qi_pkg not in old_optdeps_map: old_optdeps_map[curr_qi_pkg] = set()
-                             old_optdeps_map[curr_qi_pkg].add(p)
-                    curr_qi_section = "Optional Deps"
-                elif line.startswith(" "):
-                    if curr_qi_section == "Optional Deps" and curr_qi_pkg:
-                         content = line.strip()
-                         if ":" in content:
-                             p = content.split(":")[0].strip()
-                             if curr_qi_pkg:
-                                 if curr_qi_pkg not in old_optdeps_map: old_optdeps_map[curr_qi_pkg] = set()
-                                 old_optdeps_map[curr_qi_pkg].add(p)
-                else:
-                    curr_qi_section = line.split(":")[0].strip()
+             for name in installed_set:
+                 pkg = alpm_helper.get_local_package(name)
+                 if pkg and pkg.optdepends:
+                     old_optdeps_map[name] = set()
+                     for dep_str in pkg.optdepends:
+                         # Format is "pkgname: description" or just "pkgname"
+                         if ":" in dep_str:
+                             dname = dep_str.split(":")[0].strip()
+                             old_optdeps_map[name].add(dname)
+                         else:
+                             old_optdeps_map[name].add(dep_str.strip())
 
 
         
@@ -422,8 +350,10 @@ def show_summary(apt_cmd, extra_args, auto_confirm=False, aur_new=None, aur_upgr
          sorted_sug = sorted(list(visible_suggestions))
          
          # Check which ones are installed
-         check_installed = run_pacman(["pacman", "-Qq"] + sorted_sug, capture_output=True, text=True)
-         already_installed = set(check_installed.stdout.splitlines())
+         already_installed = set()
+         for sug in sorted_sug:
+             if alpm_helper.is_package_installed(sug):
+                 already_installed.add(sug)
          
          final_suggestions = []
          for sug in sorted_sug:
@@ -595,13 +525,24 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
                     sys.exit(1)
 
     # 3. Large Removal Warning
+    # 3. Large Removal Warning & Autoremove Summary
     if apt_cmd in ["remove", "purge", "autoremove"] and not is_simulation:
-        pacman_args = COMMAND_MAP[apt_cmd]
+        pacman_args = list(COMMAND_MAP[apt_cmd])
+        
+        # Remove --nosave/-n from args for print simulation because it conflicts with --print
+        # pacman error: invalid option: '--nosave' (or -n) and '--print' cannot be used together
+        pacman_args = [a for a in pacman_args if a not in ["-n", "--nosave"]]
+        # Also strip combined flags like -Rns -> -Rs
+        for i, arg in enumerate(pacman_args):
+            if arg.startswith("-") and "n" in arg and "R" in arg:
+                pacman_args[i] = arg.replace("n", "")
+
         if apt_cmd == "autoremove":
             orphan_pkgs = alpm_helper.get_orphan_packages()
             if orphan_pkgs:
                 orphans = [pkg.name for pkg in orphan_pkgs]
-                print_cmd = ["pacman", "-Rns"] + orphans + ["--print"]
+                # Use -Rs for print command to be safe and accurate
+                print_cmd = ["pacman", "-Rs"] + orphans + ["--print"]
             else:
                 return # No orphans, no removal
         else:
@@ -609,8 +550,8 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
             
         print_reading_status()
             
-        result = subprocess.run(print_cmd, capture_output=True, text=True)
-        if result.returncode == 0:
+        try:
+            result = subprocess.run(print_cmd, capture_output=True, text=True, check=True)
             # Output lines are "pkgname version"
             lines = result.stdout.strip().splitlines()
             # filter empty
@@ -623,8 +564,6 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
                      parts = line.split()
                      
                      # Try to match pkgname-version-release (common in Arch)
-                     # e.g. fish-4.3.2-1 -> match(fish, 4.3.2-1)
-                     # Regex: ^(.*)-([^-]+-[^-]+)$ -> grabs last two hyphenated parts as ver-rel
                      m = re.match(r'^(.*)-([^-]+-[^-]+)$', line)
                      
                      if len(parts) >= 2:
@@ -647,9 +586,19 @@ def check_safeguards(apt_cmd, extra_args, is_simulation=False):
                          print_info(_("Aborted."))
                          sys.exit(0)
                  
+                 # Standard confirmation
                  if not console.input(f"\n{_('Do you want to continue?')} [Y/n] ").lower().startswith('y'):
                      print_info(_("Aborted."))
                      sys.exit(0)
+                     
+        except subprocess.CalledProcessError as e:
+            # If print fails (e.g. invalid args), we shouldn't proceed blindly
+            # Log warning and maybe let pacman handle prompt, BUT
+            # execute_command logic assumes we handled prompt if we don't exit.
+            # So if we fail here, we MUST exit or ensure execute_command doesn't auto-confirm.
+            # Safest is to error out.
+            print_error(f"[red]{_('E:')}[/red] {_('Failed to calculate removal summary: ')}{e.stderr if e.stderr else str(e)}")
+            sys.exit(1)
 
 def get_editor():
     """Detects available editor in order: $EDITOR, nano, vi."""
@@ -1551,10 +1500,15 @@ def execute_command(apt_cmd, extra_args):
         return
 
     elif apt_cmd == "autoclean":
-        if subprocess.run(["command -v paccache"], shell=True, capture_output=True).returncode == 0:
-            pacman_cmd = ["paccache", "-rk3"]
-        else:
-            pacman_cmd = ["pacman", "-Sc"]
+        # Use native python implementation replacing paccache -rk3
+        print_info(_("Cleaning up package cache (keeping latest 3 versions)..."))
+        try:
+             freed = alpm_helper.clean_cache(keep=3, dry_run=False, verbose=True)
+             size_str = fmt_adaptive_size(freed)
+             print_success(f"{_('Cleaned up cache.')} {_('Freed space:')} {size_str}")
+        except Exception as e:
+             print_error(f"{_('Failed to clean cache:')} {e}")
+        return
     elif apt_cmd == "policy":
         # Simulate apt-cache policy: show installed version and repo version
         pkg = extra_args[0] if extra_args else ""
@@ -1626,13 +1580,85 @@ def execute_command(apt_cmd, extra_args):
         if extra_args:
             # Filter by prefix
             prefix = extra_args[0]
+            matching = []
             for pkg in all_pkgs:
                 if pkg.name.startswith(prefix):
-                    print(pkg.name)
+                    # Build formatted string for columnar display
+                    # Bold only the search term, rest normal, version in dim
+                    formatted = f"[bold]{prefix}[/bold]{pkg.name[len(prefix):]} [dim]{pkg.version}[/dim]"
+                    matching.append(formatted)
+            
+            if matching:
+                console.print(f"\n{_('Packages matching search:')}")
+                # Use columnar layout
+                from rich.table import Table
+                from rich.padding import Padding
+                from rich.text import Text
+                
+                width = console.size.width
+                # Calculate max length (without markup)
+                max_len = max(Text.from_markup(p).cell_len for p in matching)
+                
+                available_width = width - 4  # Left indent
+                col_width = max_len + 2
+                cols = available_width // col_width
+                if cols < 1: cols = 1
+                
+                table = Table(show_header=False, box=None, padding=(0, 1), pad_edge=False)
+                for i in range(cols):
+                    table.add_column()
+                
+                row_buffer = []
+                for pkg in matching:
+                    row_buffer.append(pkg)
+                    if len(row_buffer) == cols:
+                        table.add_row(*row_buffer)
+                        row_buffer = []
+                if row_buffer:
+                    while len(row_buffer) < cols:
+                        row_buffer.append("")
+                    table.add_row(*row_buffer)
+                
+                console.print(Padding(table, (0, 0, 0, 4)))
+                console.print()
+            else:
+                console.print(f"{_('No packages found matching')} [bold]{prefix}[/bold]")
         else:
-            # Print all package names
+            # Print all package names (no search term to bold)
+            console.print(f"\n{_('All available packages:')}")
+            all_formatted = []
             for pkg in all_pkgs:
-                print(pkg.name)
+                all_formatted.append(f"{pkg.name} [dim]{pkg.version}[/dim]")
+            
+            from rich.table import Table
+            from rich.padding import Padding
+            from rich.text import Text
+            
+            width = console.size.width
+            max_len = max(Text.from_markup(p).cell_len for p in all_formatted)
+            
+            available_width = width - 4
+            col_width = max_len + 2
+            cols = available_width // col_width
+            if cols < 1: cols = 1
+            
+            table = Table(show_header=False, box=None, padding=(0, 1), pad_edge=False)
+            for i in range(cols):
+                table.add_column()
+            
+            row_buffer = []
+            for pkg in all_formatted:
+                row_buffer.append(pkg)
+                if len(row_buffer) == cols:
+                    table.add_row(*row_buffer)
+                    row_buffer = []
+            if row_buffer:
+                while len(row_buffer) < cols:
+                    row_buffer.append("")
+                table.add_row(*row_buffer)
+            
+            console.print(Padding(table, (0, 0, 0, 4)))
+            console.print()
         return
     
     elif apt_cmd == "stats":
@@ -1683,7 +1709,7 @@ def execute_command(apt_cmd, extra_args):
         try:
              root = ET.fromstring(xml_content)
              channel = root.find('channel')
-             items = channel.findall('item') if channel else []
+             items = channel.findall('item') if channel is not None else []
         except Exception as e:
              print_error(f"{_('Failed to parse news feed:')} {e}")
              sys.exit(1)
@@ -1719,12 +1745,6 @@ def execute_command(apt_cmd, extra_args):
         # Fallback logic: If no items in last 6 months, show latest one
         if not filtered_items and parsed_items:
             filtered_items = [parsed_items[0][1]] # Take the absolute latest
-        elif filtered_items:
-             # Just unpack items
-             filtered_items = [x[1] for x in filtered_items]
-        else:
-             # No valid items at all?
-             filtered_items = []
 
         if not filtered_items:
              print_info(_("No news found."))
@@ -1874,17 +1894,69 @@ def execute_command(apt_cmd, extra_args):
         return
     
     elif apt_cmd == "config":
-        console.print(f"\n[bold]{_('Pacman Configuration:')}[/bold]\n")
-        try:
-            with open("/etc/pacman.conf", "r") as f:
-                content = f.read()
-                # Show in a panel
-                # Show in a panel
-                console.print(Panel(content, title="/etc/pacman.conf", border_style="blue"))
-        except FileNotFoundError:
-            print_error(f"[red]{_('E:')}[/red] {_('Cannot read /etc/pacman.conf')}")
-        except PermissionError:
-            print_error(f"[red]{_('E:')}[/red] {_('Permission denied reading /etc/pacman.conf')}")
+        # Get program name from arguments, default to pacman
+        program = extra_args[0] if extra_args else "pacman"
+        
+        found_configs = []
+        
+        # Special handling for specific programs
+        if program == "pacman":
+            if os.path.exists("/etc/pacman.conf"):
+                found_configs.append("/etc/pacman.conf")
+        elif program in ["apt-pac", "aptpac"]:
+            # Show apt-pac's own config files
+            if os.path.exists("/etc/apt-pac/config.toml"):
+                found_configs.append("/etc/apt-pac/config.toml")
+            user_config = os.path.expanduser("~/.config/apt-pac/config.toml")
+            if os.path.exists(user_config):
+                found_configs.append(user_config)
+        else:
+            # Generic search for other programs
+            search_paths = [
+                f"/etc/{program}.conf",
+                f"/etc/{program}/config",
+                f"/etc/{program}/{program}.conf",
+                os.path.expanduser(f"~/.config/{program}/config.toml"),
+                os.path.expanduser(f"~/.config/{program}/config"),
+                os.path.expanduser(f"~/.config/{program}/{program}.conf"),
+                os.path.expanduser(f"~/.{program}rc"),
+                os.path.expanduser(f"~/.{program}.conf"),
+            ]
+            
+            # For hyphenated programs (e.g., pacman-mirrorlist), check {base}.d/{suffix}
+            if "-" in program:
+                parts = program.split("-", 1)
+                base, suffix = parts[0], parts[1]
+                search_paths.extend([
+                    f"/etc/{base}.d/{suffix}",
+                    f"/etc/{base}.d/{suffix}.conf",
+                ])
+            
+            for path in search_paths:
+                if os.path.exists(path):
+                    found_configs.append(path)
+        
+        # Display results
+        if found_configs:
+            console.print(f"{_('Configuration files for')} [bold]{program}[/bold]")
+            console.print()
+            for config_path in found_configs:
+                console.print(f"    {config_path}")
+            console.print()
+            console.print(f"{_('Use your favorite editor to edit them.')}")
+        else:
+            # Check if program is installed
+            is_installed = subprocess.run(
+                ["command", "-v", program], 
+                shell=True, 
+                capture_output=True
+            ).returncode == 0
+            
+            if not is_installed:
+                console.print(f"{_('Program')} [bold]{program}[/bold] {_('is not installed')}")
+            else:
+                console.print(f"{_('No configuration file found for')} [bold]{program}[/bold]")
+        
         return
     
     elif apt_cmd in ["apt-key", "key"]:

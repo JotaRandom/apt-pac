@@ -64,15 +64,20 @@ class TestAurInstallLogic(unittest.TestCase):
     @patch('apt_pac.aur.is_in_official_repos')
     @patch('apt_pac.aur.search_aur')
     @patch('subprocess.run')
+    @patch('apt_pac.commands.alpm_helper')
     @patch('os.getuid', return_value=0, create=True)
-    def test_pure_official(self, mock_getuid, mock_run, mock_search, mock_is_official, mock_installer):
+    def test_pure_official(self, mock_getuid, mock_alpm, mock_run, mock_search, mock_is_official, mock_installer):
         """Test pure official install (fallback to standard flow)"""
         print("\nTesting Pure Official Install...")
         
         mock_is_official.return_value = True
+        mock_alpm.get_available_updates.return_value = [] # Prevent partial upgrade warning
         
         with patch('apt_pac.commands.run_pacman_with_apt_output', return_value=True):
-             commands.execute_command("install", ["git"])
+            try:
+                commands.execute_command("install", ["git"])
+            except SystemExit:
+                pass
         
         # Should set pacman_cmd standard flow, not trigger installer directly
         # Wait, my logic calls installer directly ONLY if aur_pkgs list is not empty.

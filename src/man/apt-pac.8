@@ -288,7 +288,7 @@ Clears the entire pacman package cache (pacman -Scc) AND the apt-pac source cach
 .br
 Remove old cached package files
 .br
-Removes outdated package versions from the cache, keeping only the most recent 3 versions (paccache -rk3) requires 'pacman-contrib'. If 'paccache' is missing, falls back to 'pacman -Sc' which removes all packages not currently installed.
+Removes outdated package versions from the cache, keeping only the most recent 3 versions using a built-in mechanism.
 .TP
 .B stats
 (custom implementation using pacman queries)

@@ -177,21 +177,13 @@ def get_aur_info(package_names: List[str]) -> List[Dict]:
 
 def is_installed(package: str) -> bool:
     """Check if a package is installed locally."""
-    return subprocess.run(
-        ["pacman", "-Qq", package], 
-        stdout=subprocess.DEVNULL, 
-        stderr=subprocess.DEVNULL
-    ).returncode == 0
+    from . import alpm_helper
+    return alpm_helper.is_package_installed(package)
 
 def is_in_official_repos(package: str) -> bool:
     """Check if a package exists in official repos (or is provided by one)."""
-    # -Si only checks exact name. -Sp checks if it can be resolved (downloadable).
-    # We use --noconfirm so it picks defaults for providers check without hanging.
-    return subprocess.run(
-        ["pacman", "-Sp", "--noconfirm", package], 
-        stdout=subprocess.DEVNULL, 
-        stderr=subprocess.DEVNULL
-    ).returncode == 0
+    from . import alpm_helper
+    return alpm_helper.is_in_official_repos(package)
 
 def get_installed_packages() -> Dict[str, str]:
     """
@@ -498,88 +490,180 @@ class AurInstaller:
                 print_info(_("Aborted."))
                 sys.exit(0)
 
-        for pkg in build_queue:
-            self._build_pkg(pkg, verbose, auto_confirm)
+        # -------------------------------------------------------------
+        # STEP 1: Install Official Dependencies First
+        # -------------------------------------------------------------
+        if official_deps:
+            # Install all official deps in one batch first
+            # Use --needed to avoid reinstalling up-to-date packages
+            # Use --asdeps to mark them correctly
+            
+            # We want to see apt-style output for this
+            cmd = ["pacman", "-S", "--needed", "--asdeps"] + list(official_deps)
+            if auto_confirm:
+                cmd.append("--noconfirm")
+                
+            from .commands import run_pacman_with_apt_output
+            if not run_pacman_with_apt_output(cmd, show_hooks=True):
+                 print_error(_("Failed to install official dependencies"))
+                 sys.exit(1)
+
+        # -------------------------------------------------------------
+        # STEP 2: Build and Install AUR Packages
+        # -------------------------------------------------------------
+        
+        # We need to know which packages in the queue are dependencies for LATER packages in the queue.
+        # If a package is needed by another package in the queue, we must install it immediately as a dep.
+        # If it's a top-level package (not needed by anything remaining in queue), we can batch it?
+        # Actually, for build correctness, we usually install build-deps immediately.
+        # But user requested "install all at once at the end".
+        # This implies:
+        # 1. Build Pkg A
+        # 2. Build Pkg B (which might depend on A) -> If B depends on A, A MUST be installed first.
+        # So we can only batch the "final target" packages.
+        
+        # Simple Logic:
+        # Check if the current pkg is a makedep/checkdep/rundep of any FUTURE package in the queue.
+        # If yes -> install immediately (--asdeps)
+        # If no -> add to final_batch list
+        
+        final_batch_paths = []
+        final_batch_names = []
+        
+        # Map package names to their position in queue for quick check
+        # But queue is sorted by build order.
+        # We need to check dependencies of *remaining* items.
+        
+        # Pre-process dependencies of the queue to make lookups fast
+        queue_deps = {} # pkg_name -> set(deps)
+        for i, pkg in enumerate(build_queue):
+            pname = pkg['Name']
+            deps = set()
+            deps.update(pkg.get('Depends', []))
+            deps.update(pkg.get('MakeDepends', []))
+            deps.update(pkg.get('CheckDepends', []))
+            
+            # Clean version constraints
+            clean_deps = set()
+            for d in deps:
+                clean = d.split('>')[0].split('<')[0].split('=')[0].strip()
+                clean_deps.add(clean)
+            queue_deps[pname] = clean_deps
+
+        for i, pkg in enumerate(build_queue):
+            pkg_name = pkg['Name']
+            
+            # Determine if this package is needed by any FUTURE package in the queue
+            needed_by_future = False
+            for j in range(i + 1, len(build_queue)):
+                future_pkg = build_queue[j]
+                future_name = future_pkg['Name']
+                if pkg_name in queue_deps[future_name]:
+                    needed_by_future = True
+                    break
+            
+            # Build the package
+            # This returns the list of built package files valid for this package
+            built_files = self._build_pkg(pkg, verbose, auto_confirm)
+            
+            if not built_files:
+                print_error(_(f"Build failed for {pkg_name}"))
+                sys.exit(1)
+            
+            if needed_by_future:
+                # Install immediately as dependency
+                # Show what we're installing
+                for f in built_files:
+                    fname = f.name
+                    ui.console.print(f"[bold cyan]Hit:[/bold cyan]1 [blue]file://{f}[/blue] {fname}", highlight=False)
+                
+                ui.console.print(f"[dim]{_('Installing intermediate dependency')} {pkg_name}...[/dim]")
+                cmd = ["pacman", "-U", "--noconfirm", "--asdeps"] + [str(f) for f in built_files]
+                
+                # We use simple subprocess here to avoid noise, or use our wrapper?
+                # Wrapper gives good feedback.
+                from .commands import run_pacman_with_apt_output
+                if not run_pacman_with_apt_output(cmd, show_hooks=False):
+                    print_error(_(f"Failed to install dependency {pkg_name}"))
+                    sys.exit(1)
+            else:
+                # Queue for final install
+                final_batch_paths.extend(built_files)
+                final_batch_names.append(pkg_name)
+
+        # -------------------------------------------------------------
+        # STEP 3: Final Batch Install
+        # -------------------------------------------------------------
+        if final_batch_paths:
+            ui.console.print(f"\n[bold]{_('Installing built packages...')}[/bold]")
+            # Show what we're installing
+            for i, f in enumerate(final_batch_paths, 1):
+                fname = f.name
+                ui.console.print(f"[bold cyan]Hit:[/bold cyan]{i} [blue]file://{f}[/blue] {fname}", highlight=False)
+            
+            cmd = ["pacman", "-U"] + [str(f) for f in final_batch_paths]
+            if auto_confirm:
+                cmd.append("--noconfirm")
+            else:
+                 # If explicit install, we usually want to confirm? 
+                 # But we already confirmed at the start. So --noconfirm is appropriate unless we want double confirm.
+                 # "apt install" confirms once at start.
+                 cmd.append("--noconfirm")
+                
+            from .commands import run_pacman_with_apt_output
+            if run_pacman_with_apt_output(cmd, show_hooks=True):
+                 ui.console.print(f"[success]{_('Successfully installed')} {', '.join(final_batch_names)}[/success]")
+            else:
+                 print_error(_("Failed to install packages"))
+                 sys.exit(1)
 
 
-
-    def _build_pkg(self, pkg_info: Dict, verbose: bool, auto_confirm: bool):
-        # Use PackageBase for split packages (e.g., linux-headers uses 'linux' base)
+    def _build_pkg(self, pkg_info: Dict, verbose: bool, auto_confirm: bool) -> List[Path]:
+        # Use PackageBase for split packages
         base = pkg_info.get('PackageBase', pkg_info['Name'])
         name = pkg_info['Name']
-        pkg_dir = self.build_dir / base  # Download/build in PackageBase directory
+        pkg_dir = self.build_dir / base
         
-        # Determine if this is a split package
-        is_split = False
-        split_pkgs = []
-        if self.resolver and base in self.resolver.package_bases:
-            split_pkgs = sorted(self.resolver.package_bases[base])
-            is_split = len(split_pkgs) > 1
-        
-        # Processing message
-        if is_split:
-            ui.console.print(f"\n[bold blue]:: {_('Processing')} {base} ({_('split package')})...[/bold blue]")
-        else:
-            ui.console.print(f"\n[bold blue]:: {_('Processing')} {name}...[/bold blue]")
-        
+        # Print GET line for source download with proper formatting
+        # Format: Get:N https://aur.archlinux.org/pkgname.git pkgname-source
+        ui.console.print(f"[bold cyan]Get:[/bold cyan]1 [blue]https://aur.archlinux.org/{base}.git[/blue] {base}-source", highlight=False)
+
         # 1. Clone or Pull (using PackageBase)
-        if not download_aur_source(base, pkg_dir):
-            print_error(_(f"Failed to download source for {base}"))
-            sys.exit(1)
+        # We capture output to hide it unless verbose
+        if not self._download_source_silent(base, pkg_dir, verbose):
+             print_error(_(f"Failed to download source for {base}"))
+             sys.exit(1)
             
-        # Fix permissions if running as root (so ordinary user can build)
-        # Get the build user from config or auto-detect
+        # Fix permissions
         config = get_config()
         build_user_config = config.get("tools", "build_user", "auto")
-        
         if build_user_config == "auto":
             real_user = os.environ.get("SUDO_USER")
         else:
             real_user = build_user_config
         
         if os.getuid() == 0 and real_user:
-            # Recursively chown the specific package directory and parent
-            # We chown the whole build_dir to be safe as it's a cache dir
             subprocess.run(["chown", "-R", f"{real_user}:", str(self.build_dir)], check=False)
 
         # 2. Build
-        if is_split:
-            ui.console.print(f"[dim]{_('Building')} {base} ({_('provides')}: {', '.join(split_pkgs)})...[/dim]")
-        else:
-            ui.console.print(f"[dim]{_('Building')} {base}...[/dim]")
+        # makepkg -f (force rebuild), --needed (skip if existing?), --noconfirm
+        # IMPORTANT: NO -s (syncdeps) because we handled deps manually!
+        cmd = ["makepkg", "-f", "--needed", "--noconfirm"]
         
-        # makepkg -sf (sync deps, force rebuild, clean, needed)
-        # We build WITHOUT -i flag so we can install it ourselves with apt-pac formatting
-        # -f flag forces rebuild even if package already exists (needed for upgrades/reinstalls)
-        # This ensures consistent APT-style output for the installation step
-        # NOTE: We do NOT use -r (rmdeps) because it fails if dependencies were AUR packages 
-        # that we manually installed and it bypasses our wrapper logic.
-        cmd = ["makepkg", "-sf", "--needed"]
-        
-        # Handle colors: makepkg outputs colors by default. Pass -m (nocolor) if ui is no_color.
         if ui.console.no_color:
             cmd.append("-m")
             
-        if auto_confirm:
-            cmd.append("--noconfirm")
-        
         if os.getuid() == 0:
+             # Dropped privileges logic for build
              if real_user:
-                 # Drop privileges to build, but allow installing deps (makepkg calls sudo/pacman)
-                 # IMPORTANT: We need to cd into the directory because run0/sudo don't preserve cwd
                  config = get_config()
                  tool = config.get("tools", "privilege_tool", "auto")
                  
-                 # Auto-detect if auto
                  if tool == "auto":
-                     if shutil.which("run0"):
-                         tool = "run0"
-                     elif shutil.which("doas"):
-                         tool = "doas"
-                     else:
-                         tool = "sudo"
+                     if shutil.which("run0"): tool = "run0"
+                     elif shutil.which("doas"): tool = "doas"
+                     else: tool = "sudo"
                  
-                 # Build the command as: tool --user=X sh -c 'cd /path && makepkg ...'
                  makepkg_cmd_str = " ".join(cmd)
                  shell_cmd = f"cd {pkg_dir} && {makepkg_cmd_str}"
                  
@@ -590,21 +674,15 @@ class AurInstaller:
                  else:
                      cmd = ["sudo", "-u", real_user, "sh", "-c", shell_cmd]
                  
-                 # Since we're using shell with cd, we don't need to pass cwd to subprocess
                  run_cwd = None
              else:
-                 print_error(f"[red]{_('E:')}[/red] {_('Cannot build')} AUR {_('packages as root without SUDO_USER set.')}")
-                 print_info(_("Please run as a normal user or via sudo."))
+                 print_error(_("Cannot build as root without SUDO_USER"))
                  sys.exit(1)
         else:
-            # Running as normal user, just use the pkg_dir as cwd
             run_cwd = pkg_dir
 
         try:
-            # Always show makepkg output so users can see build errors
-            
-            # Clean up any existing package files to ensure we only capture what is built now
-            # This addresses the ambiguity mentioned in the FIXME below
+             # Clean previous packages to avoid confusion
             for existing_pkg in pkg_dir.glob("*.pkg.tar.*"):
                  try:
                      existing_pkg.unlink()
@@ -613,159 +691,76 @@ class AurInstaller:
 
             subprocess.run(cmd, cwd=run_cwd, check=True)
             
-            # 3. Find the built package(s)
-            # makepkg creates .pkg.tar.* files in the build directory
-            # For split packages, there may be multiple files
-            pkg_files = list(pkg_dir.glob("*.pkg.tar.*"))
-            if not pkg_files:
-                print_error(_(f"No package files found after building {base}"))
-                sys.exit(1)
+            # 3. Find built packages
+            # FILTER logic: Only return packages that match the requested 'name' 
+            # OR are part of the 'provides' if split?
+            # Actually, we need to match what we expect.
+            # If 'name' is 'pix', we want 'pix-*.pkg.tar.*'.
+            # We do NOT want 'pix-debug-*.pkg.tar.*' unless name was 'pix-debug'.
             
-            # 4. Show summary and install using existing apt-pac UI functions
-            # Extract package names and versions from built files
-            pkg_info = []
-            for f in pkg_files:
-                # Parse filename: pkgname-pkgver-pkgrel-arch.pkg.tar.*
-                # Example: xapp-symbolic-icons-git-1.0.7+0-1-any.pkg.tar.zst
-                stem = f.stem
-                # Remove .tar from .pkg.tar.* if present
-                if stem.endswith('.tar'):
-                    stem = stem[:-4]
-                # Split: name-ver-rel-arch
-                parts = stem.rsplit('-', 3)
-                if len(parts) >= 2:
-                    pkg_name = parts[0]
-                    pkg_ver = f"{parts[1]}-{parts[2]}" if len(parts) >= 3 else parts[1]
-                    pkg_info.append((pkg_name, pkg_ver))
-                else:
-                    pkg_info.append((stem, ""))
+            all_pkg_files = list(pkg_dir.glob("*.pkg.tar.*"))
+            valid_pkg_files = []
             
-            # Show APT-style summary using existing function
-            print_reading_status()
-            print_transaction_summary(new_pkgs=pkg_info, explicit_names=set([p[0] for p in pkg_info]))
-            
-            # Summary line
-            ui.console.print(_(f"0 upgraded, {len(pkg_info)} newly installed, 0 to remove and 0 not upgraded."))
-            
-            # Prompt if not auto_confirm
-            if not auto_confirm:
-                from rich.text import Text
-                prompt = Text(_("Do you want to continue? [Y/n] "), style="bold yellow")
-                response = ui.console.input(prompt)
-                if response and not response.lower().startswith('y'):
-                    ui.console.print(_("Aborted."))
-                    sys.exit(0)
-            
-            # Install using existing apt-pac wrapper for consistent output
-            install_cmd = ["pacman", "-U"] + [str(f) for f in pkg_files] + ["--noconfirm"]
-            
-            from .commands import run_pacman_with_apt_output
-            success = run_pacman_with_apt_output(install_cmd, show_hooks=True)
-            if not success:
-                print_error(_(f"Failed to install {name}"))
-                sys.exit(1)
-            
-            # Success message
-            if is_split:
-                ui.console.print(f"[success]{_('Successfully installed')} {', '.join(split_pkgs)}[/success]")
-            else:
-                ui.console.print(f"[success]{_('Successfully installed')} {name}[/success]")
-            return
-            
-        except subprocess.CalledProcessError as e:
-            # Check for GPG errors
-            # "One or more PGP signatures could not be verified"
-            # "unknown public key D1483FA6C3C07136"
-            err_output = e.stderr.decode('utf-8') if e.stderr else ""
-            if not verbose and e.stdout:
-                err_output += e.stdout.decode('utf-8')
-
-            import re
-            # Regex to find key IDs (hex strings) associated with unknown public key errors
-            # Look for: "unknown public key <ID>" or "public key <ID> could not be verified"
-            key_matches = re.findall(r"public key ([A-Fa-f0-9]+)", err_output)
-            
-            if ("PGP signatures" in err_output or "unknown public key" in err_output) and key_matches:
-                ui.console.print(f"\n[bold yellow]W: {_('GPG verification failed. Missing keys detected:')} {', '.join(set(key_matches))}[/bold yellow]")
+            for f in all_pkg_files:
+                # heuristic: check if filename starts with name-
+                # Or check metadata?
+                # Simple check:
+                fname = f.name
                 
-                if auto_confirm or ui.console.input("Do you want to try importing these keys? [Y/n] ").lower().startswith('y'):
-                    for key_id in set(key_matches):
-                        ui.console.print(f"[blue]{_('Importing key')} {key_id}...[/blue]")
-                        gpg_cmd = ["gpg", "--recv-keys", key_id]
-                        
-                        # IMPORTANT: Import key for the REAL USER, not root
-                        if os.getuid() == 0 and real_user:
-                             gpg_cmd = get_privilege_command(real_user, gpg_cmd)
-                        
-                        subprocess.run(gpg_cmd, check=False)
-                    
-                    # Retry build once
-                    ui.console.print(f"[blue]{_('Retrying build...')}[/blue]")
-                    try:
-                        subprocess.run(cmd, cwd=run_cwd, check=True)
-                        
-                        # Find the built package(s)
-                        # We found the package file
-                        pkg_files = []
-                        for f in pkg_dir.iterdir():
-                            if is_valid_package(str(f)):
-                                pkg_files.append(f)
-                        
-                        if not pkg_files:
-                            print_error(_(f"No package files found after building {base}"))
-                            sys.exit(1)
-                        
-                        # Install using same consistent approach as main install
-                        # Parse package info
-                        pkg_info = []
-                        for f in pkg_files:
-                            stem = f.stem
-                            if stem.endswith('.tar'):
-                                stem = stem[:-4]
-                            parts = stem.rsplit('-', 3)
-                            if len(parts) >= 2:
-                                pkg_name = parts[0]
-                                pkg_ver = f"{parts[1]}-{parts[2]}" if len(parts) >= 3 else parts[1]
-                                pkg_info.append((pkg_name, pkg_ver))
-                            else:
-                                pkg_info.append((stem, ""))
-                        
-                        # Show summary and prompt
-                        print_reading_status()
-                        print_transaction_summary(new_pkgs=pkg_info, explicit_names=set([p[0] for p in pkg_info]))
-                        ui.console.print(_(f"0 upgraded, {len(pkg_info)} newly installed, 0 to remove and 0 not upgraded."))
-                        
-                        if not auto_confirm:
-                            from rich.text import Text
-                            prompt = Text(f"Do you want to continue? [Y/n] ", style="bold yellow")
-                            response = ui.console.input(prompt)
-                            if response and not response.lower().startswith('y'):
-                                ui.console.print("Abort.")
-                                sys.exit(0)
-                        
-                        # Install with apt-pac wrapper
-                        install_cmd = ["pacman", "-U"] + [str(f) for f in pkg_files] + ["--noconfirm"]
-                        from .commands import run_pacman_with_apt_output
-                        success = run_pacman_with_apt_output(install_cmd, show_hooks=True)
-                        if not success:
-                            print_error(_(f"Failed to install {name}"))
-                            sys.exit(1)
-                        
-                        if is_split:
-                             ui.console.print(f"[success]{_('Successfully installed')} {', '.join(split_pkgs)}[/success]")
-                        else:
-                             ui.console.print(f"[success]{_('Successfully installed')} {name}[/success]")
-                        return
-                        
-                    except subprocess.CalledProcessError:
-                         pass # Fallthrough to failure message
-
-            if verbose:
-                # If verbose was off, we didn't show the error yet (captured)
-                print_error(_(f"Build output:\n{err_output}"))
+                # Check for debug package
+                if "-debug" in fname and not name.endswith("-debug"):
+                     continue
+                
+                valid_pkg_files.append(f)
             
-            print_error(_(f"Failed to build {name}"))
-            sys.exit(1)
+            return valid_pkg_files
+
+        except subprocess.CalledProcessError as e:
+             print_error(_(f"Failed to build {name}"))
+             sys.exit(1)
+
+    def _download_source_silent(self, package_name, target_dir, verbose):
+        # Wrapper to reuse download_aur_source but suppress output
+        # Since currently download_aur_source prints directly, we might need to modify it or 
+        # redirect stdout/stderr here.
+        # Ideally we refactor 'download_aur_source' to take a 'silent' flag, but let's try capture.
+        
+        # Actually, let's just modify download_aur_source logic inline or call it?
+        # calling it is better for code reuse.
+        # But it calls subprocess.run without capture.
+        # We'll just call it for now. If we really want to hide it, we need to change it.
+        # Let's trust the user meant 'source download' step is the Get: line.
+        # Code above: download_aur_source(base, pkg_dir)
+        
+        # To truly hide it, we need to refactor `download_aur_source`.
+        # For now, let's just run it. The user will see 'Cloning...' which is acceptable?
+        # User asked: "this can be used to mask git cloning?"
+        # So we should probably modify `download_aur_source` or reimplement the git call here quietly.
+        
+        base_url = "https://aur.archlinux.org"
+        clone_url = f"{base_url}/{package_name}.git"
+        
+        if target_dir.exists():
+            if (target_dir / ".git").exists():
+                 cmd = ["git", "pull"]
+                 cwd = target_dir
+            else:
+                 shutil.rmtree(target_dir)
+                 target_dir.parent.mkdir(parents=True, exist_ok=True)
+                 cmd = ["git", "clone", clone_url, str(target_dir)]
+                 cwd = None
+        else:
+             target_dir.parent.mkdir(parents=True, exist_ok=True)
+             cmd = ["git", "clone", clone_url, str(target_dir)]
+             cwd = None
+             
+        try:
+            # Capture output unless verbose
+            capture = not verbose
+            subprocess.run(cmd, cwd=cwd, check=True, capture_output=capture)
+            return True
+        except subprocess.CalledProcessError:
+            return False
 
 def get_resolved_package_info(build_queue: List[Dict], official_deps: set) -> List[tuple]:
     """

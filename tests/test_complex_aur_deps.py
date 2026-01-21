@@ -100,9 +100,23 @@ class TestComplexAurDeps(unittest.TestCase):
             
         self.mock_run.side_effect = side_effect_run
 
+        self.mock_run.side_effect = side_effect_run
+
         # Execute
         installer = aur.AurInstaller()
-        with patch('sys.exit') as mock_exit:
+        with patch('sys.exit') as mock_exit, \
+             patch('apt_pac.alpm_helper') as mock_alpm:
+            
+            # Setup alpm repository check logic
+            def side_effect_repo(pkg):
+                 if pkg in ['target-pkg', 'aur-lib']:
+                     return False
+                 return True # official-lib, base-devel
+            mock_alpm.is_in_official_repos.side_effect = side_effect_repo
+            
+            # Setup is_installed check (simulate none installed)
+            mock_alpm.is_package_installed.return_value = False
+            
             installer.install(['target-pkg'])
         # VERIFICATION
         # It may be called multiple times (once for plan, once per package build)

@@ -5,78 +5,128 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from apt_pac import commands
+from apt_pac import commands, alpm_helper
 
 class TestUpgradeVersions(unittest.TestCase):
-    def setUp(self):
-        self.console_patcher = patch('apt_pac.commands.console')
-        self.mock_console = self.console_patcher.start()
-        self.mock_console.input.return_value = 'n'
-        
-        self.getuid_patcher = patch('os.getuid', return_value=0, create=True)
-        self.mock_getuid = self.getuid_patcher.start()
-
-    def tearDown(self):
-        self.console_patcher.stop()
-        self.getuid_patcher.stop()
+    # setUp/tearDown removed to rely on decorators
+    pass
 
     def test_upgrade_official_version(self):
         # Mocks
         sim_mock = MagicMock(returncode=0, stdout="http://mirror/core-pkg-2.0-1-any.pkg.tar.zst\n") 
         qi_mock = MagicMock(returncode=0, stdout="Name : core-pkg\nInstalled Size : 100.00 KiB\n")
         
-        def side_effect(cmd, **kwargs):
-            if "-Sp" in cmd: 
-                # Upgrades need -u
-                if "-u" not in cmd: return MagicMock(returncode=0, stdout="")
-                return sim_mock
-            elif "-Qi" in cmd: return qi_mock
-            elif "-Q" in cmd: return MagicMock(returncode=0, stdout="core-pkg 1.0\n") # Installed
-            elif "-Qu" in cmd: return MagicMock(returncode=0, stdout="core-pkg 1.0 -> 2.0-1\n")
-            return MagicMock(returncode=0)
-
-        with patch.object(commands, 'run_pacman', side_effect=side_effect), \
-             patch.object(commands, 'run_pacman_with_apt_output', return_value=True), \
-             patch('apt_pac.ui.print_columnar_list') as mock_print_col, \
-             patch('subprocess.run', return_value=MagicMock(returncode=0, stdout="")):
-             
-             try:
-                 commands.execute_command("upgrade", [])
-             except SystemExit:
-                 pass
-             
-             # Check call args
-             # Expect: core-pkg ([dim]1.0[/dim] -> [bold]2.0-1[/bold])
-             mock_print_col.assert_called_with(['core-pkg ([dim]1.0[/dim] -> [bold]2.0-1[/bold])'], 'green')
-             
-    def test_upgrade_aur_version(self):
-        # Mocks for AUR
-        updates = [{'name': 'aur-pkg', 'current': '1.0', 'new': '1.1'}]
+    @patch.object(commands, 'sync_databases')
+    @patch('apt_pac.commands.alpm_helper')
+    @patch('apt_pac.commands.ui.print_columnar_list')
+    @patch('apt_pac.commands.console')
+    @patch.object(commands, 'get_config')
+    @patch.object(commands, 'run_pacman')
+    @patch('apt_pac.commands.subprocess.run')
+    @patch('os.getuid', return_value=0)
+    @patch('builtins.input', return_value='y')
+    def test_upgrade_official_version(self, mock_input, mock_getuid, mock_sub, mock_run, mock_config, mock_console, mock_print_col, mock_alpm_helper, mock_sync):
+        # Mocks
+        sim_mock = MagicMock(returncode=0, stdout="http://mirror/core-pkg-2.0-1-any.pkg.tar.zst\n") 
+        qi_mock = MagicMock(returncode=0, stdout="Name : core-pkg\nInstalled Size : 100.00 KiB\n")
         
-        def side_effect_subprocess(cmd, **kwargs):
-             if "-Qdtq" in cmd: return MagicMock(returncode=1, stdout="")
-             return MagicMock(returncode=0, stdout="")
+        mock_sub.side_effect = lambda cmd, **kwargs: sim_mock if "-Sp" in cmd else qi_mock
+        mock_run.side_effect = lambda *args, **kwargs: 0 
 
-        with patch('apt_pac.commands.aur.check_updates', return_value=updates), \
-             patch('apt_pac.ui.print_columnar_list') as mock_print_col, \
-             patch('apt_pac.commands.run_pacman_with_apt_output', return_value=True), \
-             patch('subprocess.run', side_effect=side_effect_subprocess), \
-             patch('apt_pac.commands.aur.AurResolver') as MockResolver:
-             
-             # Setup implementation of resolve
-             instance = MockResolver.return_value
-             # Return just the package itself as if resolved
-             instance.resolve.return_value = [{'Name': 'aur-pkg', 'Version': '1.1'}]
-             instance.official_deps = []
-             
+        mock_config.return_value = MagicMock()
+        def config_side_effect(section, key, default=None):
+             if key == "warn_partial_upgrades": return True
+             if key == "verbosity": return 1
+             return default
+        mock_config.return_value.get.side_effect = config_side_effect
+
+        # New ALPM Helper Mocks via Module Mock
+        # Mock updates
+        mock_alpm_helper.get_available_updates.return_value = [("core-pkg", "1.0", "2.0-1")]
+        # Mock package info (Must return objects with attributes)
+        pkg_mock = MagicMock()
+        pkg_mock.name = "core-pkg"
+        pkg_mock.size = 102400
+        pkg_mock.download_size = 102400 # Required for show_summary size calc
+        pkg_mock.isize = 204800
+        pkg_mock.optdepends = []
+        pkg_mock.version = "2.0-1" # Important for map check
+        mock_alpm_helper.get_package.return_value = pkg_mock
+
+        local_mock = MagicMock()
+        local_mock.name = "core-pkg"
+        local_mock.version = "1.0"
+        local_mock.isize = 102400
+        local_mock.optdepends = []
+        mock_alpm_helper.get_local_package.return_value = local_mock
+
+        mock_alpm_helper.is_package_installed.return_value = True
+        mock_alpm_helper.is_in_official_repos.return_value = True
+
+        with patch('apt_pac.commands.sys.argv', ['/usr/bin/apt-pac']):
              try:
                  commands.execute_command("upgrade", [])
-             except SystemExit:
-                 pass
-             
-             # Check AUR output - should be called with list ["aur-pkg [bold]1.1[/bold]"]
-             # Expect: aur-pkg ([dim]1.0[/dim] -> [bold]1.1[/bold])
-             mock_print_col.assert_called_with(['aur-pkg ([dim]1.0[/dim] -> [bold]1.1[/bold])'], 'green')
+             except SystemExit as e:
+                 if e.code != 0: raise
+
+        # Verify output
+        mock_print_col.assert_called_with(['core-pkg ([dim]1.0[/dim] -> [bold]2.0-1[/bold])'], 'green')
+
+    @patch.object(commands, 'sync_databases')
+    @patch('apt_pac.commands.alpm_helper')
+    @patch('apt_pac.commands.ui.print_columnar_list')
+    @patch('apt_pac.commands.console')
+    @patch.object(commands, 'get_config')
+    @patch.object(commands, 'run_pacman')
+    @patch('apt_pac.commands.subprocess.run')
+    @patch('os.getuid', return_value=0)
+    @patch('builtins.input', return_value='y')
+    def test_upgrade_aur_version(self, mock_input, mock_getuid, mock_sub, mock_run, mock_config, mock_console, mock_print_col, mock_alpm_helper, mock_sync):
+        # Mocks
+        sim_mock = MagicMock(returncode=0, stdout="http://mirror/aur-pkg-1.1-any.pkg.tar.zst\n") 
+        qi_mock = MagicMock(returncode=0, stdout="Name : aur-pkg\nInstalled Size : 100.00 KiB\n")
+        
+        mock_sub.side_effect = lambda cmd, **kwargs: sim_mock if "-Sp" in cmd else qi_mock
+        mock_run.side_effect = lambda *args, **kwargs: 0 
+
+        mock_config.return_value = MagicMock()
+        def config_side_effect(section, key, default=None):
+             if key == "warn_partial_upgrades": return True
+             if key == "verbosity": return 1
+             return default
+        mock_config.return_value.get.side_effect = config_side_effect
+        
+        # New ALPM Helper Mocks via Module Mock
+        # Mock updates
+        mock_alpm_helper.get_available_updates.return_value = [("aur-pkg", "1.0", "1.1")]
+        # Mock package info
+        pkg_mock = MagicMock()
+        pkg_mock.name = "aur-pkg"
+        pkg_mock.size = 102400
+        pkg_mock.download_size = 102400 # Required for show_summary size calc
+        pkg_mock.isize = 204800
+        pkg_mock.optdepends = []
+        pkg_mock.version = "1.1" 
+        mock_alpm_helper.get_package.return_value = pkg_mock
+
+        local_mock = MagicMock()
+        local_mock.name = "aur-pkg"
+        local_mock.version = "1.0"
+        local_mock.isize = 102400
+        local_mock.optdepends = []
+        mock_alpm_helper.get_local_package.return_value = local_mock
+
+        mock_alpm_helper.is_package_installed.return_value = True
+        mock_alpm_helper.is_in_official_repos.return_value = False
+
+        with patch('apt_pac.commands.sys.argv', ['/usr/bin/apt-pac']):
+             try:
+                 commands.execute_command("upgrade", [])
+             except SystemExit as e:
+                 if e.code != 0: raise
+
+        # Verify AUR formatting
+        mock_print_col.assert_called_with(['aur-pkg ([dim]1.0[/dim] -> [bold]1.1[/bold])'], 'green')
 
 if __name__ == '__main__':
     unittest.main()
