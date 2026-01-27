@@ -699,8 +699,7 @@ def sync_databases(cmd=None):
                       # Cleaning ":: " prefix
                       if "::" in repo: 
                            repo = repo.split("::")[-1].strip()
-                      
-                      console.print(f"Hit:[bold yellow]{index}[/bold yellow] [bold blue]{repo}[/bold blue]", highlight=False)
+                      console.print(f"[bold cyan]Hit:[/bold cyan][bold yellow]{index}[/bold yellow] [bold blue]{repo}[/bold blue]", highlight=False)
                       index += 1
                       
                  elif "downloading" in lower_line:
@@ -748,11 +747,11 @@ def sync_databases(cmd=None):
 
                       if repo:
                            if repo in repo_url_map:
-                               short, arch = repo_url_map[repo]
-                               # Get:NUMERO web repo arquitectura ...
-                               console.print(f"Get:[bold yellow]{index}[/bold yellow] {short} [bold blue]{repo}[/bold blue] {arch}", highlight=False)
+                                short, arch = repo_url_map[repo]
+                                # Get:NUMERO web repo arquitectura ...
+                                console.print(f"[bold cyan]Get:[/bold cyan][bold yellow]{index}[/bold yellow] [blue]{short}[/blue] [bold blue]{repo}[/bold blue] {arch}", highlight=False)
                            else:
-                               console.print(f"Get:[bold yellow]{index}[/bold yellow] [bold blue]{repo}[/bold blue]", highlight=False)
+                                console.print(f"[bold cyan]Get:[/bold cyan][bold yellow]{index}[/bold yellow] [bold blue]{repo}[/bold blue]", highlight=False)
                            index += 1
                       else:
                            # Fallback if we can't identify repo
@@ -1010,7 +1009,7 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
                      # Pacman: ":: Running post-transaction hooks..."
                      # We can't know exactly which trigger maps to which package easily.
                      # But we can show it as Processing triggers.
-                     console.print(f"{_('Processing triggers for system')} ...", highlight=False)
+                     console.print(f"[bold]{_('Processing triggers for system')} ...[/bold]", highlight=False)
                      continue
                 
                 if show_hooks and line.strip().startswith("("):
@@ -2246,15 +2245,6 @@ def execute_command(apt_cmd, extra_args):
         if apt_cmd in ["install", "upgrade", "dist-upgrade", "full-upgrade", "remove", "purge", "autoremove"]:
             pacman_cmd.append("--noconfirm")
     
-    # Simulate download output if applicable
-    # REMOVED: Early simulation for upgrade is now handled specifically inside the upgrade block 
-    # to ensure correct order (Sync -> Summary -> Simulate -> Execute)
-    if apt_cmd in ["install", "reinstall"]:
-         # Only if not --print or --dry-run (which is -s)
-         if not any(x in extra_args for x in ["--print", "-p"]):
-             # Check if we are doing a real op
-             simulate_apt_download_output(pacman_cmd, config)
-
     # Check for Partial Upgrades (Arch Best Practice)
     # If installing/removing software while system is out of date, warn user.
     if apt_cmd in ["install", "reinstall", "remove", "purge", "autoremove"] and not is_simulation:

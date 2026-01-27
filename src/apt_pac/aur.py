@@ -574,8 +574,17 @@ class AurInstaller:
                 # Install immediately as dependency
                 # Show what we're installing
                 for f in built_files:
+                    # Extract package name without extension
+                    # Format: name-version-release-arch.pkg.tar.zst -> name-version-release-arch
                     fname = f.name
-                    ui.console.print(f"[bold cyan]Hit:[/bold cyan]1 [blue]file://{f}[/blue] {fname}", highlight=False)
+                    pkg_display_name = fname
+                    for ext in ['.pkg.tar.zst', '.pkg.tar.xz', '.pkg.tar.gz', '.pkg.tar']:
+                        if fname.endswith(ext):
+                            pkg_display_name = fname[:-len(ext)]
+                            break
+                    # Show directory path (without filename) + package name separately
+                    dir_path = f"file://{f.parent}/"
+                    ui.console.print(f"[bold cyan]Hit:[/bold cyan][bold yellow]1[/bold yellow] [blue]{dir_path}[/blue] {pkg_display_name}", highlight=False)
                 
                 ui.console.print(f"[dim]{_('Installing intermediate dependency')} {pkg_name}...[/dim]")
                 cmd = ["pacman", "-U", "--noconfirm", "--asdeps"] + [str(f) for f in built_files]
@@ -598,8 +607,16 @@ class AurInstaller:
             ui.console.print(f"\n[bold]{_('Installing built packages...')}[/bold]")
             # Show what we're installing
             for i, f in enumerate(final_batch_paths, 1):
+                # Extract package name without extension
                 fname = f.name
-                ui.console.print(f"[bold cyan]Hit:[/bold cyan]{i} [blue]file://{f}[/blue] {fname}", highlight=False)
+                pkg_display_name = fname
+                for ext in ['.pkg.tar.zst', '.pkg.tar.xz', '.pkg.tar.gz', '.pkg.tar']:
+                    if fname.endswith(ext):
+                        pkg_display_name = fname[:-len(ext)]
+                        break
+                # Show directory path (without filename) + package name separately
+                dir_path = f"file://{f.parent}/"
+                ui.console.print(f"[bold cyan]Hit:[/bold cyan][bold yellow]{i}[/bold yellow] [blue]{dir_path}[/blue] {pkg_display_name}", highlight=False)
             
             cmd = ["pacman", "-U"] + [str(f) for f in final_batch_paths]
             if auto_confirm:
@@ -626,7 +643,7 @@ class AurInstaller:
         
         # Print GET line for source download with proper formatting
         # Format: Get:N https://aur.archlinux.org/pkgname.git pkgname-source
-        ui.console.print(f"[bold cyan]Get:[/bold cyan]1 [blue]https://aur.archlinux.org/{base}.git[/blue] {base}-source", highlight=False)
+        ui.console.print(f"[bold cyan]Get:[/bold cyan][bold yellow]1[/bold yellow] [blue]https://aur.archlinux.org/{base}.git[/blue] {base}-source", highlight=False)
 
         # 1. Clone or Pull (using PackageBase)
         # We capture output to hide it unless verbose

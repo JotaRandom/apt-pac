@@ -50,18 +50,17 @@ def print_reading_status():
     console.print(f"{_('Building dependency tree...')} [green]{_('Done')}[/green]")
     console.print(f"{_('Reading state information...')} [green]{_('Done')}[/green]")
 
-def print_apt_download_line(index, total, url, filename, size_str=""):
+def print_apt_download_line(index, total, url, filename, size_str="", action="Get"):
     """
     Prints a line like: Get:1 http://mirror.../pkg.tar.zst core/package [123 kB]
+    Now with proper coloring:
+    - Action (Get/Hit) in cyan bold
+    - Index in yellow bold
+    - URL in blue
+    - Filename and size in default color
     """
-    # APT format: Get:1 URL Package [Size]
-    # We try to mimic: Get:<index> <url> <filename> [<size>]
-    
-    # Extract shorter path from URL if possible for display? APT usually shows full URL base
-    # But usually just prints: Get:1 http://archive.ubuntu.com/ubuntu jammy/main amd64 bash amd64 5.1-6ubuntu1 [123 kB]
-    
     size_part = f" [{size_str}]" if size_str else ""
-    console.print(f"Get:{index} {url} {filename}{size_part}", highlight=False)
+    console.print(f"[bold cyan]{action}:[/bold cyan][bold yellow]{index}[/bold yellow] [blue]{url}[/blue] {filename}{size_part}", highlight=False)
 
 def format_search_results(output):
     """
