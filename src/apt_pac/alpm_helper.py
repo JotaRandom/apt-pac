@@ -325,3 +325,161 @@ def is_in_official_repos(pkgname: str) -> bool:
         if pyalpm.find_satisfier(db.pkgcache, pkgname):
             return True
     return False
+
+# =============================================================================
+# Formatting functions for pacman-style output
+# =============================================================================
+
+def format_size(bytes_val: int) -> str:
+    """Format byte size in human readable format (KiB, MiB, GiB)."""
+    if bytes_val < 1024:
+        return f"{bytes_val} B"
+    elif bytes_val < 1024 * 1024:
+        return f"{bytes_val / 1024:.2f} KiB"
+    elif bytes_val < 1024 * 1024 * 1024:
+        return f"{bytes_val / (1024 * 1024):.2f} MiB"
+    else:
+        return f"{bytes_val / (1024 * 1024 * 1024):.2f} GiB"
+
+def format_timestamp(ts: int) -> str:
+    """Format unix timestamp to readable date."""
+    from datetime import datetime
+    try:
+        return datetime.fromtimestamp(ts).strftime("%a %d %b %Y %I:%M:%S %p %Z")
+    except (ValueError, OSError):
+        return "Unknown"
+
+def format_optdeps(optdeps: list) -> str:
+    """Format optional dependencies list for multi-line display."""
+    if not optdeps:
+        return "None"
+    # optdeps is a list of strings "pkgname: description"
+    formatted = []
+    for dep in optdeps:
+        formatted.append(f"                     {dep}")
+    return "\n" + "\n".join(formatted)
+
+def format_sync_package(pkg) -> str:
+    """
+    Format sync DB package in pacman -Si style.
+    
+    Args:
+        pkg: pyalpm Package object from sync database
+        
+    Returns:
+        Formatted string in pacman -Si format
+    """
+    lines = []
+    
+    lines.append(f"Repository      : {pkg.db.name if hasattr(pkg, 'db') and pkg.db else 'unknown'}")
+    lines.append(f"Name            : {pkg.name}")
+    lines.append(f"Version         : {pkg.version}")
+    lines.append(f"Description     : {pkg.desc if pkg.desc else 'None'}")
+    lines.append(f"Architecture    : {pkg.arch}")
+    lines.append(f"URL             : {pkg.url if pkg.url else 'None'}")
+    lines.append(f"Licenses        : {' '.join(pkg.licenses) if pkg.licenses else 'None'}")
+    lines.append(f"Groups          : {' '.join(pkg.groups) if pkg.groups else 'None'}")
+    lines.append(f"Provides        : {' '.join(pkg.provides) if pkg.provides else 'None'}")
+    lines.append(f"Depends On      : {' '.join(pkg.depends) if pkg.depends else 'None'}")
+    lines.append(f"Optional Deps   : {format_optdeps(pkg.optdepends)}")
+    lines.append(f"Conflicts With  : {' '.join(pkg.conflicts) if pkg.conflicts else 'None'}")
+    lines.append(f"Replaces        : {' '.join(pkg.replaces) if pkg.replaces else 'None'}")
+    lines.append(f"Download Size   : {format_size(pkg.size)}")
+    lines.append(f"Installed Size  : {format_size(pkg.isize)}")
+    lines.append(f"Packager        : {pkg.packager if pkg.packager else 'Unknown Packager'}")
+    lines.append(f"Build Date      : {format_timestamp(pkg.builddate)}")
+    
+    # Add MD5 Sum if available
+    if hasattr(pkg, 'md5sum') and pkg.md5sum:
+        lines.append(f"MD5 Sum         : {pkg.md5sum}")
+    
+    # Add SHA-256 Sum if available
+    if hasattr(pkg, 'sha256sum') and pkg.sha256sum:
+        lines.append(f"SHA-256 Sum     : {pkg.sha256sum}")
+    
+    return "\n".join(lines)
+
+def format_local_package(pkg) -> str:
+    """
+    Format local DB package in pacman -Qi style.
+    
+    Args:
+        pkg: pyalpm Package object from local database
+        
+    Returns:
+        Formatted string in pacman -Qi format
+    """
+    lines = []
+    
+    lines.append(f"Name            : {pkg.name}")
+    lines.append(f"Version         : {pkg.version}")
+    lines.append(f"Description     : {pkg.desc if pkg.desc else 'None'}")
+    lines.append(f"Architecture    : {pkg.arch}")
+    lines.append(f"URL             : {pkg.url if pkg.url else 'None'}")
+    lines.append(f"Licenses        : {' '.join(pkg.licenses) if pkg.licenses else 'None'}")
+    lines.append(f"Groups          : {' '.join(pkg.groups) if pkg.groups else 'None'}")
+    lines.append(f"Provides        : {' '.join(pkg.provides) if pkg.provides else 'None'}")
+    lines.append(f"Depends On      : {' '.join(pkg.depends) if pkg.depends else 'None'}")
+    lines.append(f"Optional Deps   : {format_optdeps(pkg.optdepends)}")
+    
+    # Required By - compute reverse dependencies
+    required_by = pkg.compute_requiredby() if hasattr(pkg, 'compute_requiredby') else []
+    lines.append(f"Required By     : {' '.join(required_by) if required_by else 'None'}")
+    
+    # Optional For - compute optional reverse dependencies
+    optional_for = pkg.compute_optionalfor() if hasattr(pkg, 'compute_optionalfor') else []
+    lines.append(f"Optional For    : {' '.join(optional_for) if optional_for else 'None'}")
+    
+    lines.append(f"Conflicts With  : {' '.join(pkg.conflicts) if pkg.conflicts else 'None'}")
+    lines.append(f"Replaces        : {' '.join(pkg.replaces) if pkg.replaces else 'None'}")
+    lines.append(f"Installed Size  : {format_size(pkg.isize)}")
+    lines.append(f"Packager        : {pkg.packager if pkg.packager else 'Unknown Packager'}")
+    lines.append(f"Build Date      : {format_timestamp(pkg.builddate)}")
+    lines.append(f"Install Date    : {format_timestamp(pkg.installdate)}")
+    
+    # Install Reason
+    reason_str = "Explicitly installed" if pkg.reason == pyalpm.PKG_REASON_EXPLICIT else "Installed as a dependency"
+    lines.append(f"Install Reason  : {reason_str}")
+    
+    # Install Script
+    has_script = "Yes" if (hasattr(pkg, 'has_scriptlet') and pkg.has_scriptlet) else "No"
+    lines.append(f"Install Script  : {has_script}")
+    
+    # Validated By
+    validation = []
+    if hasattr(pkg, 'validation'):
+        if pkg.validation & pyalpm.PKG_VALIDATION_NONE:
+            validation.append("None")
+        if pkg.validation & pyalpm.PKG_VALIDATION_MD5SUM:
+            validation.append("MD5 Sum")
+        if pkg.validation & pyalpm.PKG_VALIDATION_SHA256SUM:
+            validation.append("SHA256 Sum")
+        if pkg.validation & pyalpm.PKG_VALIDATION_SIGNATURE:
+            validation.append("Signature")
+    lines.append(f"Validated By    : {' '.join(validation) if validation else 'None'}")
+    
+    return "\n".join(lines)
+
+def get_package_info_formatted(pkgname: str) -> tuple:
+    """
+    Get package info formatted as pacman -Si/Qi.
+    
+    Args:
+        pkgname: Package name to look up
+        
+    Returns:
+        Tuple of (formatted_string, source) where:
+        - formatted_string: The formatted package info, or None if not found
+        - source: 'sync' for sync repos, 'local' for installed, or None
+    """
+    # Try sync repos first
+    pkg = get_package(pkgname)
+    if pkg:
+        return (format_sync_package(pkg), 'sync')
+    
+    # Try local database
+    pkg = get_local_package(pkgname)
+    if pkg:
+        return (format_local_package(pkg), 'local')
+    
+    return (None, None)

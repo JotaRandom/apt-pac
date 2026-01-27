@@ -753,10 +753,12 @@ def sync_databases(cmd=None):
                       if repo:
                            if repo in repo_url_map:
                                 short, arch = repo_url_map[repo]
-                                # Get:NUMERO web repo arquitectura ...
+                                # Get:NUMERO URL repo arch
                                 console.print(f"[bold cyan]Get:[/bold cyan]{index} [blue]{short}[/blue] [bold blue]{repo}[/bold blue] {arch}", highlight=False)
                            else:
-                                console.print(f"[bold cyan]Get:[/bold cyan]{index} [bold blue]{repo}[/bold blue]", highlight=False)
+                                # Fallback: no URL available, but keep arch for consistency
+                                arch = platform.machine()
+                                console.print(f"[bold cyan]Get:[/bold cyan]{index} [bold blue]{repo}[/bold blue] {arch}", highlight=False)
                            index += 1
                       else:
                            # Fallback if we can't identify repo
@@ -851,27 +853,16 @@ def simulate_apt_download_output(pacman_cmd, config):
                 'pkg_name': pkg_name
             })
 
-        # 2. Batch Query Version Info (including Epoch)
-        # We query -Si for all these names
+        # 2. Batch Query Version Info (including Epoch) using pyalpm
+        # Much faster than subprocess call to pacman -Si
         version_map = {} # name -> full_version (with epoch)
         
         if names_to_query:
-            # We can pass multiple args to -Si
-            # Split into chunks if too many? typical cmdline limits ~32k chars.
-            # 100 packages is fine.
-            q_cmd = ["pacman", "-Si"] + list(names_to_query)
-            si_res = run_pacman(q_cmd, capture_output=True, text=True)
-            
-            if si_res.returncode == 0:
-                curr_name = None
-                for line in si_res.stdout.splitlines():
-                    line = line.strip()
-                    if line.startswith("Name"):
-                        curr_name = line.split(":", 1)[1].strip()
-                    elif line.startswith("Version") and curr_name:
-                        ver = line.split(":", 1)[1].strip()
-                        version_map[curr_name] = ver
-                        curr_name = None # Reset to wait for next name
+            # Use pyalpm to get package versions (includes epoch automatically)
+            for name in names_to_query:
+                pkg = alpm_helper.get_package(name)
+                if pkg:
+                    version_map[name] = pkg.version  # pyalpm includes epoch in version string
 
         # 3. Print Output
         total = len(urls)
@@ -2169,36 +2160,25 @@ def execute_command(apt_cmd, extra_args):
 
         # Show Command (Official -> Local -> AUR)
         if apt_cmd == "show":
-             # 1. Try Official Repos (pacman -Si) with English output
-             result = run_pacman(pacman_cmd, capture_output=True, text=True)
+             queries = [arg for arg in extra_args if not arg.startswith("-")]
+             if not queries:
+                 print_error(_("No package specified"))
+                 return
+             
+             pkgname = queries[0]
              found = False
              
-             if result.returncode == 0:
+             # Try official repos + local DB with pyalpm (much faster than subprocess)
+             formatted, source = alpm_helper.get_package_info_formatted(pkgname)
+             if formatted:
                  found = True
                  if show_output in ["apt-pac", "apt"]:
-                     format_show(result.stdout)
+                     format_show(formatted)
                  else:
-                     print(result.stdout, end="")
-             
-             # 2. If not found, try Local Database (pacman -Qi)
-             # Only if user didn't explicitly request official-only (implicit)
-             # But 'show' doesn't strictly support --official flag in our logic yet, 
-             # preventing partial output. Let's assume we want to find it anywhere.
-             
-             if not found:
-                 # Try -Qi
-                 local_cmd = ["pacman", "-Qi"] + extra_args
-                 result_local = run_pacman(local_cmd, capture_output=True, text=True)
-                 if result_local.returncode == 0:
-                     found = True
-                     if show_output in ["apt-pac", "apt"]:
-                         format_show(result_local.stdout)
-                     else:
-                         print(result_local.stdout, end="")
+                     print(formatted)
             
-             # 3. If still not found, try AUR
+             # Fallback to AUR if not found
              if not found:
-                 queries = [arg for arg in extra_args if not arg.startswith("-")]
                  if queries:
                     with console.status("[magenta]Checking AUR...[/magenta]", spinner="dots"):
                          # aur.get_aur_info returns detailed info list
