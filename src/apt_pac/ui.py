@@ -55,12 +55,12 @@ def print_apt_download_line(index, total, url, filename, size_str="", action="Ge
     Prints a line like: Get:1 http://mirror.../pkg.tar.zst core/package [123 kB]
     Now with proper coloring:
     - Action (Get/Hit) in cyan bold
-    - Index in yellow bold
+    - Index in white (default color)
     - URL in blue
     - Filename and size in default color
     """
     size_part = f" [{size_str}]" if size_str else ""
-    console.print(f"[bold cyan]{action}:[/bold cyan][bold yellow]{index}[/bold yellow] [blue]{url}[/blue] {filename}{size_part}", highlight=False)
+    console.print(f"[bold cyan]{action}:[/bold cyan]{index} [blue]{url}[/blue] {filename}{size_part}", highlight=False)
 
 def format_search_results(output):
     """

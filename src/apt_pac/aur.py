@@ -482,7 +482,9 @@ class AurInstaller:
             
             # Calculate size if possible?
             count = len(install_info)
-            ui.console.print(_(f"0 upgraded, {count} newly installed, 0 to remove and 0 not upgraded."))
+            # Format count with bold if > 0
+            count_str = f"[bold]{count}[/bold]" if count > 0 else "0"
+            ui.console.print(f"0 upgraded, {count_str} newly installed, 0 to remove and 0 not upgraded.", highlight=False)
             
             if auto_confirm:
                 ui.console.print(f"{_('Do you want to continue?')} [Y/n] [bold green]{_('Yes')}[/bold green]")
@@ -584,7 +586,7 @@ class AurInstaller:
                             break
                     # Show directory path (without filename) + package name separately
                     dir_path = f"file://{f.parent}/"
-                    ui.console.print(f"[bold cyan]Hit:[/bold cyan][bold yellow]1[/bold yellow] [blue]{dir_path}[/blue] {pkg_display_name}", highlight=False)
+                    ui.console.print(f"[bold cyan]Hit:[/bold cyan]1 [blue]{dir_path}[/blue] {pkg_display_name}", highlight=False)
                 
                 ui.console.print(f"[dim]{_('Installing intermediate dependency')} {pkg_name}...[/dim]")
                 cmd = ["pacman", "-U", "--noconfirm", "--asdeps"] + [str(f) for f in built_files]
@@ -616,7 +618,7 @@ class AurInstaller:
                         break
                 # Show directory path (without filename) + package name separately
                 dir_path = f"file://{f.parent}/"
-                ui.console.print(f"[bold cyan]Hit:[/bold cyan][bold yellow]{i}[/bold yellow] [blue]{dir_path}[/blue] {pkg_display_name}", highlight=False)
+                ui.console.print(f"[bold cyan]Hit:[/bold cyan]{i} [blue]{dir_path}[/blue] {pkg_display_name}", highlight=False)
             
             cmd = ["pacman", "-U"] + [str(f) for f in final_batch_paths]
             if auto_confirm:
@@ -643,7 +645,7 @@ class AurInstaller:
         
         # Print GET line for source download with proper formatting
         # Format: Get:N https://aur.archlinux.org/pkgname.git pkgname-source
-        ui.console.print(f"[bold cyan]Get:[/bold cyan][bold yellow]1[/bold yellow] [blue]https://aur.archlinux.org/{base}.git[/blue] {base}-source", highlight=False)
+        ui.console.print(f"[bold cyan]Get:[/bold cyan]1 [blue]https://aur.archlinux.org/{base}.git[/blue] {base}-source", highlight=False)
 
         # 1. Clone or Pull (using PackageBase)
         # We capture output to hide it unless verbose

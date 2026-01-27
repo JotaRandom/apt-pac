@@ -387,8 +387,13 @@ def show_summary(apt_cmd, extra_args, auto_confirm=False, aur_new=None, aur_upgr
     removals_count = 0 # In install mode usually 0 unless conflict resolution?
     # We didn't parse removals from -Sp, only adds. -Sp doesn't show removals easily (unless -Ru?).
     
-    summary_line = f"[bold]{_('Summary:')}[/bold]\n   {_('Upgrading:')} {len(upgraded_pkgs)}, {_('Installing:')} {len(new_pkgs)}, {_('Removals:')} {removals_count}, {_('Not Upgrading:')} 0"
-    console.print(summary_line)
+    # Format counts with bold if > 0
+    upgraded_str = f"[bold]{len(upgraded_pkgs)}[/bold]" if upgraded_pkgs else "0"
+    installing_str = f"[bold]{len(new_pkgs)}[/bold]" if new_pkgs else "0"
+    removals_str = f"[bold]{removals_count}[/bold]" if removals_count > 0 else "0"
+    
+    summary_line = f"[bold]{_('Summary:')}[/bold]\n   {_('Upgrading:')} {upgraded_str}, {_('Installing:')} {installing_str}, {_('Removals:')} {removals_str}, {_('Not Upgrading:')} 0"
+    console.print(summary_line, highlight=False)
     
     # Format sizes (Decimal MB)
     # Format sizes (Adaptive: <0.1MB -> B, >10GB -> GB)
@@ -699,7 +704,7 @@ def sync_databases(cmd=None):
                       # Cleaning ":: " prefix
                       if "::" in repo: 
                            repo = repo.split("::")[-1].strip()
-                      console.print(f"[bold cyan]Hit:[/bold cyan][bold yellow]{index}[/bold yellow] [bold blue]{repo}[/bold blue]", highlight=False)
+                      console.print(f"[bold cyan]Hit:[/bold cyan]{index} [bold blue]{repo}[/bold blue]", highlight=False)
                       index += 1
                       
                  elif "downloading" in lower_line:
@@ -749,9 +754,9 @@ def sync_databases(cmd=None):
                            if repo in repo_url_map:
                                 short, arch = repo_url_map[repo]
                                 # Get:NUMERO web repo arquitectura ...
-                                console.print(f"[bold cyan]Get:[/bold cyan][bold yellow]{index}[/bold yellow] [blue]{short}[/blue] [bold blue]{repo}[/bold blue] {arch}", highlight=False)
+                                console.print(f"[bold cyan]Get:[/bold cyan]{index} [blue]{short}[/blue] [bold blue]{repo}[/bold blue] {arch}", highlight=False)
                            else:
-                                console.print(f"[bold cyan]Get:[/bold cyan][bold yellow]{index}[/bold yellow] [bold blue]{repo}[/bold blue]", highlight=False)
+                                console.print(f"[bold cyan]Get:[/bold cyan]{index} [bold blue]{repo}[/bold blue]", highlight=False)
                            index += 1
                       else:
                            # Fallback if we can't identify repo
