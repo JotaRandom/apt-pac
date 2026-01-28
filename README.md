@@ -2,9 +2,19 @@
 
 **APT-style package manager wrapper for Arch Linux**
 
-![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![License](https://img.shields.io/github/license/JotaRandom/apt-pac)
+![CI](https://github.com/JotaRandom/apt-pac/actions/workflows/ci.yml/badge.svg)
+![Issues](https://img.shields.io/github/issues/JotaRandom/apt-pac)
+![Pull Requests](https://img.shields.io/github/issues-pr/JotaRandom/apt-pac)
+![Last Commit](https://img.shields.io/github/last-commit/JotaRandom/apt-pac)
+![Repo Size](https://img.shields.io/github/repo-size/JotaRandom/apt-pac)
+![Contributors](https://img.shields.io/github/contributors/JotaRandom/apt-pac)
 ![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue)
 ![Platform: Arch Linux](https://img.shields.io/badge/Platform-Arch_Linux-blue)
+![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)
+![Stars](https://img.shields.io/github/stars/JotaRandom/apt-pac?style=social)
+![Forks](https://img.shields.io/github/forks/JotaRandom/apt-pac?style=social)
+![Watchers](https://img.shields.io/github/watchers/JotaRandom/apt-pac?style=social)
 
 > [!NOTE]
 > This project was developed with AI assistance / Vibe-coding. It's a fun experiment to make Arch feel a bit more like Debian!
@@ -34,7 +44,7 @@ It translates familiar APT commands into their Pacman equivalents and adds some 
 ### Quick Install
 
 ```bash
-git clone https://github.com/YourOrg/apt-pac.git
+git clone https://github.com/JotaRandom/apt-pac.git
 cd apt-pac
 makepkg -si
 ```
