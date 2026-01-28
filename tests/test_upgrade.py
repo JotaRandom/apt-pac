@@ -60,10 +60,18 @@ class TestUpgrade(unittest.TestCase):
              patch('apt_pac.aur.get_installed_aur_packages') as mock_aur_installed, \
              patch('apt_pac.aur.AurResolver') as mock_resolver_cls, \
              patch('apt_pac.aur.get_resolved_package_info') as mock_resolve_info, \
-             patch('apt_pac.aur.download_aur_source', return_value=True):
+             patch('apt_pac.aur.AurInstaller._download_source_silent', return_value=True), \
+             patch.dict(os.environ, {"SUDO_USER": "testuser"}), \
+             patch('pathlib.Path.glob') as mock_glob:
              
              # Mock AUR updates
              mock_aur_installed.return_value = ['aur-pkg']
+             # Mock glob for build
+             mock_glob_pkg = MagicMock()
+             mock_glob_pkg.name = "aur-pkg-2.0-any.pkg.tar.zst"
+             # Need to return a list
+             mock_glob.return_value = [mock_glob_pkg]
+             
              # Return one AUR update to complement the one official update (total 2)
              mock_aur_check.return_value = [{'name': 'aur-pkg', 'current': '1.0', 'new': '2.0', 'version': '2.0'}]
              
@@ -131,10 +139,17 @@ class TestUpgrade(unittest.TestCase):
              patch('apt_pac.aur.get_installed_aur_packages') as mock_aur_installed, \
              patch('apt_pac.aur.AurResolver') as mock_resolver_cls, \
              patch('apt_pac.aur.get_resolved_package_info') as mock_resolve_info, \
-             patch('apt_pac.aur.download_aur_source', return_value=True):
+             patch('apt_pac.aur.AurInstaller._download_source_silent', return_value=True), \
+             patch.dict(os.environ, {"SUDO_USER": "testuser"}), \
+             patch('pathlib.Path.glob') as mock_glob:
              
              # Mock AUR updates
              mock_aur_installed.return_value = ['aur-pkg']
+             # Mock glob for build
+             mock_glob_pkg = MagicMock()
+             mock_glob_pkg.name = "aur-pkg-2.0-any.pkg.tar.zst"
+             mock_glob.return_value = [mock_glob_pkg]
+             
              mock_aur_check.return_value = [{'name': 'aur-pkg', 'current': '1.0', 'new': '2.0', 'version': '2.0'}]
              
              # Mock Resolver

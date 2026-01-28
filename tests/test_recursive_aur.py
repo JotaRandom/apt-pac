@@ -41,8 +41,8 @@ class TestRecursiveAur(unittest.TestCase):
         self.getuid_patcher = patch('os.getuid', return_value=1000)
         self.mock_getuid = self.getuid_patcher.start()
         
-        # Mock download_aur_source
-        self.download_patcher = patch('apt_pac.aur.download_aur_source', return_value=Path("/tmp/mock_build/pkg"))
+        # Mock _download_source_silent (internal method used by installer)
+        self.download_patcher = patch('apt_pac.aur.AurInstaller._download_source_silent', return_value=True)
         self.mock_download = self.download_patcher.start()
         
         # Mock is_installed (none installed)
@@ -127,9 +127,9 @@ class TestRecursiveAur(unittest.TestCase):
              # mid-pkg should be downloaded/built FIRST
              # leaf-pkg should be downloaded/built SECOND
              self.mock_download.assert_has_calls([
-                 call('mid-pkg', self.mock_config_instance.cache_dir / "sources" / "aur" / "mid-pkg"),
-                 call('make-dep-pkg', self.mock_config_instance.cache_dir / "sources" / "aur" / "make-dep-pkg"),
-                 call('leaf-pkg', self.mock_config_instance.cache_dir / "sources" / "aur" / "leaf-pkg")
+                 call('mid-pkg', self.mock_config_instance.cache_dir / "sources" / "aur" / "mid-pkg", True),
+                 call('make-dep-pkg', self.mock_config_instance.cache_dir / "sources" / "aur" / "make-dep-pkg", True),
+                 call('leaf-pkg', self.mock_config_instance.cache_dir / "sources" / "aur" / "leaf-pkg", True)
              ], any_order=False) # Order matters!
              
              # 2. Verify makepkg command includes -r
@@ -146,7 +146,7 @@ class TestRecursiveAur(unittest.TestCase):
              
              # Verify command flags
              for cmd in makepkg_calls:
-                 self.assertIn('-sf', cmd, "makepkg command should include -sf")
+                 self.assertIn('-f', cmd, "makepkg command should include -f")
                  self.assertIn('--needed', cmd)
                  self.assertIn('--noconfirm', cmd)
 

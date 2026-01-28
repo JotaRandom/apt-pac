@@ -28,14 +28,22 @@ class TestUpgradeVersions(unittest.TestCase):
     @patch('apt_pac.aur.subprocess.run')
     @patch.dict(os.environ, {"SUDO_USER": "testuser"})
     @patch('os.getuid', return_value=0)
+    @patch('apt_pac.aur.check_updates', return_value=[])
+    @patch('apt_pac.aur.get_installed_aur_packages', return_value=[])
+    @patch('pathlib.Path.glob')
     @patch('builtins.input', return_value='y')
-    def test_upgrade_official_version(self, mock_input, mock_getuid, mock_sub, mock_run_apt, mock_run, mock_config, mock_console, mock_print_col, mock_alpm_helper, mock_sync):
+    def test_upgrade_official_version(self, mock_input, mock_glob, mock_aur_inst, mock_aur_chk, mock_getuid, mock_aur_sub, mock_aur_dl, mock_sub, mock_run_apt, mock_run, mock_config, mock_console, mock_print_col, mock_alpm_helper, mock_sync):
+        # Configure glob to return a fake package
+        mock_pkg = MagicMock()
+        mock_pkg.name = "core-pkg-2.0-1-any.pkg.tar.zst"
+        mock_glob.return_value = [mock_pkg]
         # Mocks
         sim_mock = MagicMock(returncode=0, stdout="http://mirror/core-pkg-2.0-1-any.pkg.tar.zst\n") 
         qi_mock = MagicMock(returncode=0, stdout="Name : core-pkg\nInstalled Size : 100.00 KiB\n")
         
         mock_sub.side_effect = lambda cmd, **kwargs: sim_mock if "-Sp" in cmd else qi_mock
         mock_run.side_effect = lambda *args, **kwargs: 0 
+        mock_aur_sub.return_value.returncode = 0 
 
         mock_config.return_value = MagicMock()
         def config_side_effect(section, key, default=None):
@@ -88,14 +96,22 @@ class TestUpgradeVersions(unittest.TestCase):
     @patch('apt_pac.aur.subprocess.run')
     @patch.dict(os.environ, {"SUDO_USER": "testuser"})
     @patch('os.getuid', return_value=0)
+    @patch('apt_pac.aur.check_updates', return_value=[])
+    @patch('apt_pac.aur.get_installed_aur_packages', return_value=[])
+    @patch('pathlib.Path.glob')
     @patch('builtins.input', return_value='y')
-    def test_upgrade_aur_version(self, mock_input, mock_getuid, mock_sub, mock_run_apt, mock_run, mock_config, mock_console, mock_print_col, mock_alpm_helper, mock_sync):
+    def test_upgrade_aur_version(self, mock_input, mock_glob, mock_aur_inst, mock_aur_chk, mock_getuid, mock_aur_sub, mock_aur_dl, mock_sub, mock_run_apt, mock_run, mock_config, mock_console, mock_print_col, mock_alpm_helper, mock_sync):
+        # Configure glob to return a fake package
+        mock_pkg = MagicMock()
+        mock_pkg.name = "aur-pkg-1.1-any.pkg.tar.zst"
+        mock_glob.return_value = [mock_pkg]
         # Mocks
         sim_mock = MagicMock(returncode=0, stdout="http://mirror/aur-pkg-1.1-any.pkg.tar.zst\n") 
         qi_mock = MagicMock(returncode=0, stdout="Name : aur-pkg\nInstalled Size : 100.00 KiB\n")
         
         mock_sub.side_effect = lambda cmd, **kwargs: sim_mock if "-Sp" in cmd else qi_mock
         mock_run.side_effect = lambda *args, **kwargs: 0 
+        mock_aur_sub.return_value.returncode = 0 
 
         mock_config.return_value = MagicMock()
         def config_side_effect(section, key, default=None):
