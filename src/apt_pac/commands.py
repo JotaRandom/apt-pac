@@ -26,6 +26,7 @@ from .ui import (
 from .config import get_config
 from . import aur
 from . import alpm_helper
+from rich.console import Console, ConsoleOptions, RenderResult
 from rich.text import Text
 from rich.table import Table
 from rich.padding import Padding
@@ -33,6 +34,7 @@ from rich.panel import Panel
 from rich.progress import (
     Progress,
     TextColumn,
+    BarColumn,
     ProgressColumn,
 )
 
@@ -1010,18 +1012,70 @@ def simulate_apt_download_output(pacman_cmd, config):
     return 0
 
 
-class ASCIIBarColumn(ProgressColumn):
-    """Renders a standard APT-style ASCII bar: [######      ]"""
+class CandyBar:
+    """Renderable for the Candy Progress Bar."""
+
+    def __init__(self, completed, total, time_t):
+        self.completed = completed
+        self.total = total
+        self.time_t = time_t
+
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
+        width = options.max_width
+        if width < 1:
+            yield Text("")
+            return
+
+        total = self.total or 100
+        completed = min(self.completed, total)
+        percent = completed / total if total > 0 else 0
+
+        # Calculate filled width
+        filled_len = int(width * percent)
+        if filled_len >= width:
+            filled_len = width
+
+        # Character Logic:
+        # Fallback to '.' if TTY or encoding issue (simple heuristic)
+        # Use '⚬' (medium small white circle) if supported for "empty"
+        empty_char = "⚬"
+        try:
+            # Check if current stdout encoding supports this char
+            empty_char.encode(console.encoding)
+        except Exception:
+            empty_char = "."
+
+        # Pacman Animation
+        # Toggle C / c based on time
+        pacman = "C" if int((self.time_t or 0) * 5) % 2 == 0 else "c"
+        if percent >= 1.0:
+            pacman = "C"  # Stopped
+
+        # Build Bar
+        # [-----C ⚬ ⚬ ]
+        # If filled_len > 0, the last char of filled part is Pacman
+        bar_str = ""
+        if filled_len > 0:
+            bar_str += "-" * (filled_len - 1)
+            bar_str += pacman
+
+        # Add empty part
+        empty_len = width - len(bar_str)
+        bar_str += empty_char * empty_len
+
+        yield Text(f"[{bar_str}]", style="white bold")  # Force white
+
+
+class CandyBarColumn(BarColumn):
+    """
+    Renders a dynamic width Candy Bar: [----C ⚬ ⚬]
+    Autosizes to fill available space in the table.
+    """
 
     def render(self, task):
-        total = task.total or 100
-        completed = min(task.completed, total)
-        percent = completed / total if total > 0 else 0
-        width = 20
-        filled = int(width * percent)
-        empty = width - filled
-        bar = "#" * filled + "." * empty
-        return Text(f"[{bar}]", style="white")
+        return CandyBar(task.completed, task.total, task.get_time())
 
 
 def run_pacman_with_apt_output(cmd, show_hooks=True, total_pkgs=None):
@@ -1072,7 +1126,7 @@ def run_pacman_with_apt_output(cmd, show_hooks=True, total_pkgs=None):
         with Progress(
             TextColumn("[bold blue]{task.description}"),
             TextColumn("[{task.completed}/{task.total}]"),
-            ASCIIBarColumn(),
+            CandyBarColumn(bar_width=None),
             TextColumn("[white]{task.percentage:>3.0f}%"),
             console=console,
             transient=True,  # Remove bar when done
@@ -1111,14 +1165,18 @@ def run_pacman_with_apt_output(cmd, show_hooks=True, total_pkgs=None):
                             for i, part in enumerate(parts)
                             if "downloading" in part.lower()
                         ][0]
-                        if idx + 1 < len(parts) and "..." not in parts[idx + 1]:
-                            pkg_name = parts[idx + 1]
+                        if idx + 1 < len(parts):
+                            candidate = parts[idx + 1]
+                            pkg_name = candidate.replace("...", "")
                         elif (
                             idx - 1 >= 0
                             and "..." not in parts[idx - 1]
                             and parts[idx - 1] != "::"
                         ):
-                            pkg_name = parts[idx - 1]
+                            # Only look back if not found forward?
+                            # The original code prioritized forward non-ellipsis.
+                            # If forward has ellipsis, we should probably take it and strip it.
+                            pass
                     except (IndexError, ValueError):
                         pass
 
@@ -1260,6 +1318,9 @@ def run_pacman_with_apt_output(cmd, show_hooks=True, total_pkgs=None):
         return process.returncode == 0
 
     except Exception as e:
+        import traceback
+
+        traceback.print_exc()
         print_error(f"[red]{_('E:')}[/red] {_('Error running pacman: ')}{e}")
         return False
 
