@@ -738,7 +738,7 @@ def sync_databases(cmd=None):
 
     try:
         # Give immediate feedback before Popen to prevent "frozen" feeling
-        console.print(f"0% [{_('Connecting...')}]", end="\r")
+        console.print(f"0% [{_('Connecting...')}]", end="\r", highlight=False)
 
         process = subprocess.Popen(
             cmd,
@@ -2842,9 +2842,9 @@ def execute_command(apt_cmd, extra_args):
                     aur_candidates = []  # Prevent execution on failure
 
             # 2. Show Summary (Unified)
+            user_confirmed_summary = False
             if not is_simulation:
                 # Note: show_summary uses 'pacman -Qu' which works perfectly after -Sy
-                user_confirmed_summary = False
                 show_summary(
                     apt_cmd,
                     extra_args,
