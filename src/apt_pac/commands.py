@@ -32,10 +32,8 @@ from rich.padding import Padding
 from rich.panel import Panel
 from rich.progress import (
     Progress,
-    SpinnerColumn,
     TextColumn,
     BarColumn,
-    TaskProgressColumn,
     TimeRemainingColumn,
 )
 
@@ -841,9 +839,14 @@ def sync_databases(cmd=None):
                     if url.endswith("/"):
                         url = url[:-1]
 
+                    # Check if file:// -> Hit
+                    action = "Get"
+                    if url.startswith("file://"):
+                        action = "Hit"
+
                     # Get: NUMERO URL repo
                     console.print(
-                        f"[bold cyan]Get: [/bold cyan]{index} [blue]{url}[/blue] [bold blue]{repo}[/bold blue]",
+                        f"[bold cyan]{action}: [/bold cyan]{index} [blue]{url}[/blue] [bold blue]{repo}[/bold blue]",
                         highlight=False,
                     )
                     index += 1
@@ -1007,8 +1010,6 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
 
     Preserves stdin for interactive prompts (e.g., remove confirmations)
     """
-    import re
-
     try:
         # Run pacman with stdout/stderr captured, but stdin passed through
         # This allows user interaction while we parse the output
@@ -1032,11 +1033,18 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
         progress_re = re.compile(r"\(\s*(\d+)/(\d+)\s*\)")
         percent_re = re.compile(r"(\d+)%")
 
+        # Determine bar characters based on encoding/support?
+        # Rich usually handles this, but user complained about "bicolor gris o azul y morado"
+        # and "linea NO se va a dibujar bien en un TTY".
+        # We can use simple ascii bar characters if we want to be safe,
+        # or just rely on Rich's auto-detection.
+        # But explicitly asking for a simple style might help.
+        # Removing SpinnerColumn as requested.
+
         with Progress(
-            SpinnerColumn(),
             TextColumn("[bold blue]{task.description}"),
-            BarColumn(bar_width=None),
-            TaskProgressColumn(),
+            BarColumn(bar_width=None, complete_style="blue", finished_style="green"),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
             TimeRemainingColumn(),
             console=console,
             transient=True,  # Remove bar when done
@@ -1101,9 +1109,7 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
                         pkg_name = parts[3]
 
                     desc = (
-                        f"{current_action} {pkg_name}{progress_suffix}"
-                        if pkg_name
-                        else f"{current_action}{progress_suffix}"
+                        f"{current_action} {pkg_name}" if pkg_name else current_action
                     )
                     progress.update(task_id, description=desc)
 
@@ -1114,9 +1120,7 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
                     if len(parts) >= 4 and "upgrading" in parts[2].lower():
                         pkg_name = parts[3]
                     desc = (
-                        f"{current_action} {pkg_name}{progress_suffix}"
-                        if pkg_name
-                        else f"{current_action}{progress_suffix}"
+                        f"{current_action} {pkg_name}" if pkg_name else current_action
                     )
                     progress.update(task_id, description=desc)
 
@@ -1127,9 +1131,7 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
                     if len(parts) >= 4 and "removing" in parts[2].lower():
                         pkg_name = parts[3]
                     desc = (
-                        f"{current_action} {pkg_name}{progress_suffix}"
-                        if pkg_name
-                        else f"{current_action}{progress_suffix}"
+                        f"{current_action} {pkg_name}" if pkg_name else current_action
                     )
                     progress.update(task_id, description=desc)
 
@@ -1140,6 +1142,7 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
                 elif "checking" in line_lower:
                     # Generic checking
                     pass
+
                 # Update Progress Match (N/M)
                 if p_match:
                     curr = int(p_match.group(1))
