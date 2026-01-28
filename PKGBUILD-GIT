@@ -8,6 +8,8 @@ pkgdesc="An APT-style wrapper for pacman with APT-like output"
 arch=('any')
 url="https://github.com/JotaRandom/apt-pac"
 license=('MIT')
+provides=('apt-pac')
+conflicts=('apt-pac')
 depends=('python'
          'python-rich'
          'pyalpm'
@@ -49,6 +51,11 @@ build() {
       msgfmt -o "${po_file%.po}.mo" "$po_file"
     fi
   done
+}
+
+check() {
+  cd "$srcdir/$_pkgname"
+  python tests/run_tests.py
 }
 
 package() {

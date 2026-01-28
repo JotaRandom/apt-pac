@@ -12,6 +12,14 @@ dependencies = [
     "pyalpm",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort",
+    "pre-commit",
+    "types-setuptools",
+]
+
 [project.scripts]
 apt-pac = "apt_pac.__main__:main"
 
@@ -28,10 +36,10 @@ apt_pac = ["../locales/*.mo"]
 
 
 [tool.black]
-line-length = 88
+line-length = 80
 target-version = ['py311']
 include = '\.pyi?$'
 
 [tool.isort]
 profile = "black"
-line_length = 88
+line_length = 80

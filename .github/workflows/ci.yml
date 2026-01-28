@@ -27,6 +27,15 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
+    - name: Install Development Environment
+      run: |
+        pip install .[dev]
+
+    - name: Lint Code
+      run: |
+        # Skip fail for now
+        pre-commit run --all-files || true
+
     - name: Run Tests
       run: |
         python tests/run_tests.py

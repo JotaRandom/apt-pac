@@ -1,0 +1,8 @@
+include LICENSE
+include README.md
+include CHANGELOG.md
+include CONTRIBUTING.md
+include config.toml
+recursive-include locales *.mo *.po *.pot
+recursive-include src/apt_pac *.py
+global-exclude *.py[cod] __pycache__ *.so

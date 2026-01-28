@@ -34,14 +34,14 @@ Since this project is a fun experiment (and partially AI-generated), we don't ha
     cd apt-pac
     ```
 
-2. Install dependencies:
+2. Install development dependencies:
 
     ```bash
-    pacman -S python-rich pyalpm
-    pip install pre-commit
+    # Install the package in editable mode with dev tools
+    pip install -e .[dev]
     ```
 
-3. Install git hooks:
+3. Install git hooks (for code style):
 
     ```bash
     pre-commit install
@@ -51,6 +51,12 @@ Since this project is a fun experiment (and partially AI-generated), we don't ha
 
     ```bash
     python3 tests/run_tests.py
+    ```
+
+5. Build the package (generates wheel in dist/):
+
+    ```bash
+    python3 -m build
     ```
 
 Thanks! 🚀

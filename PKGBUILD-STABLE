@@ -1,7 +1,7 @@
 # Maintainer: Your Name <user@archlinux.org>
 
 pkgname=apt-pac
-pkgver=2026.01.01
+pkgver=2026.01.28
 pkgrel=1
 pkgdesc="An APT-style wrapper for pacman with APT-like output"
 arch=('any')
@@ -37,6 +37,12 @@ build() {
       msgfmt -o "${po_file%.po}.mo" "$po_file"
     fi
   done
+}
+
+check() {
+  cd "$srcdir/$pkgname"
+  # Dependencies are installed in the build environment
+  python tests/run_tests.py
 }
 
 package() {

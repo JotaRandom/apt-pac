@@ -44,17 +44,15 @@ It translates familiar APT commands into their Pacman equivalents and adds some 
 
 ### Quick Install
 
+The best way to install is essentially "The Arch Way" (building a package), so pacman can manage it for you.
+
 ```bash
 git clone https://github.com/JotaRandom/apt-pac.git
 cd apt-pac
 makepkg -si
 ```
 
-Or use the install script:
-
-```bash
-./install.sh
-```
+That's it! This will build and install the package, dependencies, and all documentation.
 
 ## Commands
 
