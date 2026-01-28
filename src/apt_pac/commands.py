@@ -1076,16 +1076,16 @@ class CandyBar:
             filled_len = inner_width
 
         # Draw filled part
-        if filled_len > 0:
+        # 0% case: show Pacman at the very beginning
+        if filled_len >= 0:
             # -1 for pacman if space permits
-            if filled_len >= 1:
-                dash_len = filled_len - 1
-                if dash_len > 0:
-                    bar_text.append("-" * dash_len, style="bold magenta")
-                bar_text.append(pacman_icon, style="bold yellow")
-            else:
-                # Should not happen given logic, but safe fallback
-                pass
+            dash_len = filled_len - 1 if filled_len > 0 else 0
+            if dash_len > 0:
+                bar_text.append("-" * dash_len, style="bold magenta")
+            bar_text.append(pacman_icon, style="bold yellow")
+        else:
+            # Should not happen given logic, but safe fallback
+            pass
 
         # Draw empty part
         remaining_len = inner_width - filled_len
@@ -1140,6 +1140,7 @@ def run_pacman_with_apt_output(cmd, show_hooks=True, total_pkgs=None):
         # Pacman style: "( 1/ 5) Installing package"
         progress_re = re.compile(r"\(\s*(\d+)/(\d+)\s*\)")
         percent_re = re.compile(r"(\d+)%")
+        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
         # Determine bar characters based on encoding/support?
         # Rich usually handles this, but user complained about "bicolor gris o azul y morado"
@@ -1171,42 +1172,63 @@ def run_pacman_with_apt_output(cmd, show_hooks=True, total_pkgs=None):
                 if not line:
                     break
 
-                line_lower = line.lower()
+                if not line:
+                    break
+
+                # Strip ANSI codes for parsing
+                line_clean = ansi_escape.sub("", line)
+                line_lower = line_clean.lower()
 
                 # Check for progress info in the line
-                p_match = progress_re.search(line)
-                pct_match = percent_re.search(line)
+                p_match = progress_re.search(line_clean)
+                pct_match = percent_re.search(line_clean)
 
                 progress_suffix = ""
                 if pct_match:
                     progress_suffix = f" {pct_match.group(1)}%"
 
                 # Determine action and update description
-                if "downloading" in line_lower:
+                if (
+                    "downloading" in line_lower
+                    or "synchronizing" in line_lower
+                    or ((".files" in line_lower or ".db" in line_lower) and pct_match)
+                ):
                     current_action = _("Downloading")
                     # Extract package name if possible
-                    parts = line.split()
+                    # Use clean line
+                    parts = line_clean.split()
                     pkg_name = ""
                     # "downloading package-1.2.3..."
-                    # Find word after "downloading" if exists
+                    # "synchronizing core.db..."
+                    # Find word after keyword
+                    keywords = ["downloading", "synchronizing"]
                     idx = -1
                     try:
-                        idx = [
+                        # Try to find one of the keywords
+                        idx_list = [
                             i
                             for i, part in enumerate(parts)
-                            if "downloading" in part.lower()
-                        ][0]
-                        if idx + 1 < len(parts):
-                            candidate = parts[idx + 1]
-                            pkg_name = candidate.replace("...", "")
-                        elif (
-                            idx - 1 >= 0
-                            and "..." not in parts[idx - 1]
-                            and parts[idx - 1] != "::"
-                        ):
-                            # Look back for "core downloading..."
-                            # e.g. "core.db downloading..."
-                            pkg_name = parts[idx - 1]
+                            if any(kw in part.lower() for kw in keywords)
+                        ]
+                        if idx_list:
+                            idx = idx_list[0]
+                            if idx + 1 < len(parts):
+                                candidate = parts[idx + 1]
+                                pkg_name = candidate.replace("...", "")
+                            elif (
+                                idx - 1 >= 0
+                                and "..." not in parts[idx - 1]
+                                and parts[idx - 1] != "::"
+                            ):
+                                # Look back for "core downloading..."
+                                pkg_name = parts[idx - 1]
+                        else:
+                            # If no keyword found but it's a .files/.db line, take first part
+                            if parts and (
+                                ".files" in parts[0].lower()
+                                or ".db" in parts[0].lower()
+                            ):
+                                pkg_name = parts[0]
                     except (IndexError, ValueError):
                         pass
 

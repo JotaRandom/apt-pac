@@ -34,16 +34,16 @@ def set_force_colors(force: bool):
 
 def print_info(text):
     """Print info message (no prefix - APT style)."""
-    console.print(text)
+    console.print(text, highlight=False)
 
 
 def print_error(text):
     """Print error message (no prefix - APT style)."""
     try:
-        console.print(text)
+        console.print(text, highlight=False)
     except Exception:
         # Fallback if markup fails (e.g. text contains unmatched tags)
-        console.print(text, markup=False)
+        console.print(text, highlight=False, markup=False)
 
 
 def print_command(text):
@@ -495,3 +495,44 @@ def show_help():
     console.print(
         f"\n[italic grey70]{_('This APT has Super Pacman Powers.')}[/italic grey70]"
     )
+
+def print_showsrc_info(package_name, info, pkg_dir):
+    """
+    Format and print source information in APT style.
+    Similar to format_show but takes a dictionary from PKGBUILD.
+    """
+    text = Text()
+
+    # Map PKGBUILD keys to APT-like labels
+    fields = [
+        ("pkgname", _("Package")),
+        ("pkgver", _("Version")),
+        ("pkgrel", None),  # Combined with pkgver
+        ("pkgdesc", _("Description")),
+        ("url", _("Homepage")),
+        ("license", _("License")),
+        ("arch", _("Architecture")),
+        ("depends", _("Depends")),
+        ("makedepends", _("Build-Depends")),
+    ]
+
+    for key, label in fields:
+        if key not in info:
+            continue
+        
+        val = info[key]
+        if isinstance(val, list):
+            val = ", ".join(val)
+        
+        if key == "pkgver":
+            rel = info.get("pkgrel", "1")
+            val = f"{val}-{rel}"
+        
+        if label:
+            text.append(f"{label+':':<20}", style="bold cyan")
+            text.append(f" {val}\n")
+
+    text.append(f"\n{_('Source Directory:')+' ':<20}", style="bold cyan")
+    text.append(f" {pkg_dir}\n")
+
+    console.print(text, highlight=False)

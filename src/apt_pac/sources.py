@@ -11,7 +11,7 @@ using the Arch Build System (ABS) and the AUR.
 import subprocess
 import shutil
 from .config import get_config
-from .ui import print_error, print_info, console
+from .ui import print_error, print_info, console, print_showsrc_info
 from .i18n import _
 
 
@@ -42,7 +42,9 @@ def get_sources_dir():
 def check_package_in_repos(package_name):
     """Check if package exists in official repositories."""
     result = subprocess.run(
-        ["pacman", "-Si", package_name], capture_output=True, stderr=subprocess.DEVNULL
+        ["pacman", "-Si", package_name],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
     return result.returncode == 0
 
@@ -81,7 +83,7 @@ def download_source(package_name, verbose=False):
 
     # Use pkgctl to clone the git repository
     result = subprocess.run(
-        ["pkgctl", "repo", "clone", package_name],
+        ["pkgctl", "repo", "clone", "--protocol", "https", package_name],
         cwd=sources_dir,
         capture_output=True,
         text=True,
@@ -341,41 +343,6 @@ def handle_showsrc(package_name, verbose=False):
         return False
 
     # Display info in APT style
-    console.print(f"[bold]Package:[/bold] {info.get('pkgname', package_name)}")
-    console.print(
-        f"[bold]Version:[/bold] {info.get('pkgver', 'unknown')}-{info.get('pkgrel', '1')}"
-    )
-
-    if "pkgdesc" in info:
-        console.print(f"[bold]Description:[/bold] {info['pkgdesc']}")
-
-    if "url" in info:
-        console.print(f"[bold]Homepage:[/bold] {info['url']}")
-
-    if "license" in info:
-        licenses = (
-            info["license"] if isinstance(info["license"], list) else [info["license"]]
-        )
-        console.print(f"[bold]License:[/bold] {', '.join(licenses)}")
-
-    if "arch" in info:
-        archs = info["arch"] if isinstance(info["arch"], list) else [info["arch"]]
-        console.print(f"[bold]Architecture:[/bold] {', '.join(archs)}")
-
-    if "depends" in info:
-        deps = (
-            info["depends"] if isinstance(info["depends"], list) else [info["depends"]]
-        )
-        console.print(f"[bold]Depends:[/bold] {', '.join(deps)}")
-
-    if "makedepends" in info:
-        makedeps = (
-            info["makedepends"]
-            if isinstance(info["makedepends"], list)
-            else [info["makedepends"]]
-        )
-        console.print(f"[bold]Build-Depends:[/bold] {', '.join(makedeps)}")
-
-    console.print(f"\n[bold]Source Directory:[/bold] {pkg_dir}")
+    print_showsrc_info(package_name, info, pkg_dir)
 
     return True
