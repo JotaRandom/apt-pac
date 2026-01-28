@@ -10,7 +10,6 @@ license=('MIT')
 depends=('python'
          'python-rich'
          'pyalpm'
-         'python-tomli'
          'devtools')
 makedepends=('python-build'
              'python-installer'

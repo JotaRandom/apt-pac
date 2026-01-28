@@ -295,16 +295,7 @@ class Config:
             return False
         
         try:
-            # Try Python 3.11+ built-in tomllib first
-            try:
-                import tomllib
-            except ImportError:
-                # Fallback to tomli for older Python
-                try:
-                    import tomli as tomllib
-                except ImportError:
-                    # No TOML parser available
-                    return False
+            import tomllib
             
             with open(config_path, "rb") as f:
                 loaded_config = tomllib.load(f)

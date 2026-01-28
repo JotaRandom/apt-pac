@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "Arch User", email = "user@archlinux.org" }
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 dependencies = [
     "rich>=10.0.0",
     "pyalpm",

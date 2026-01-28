@@ -19,10 +19,10 @@ if ! python3 -c "import rich" &> /dev/null; then
     sudo pacman -S --needed python-rich
 fi
 
-# Check for tomllib (Python 3.11+) or tomli
-if ! python3 -c "import tomllib" &> /dev/null 2>&1 && ! python3 -c "import tomli" &> /dev/null 2>&1; then
-    echo "TOML parser required. Installing python-tomli..."
-    sudo pacman -S --needed python-tomli
+# Check for tomllib (Python 3.11+)
+if ! python3 -c "import tomllib" &> /dev/null 2>&1; then
+    echo "Python 3.11+ (with tomllib) is required."
+    exit 1
 fi
 
 if ! command -v pactree &> /dev/null; then
