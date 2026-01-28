@@ -929,9 +929,9 @@ def simulate_apt_download_output(pacman_cmd, config):
             short_url = f"{parsed.scheme}://{parsed.netloc}/"
             if parsed.scheme == "file":
                 # Use directory path for local files
-                short_url = f"file://{os.path.dirname(parsed.path)}/"
+                short_url = f"[{_('in cache')}]"
 
-            if not short_url.endswith("/"):
+            if not short_url.endswith("/") and parsed.scheme != "file":
                 short_url += "/"
 
             # Parse filename
@@ -1293,8 +1293,12 @@ def run_pacman_with_apt_output(cmd, show_hooks=True, total_pkgs=None):
                 if "hooks" in line_lower and show_hooks:
                     # Clean up ":: " prefix
                     cleaned = line.replace(":: ", "").strip()
+                    # Remove trailing ellipsis to avoid double dots
+                    if cleaned.endswith("..."):
+                        cleaned = cleaned[:-3].strip()
+
                     console.print(
-                        f"{_('Processing triggers for')} {cleaned} ...",
+                        f"[bold]{_('Processing triggers for')}[/bold] {cleaned} ...",
                         highlight=False,
                     )
                     continue
@@ -1307,6 +1311,10 @@ def run_pacman_with_apt_output(cmd, show_hooks=True, total_pkgs=None):
                         parts = line.split(")", 1)
                         if len(parts) > 1:
                             desc = parts[1].strip()
+                            # Strip "..." if present in desc
+                            if desc.endswith("..."):
+                                desc = desc[:-3].strip()
+
                             console.print(
                                 f"{_('Setting up system')} ({desc}) ...",
                                 highlight=False,
@@ -2915,11 +2923,13 @@ def execute_command(apt_cmd, extra_args):
                     f"\n[dim]{_('Skipping')} AUR {_('updates (--official provided)')}[/dim]"
                 )
 
-            # Sync file database in background (silent)
+            # Sync file database in background (provide feedback)
             if run_official:
-                console.print(f"\n{_('Syncing file database...')}")
-                subprocess.run(["pacman", "-Fy"], check=False, capture_output=True)
-                console.print(f"{_('File database:')} [green]{_('Done')}[/green]")
+                console.print(
+                    f"\n{_('Updating package file list (pacman -Fy)...')}",
+                    highlight=False,
+                )
+                run_pacman_with_apt_output(["pacman", "-Fy"], show_hooks=False)
             return  # Exit after upgrade handling
 
         else:

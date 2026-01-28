@@ -209,11 +209,16 @@ class TestUpgradeLogic(unittest.TestCase):
 
         # Check Official Execution
         self.assertTrue(mock_exec.called)
-        exec_args = mock_exec.call_args[0][0]
-        self.assertTrue("-Su" in exec_args, "Execution should use '-Su'")
-        self.assertTrue(
-            "-Syu" not in exec_args, "Execution should NOT use '-Syu' (redundant sync)"
-        )
+
+        # Verify one of the calls was -Su
+        su_called = False
+        for call in mock_exec.call_args_list:
+            exec_args = call[0][0]
+            if "-Su" in exec_args and "-Syu" not in exec_args:
+                su_called = True
+                break
+
+        self.assertTrue(su_called, "Execution should use '-Su' (and not -Syu)")
 
         # Check AUR Execution
         mock_aur.AurInstaller.return_value.install.assert_called()

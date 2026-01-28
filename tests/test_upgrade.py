@@ -125,8 +125,14 @@ class TestUpgrade(unittest.TestCase):
             # self.mock_console_input.assert_called_once()
 
             # Verify run command has --noconfirm
-            args, _ = mock_run_apt.call_args
-            self.assertIn("--noconfirm", args[0])
+            # Verify run command has --noconfirm in one of the calls
+            found = False
+            for call in mock_run_apt.call_args_list:
+                args = call[0][0]
+                if "--noconfirm" in args:
+                    found = True
+                    break
+            self.assertTrue(found, "Command should be run with --noconfirm")
 
             # Output Check
             full_output = "\n".join(
@@ -225,8 +231,13 @@ class TestUpgrade(unittest.TestCase):
             self.mock_console_input.assert_not_called()
 
             # Should still run with --noconfirm
-            args, _ = mock_run_apt.call_args
-            self.assertIn("--noconfirm", args[0])
+            found = False
+            for call in mock_run_apt.call_args_list:
+                args = call[0][0]
+                if "--noconfirm" in args:
+                    found = True
+                    break
+            self.assertTrue(found, "Command should be run with --noconfirm")
 
             # Output Check
             # Summary should still be printed (columns)
