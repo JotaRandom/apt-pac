@@ -2641,7 +2641,8 @@ def execute_command(apt_cmd, extra_args):
 
             # print_reading_status() would add newline, so just print first line
             console.print(
-                f"\n{_('Reading package lists...')} [green]{_('Done')}[/green]"
+                f"\n{_('Reading package lists')}... [green]{_('Done')}[/green]",
+                highlight=False,
             )
             if only_aur:
                 msg = (
