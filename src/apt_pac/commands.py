@@ -740,111 +740,115 @@ def sync_databases(cmd=None):
             env=env,
         )
 
+        # Strip ANSI codes for easier parsing
+        # ansi_escape defined above
+
+        # Standard APT output doesn't use a spinner for the repo hit list, it just prints them.
         index = 1
-        with console.status(
-            f"[bold blue]{_('Updating package databases...')}[/bold blue]",
-            spinner="dots",
-        ):
-            for line in iter(process.stdout.readline, ""):
-                if not line:
-                    break
+        for line in iter(process.stdout.readline, ""):
+            if not line:
+                break
 
-                # Strip ANSI for parsing
-                line_clean = ansi_escape.sub("", line).strip()
-                if not line_clean:
-                    continue
+            # Strip ANSI for parsing
+            line_clean = ansi_escape.sub("", line).strip()
+            if not line_clean:
+                continue
 
-                lower_line = line_clean.lower()
+            lower_line = line_clean.lower()
 
-                # Parse
-                if "is up to date" in lower_line:
-                    repo = line_clean.split(" is up to date")[0].strip()
-                    # Cleaning ":: " prefix
-                    if "::" in repo:
-                        repo = repo.split("::")[-1].strip()
+            # Parse
+            if "is up to date" in lower_line:
+                repo = line_clean.split(" is up to date")[0].strip()
+                # Cleaning ":: " prefix
+                if "::" in repo:
+                    repo = repo.split("::")[-1].strip()
+
+                # Get URL
+                url = repo_url_map.get(repo, repo)
+                # Strip trailing slash for consistency
+                if url.endswith("/"):
+                    url = url[:-1]
+
+                # APT format: Hit:1 http://url repo
+                console.print(
+                    f"[bold cyan]Hit: [/bold cyan]{index} [blue]{url}[/blue] [bold blue]{repo}[/bold blue]",
+                    highlight=False,
+                )
+                index += 1
+
+            elif "downloading" in lower_line:
+                # extracting repo name. Format could be:
+                # "downloading core.db..."
+                # "downloading core..."
+                # ":: downloading core..."
+
+                parts = line_clean.split()
+                repo = ""
+
+                # Find word containing "downloading"
+                try:
+                    # Find index of word matching "downloading"
+                    idx = -1
+                    for i, p in enumerate(parts):
+                        if "downloading" in p.lower():
+                            idx = i
+                            break
+
+                    if idx != -1:
+                        # Check word After (downloading core...)
+                        if idx + 1 < len(parts):
+                            candidate = parts[idx + 1]
+                            # Heuristic: usually repo names are alphanumeric.
+                            # If candidate is "...", skip.
+                            if "..." not in candidate:
+                                repo = (
+                                    candidate.replace("...", "")
+                                    .replace(".db", "")
+                                    .replace(".files", "")
+                                )
+
+                        # Check word Before (core downloading...) if not found after
+                        if not repo and idx - 1 >= 0:
+                            candidate = parts[idx - 1]
+                            # Ignore "::"
+                            if candidate != "::":
+                                repo = (
+                                    candidate.replace("...", "")
+                                    .replace(".db", "")
+                                    .replace(".files", "")
+                                )
+                except Exception:
+                    pass
+
+                # heuristic: check if any map key is in the line (fallback)
+                if not repo and repo_url_map:
+                    for r in repo_url_map:
+                        if r in line_clean:
+                            repo = r
+                            break
+
+                if repo:
+                    # Get URL
+                    url = repo_url_map.get(repo, repo)
+                    if url.endswith("/"):
+                        url = url[:-1]
+
+                    # Get: NUMERO URL repo
                     console.print(
-                        f"[bold cyan]Hit: [/bold cyan]{index} [bold blue]{repo}[/bold blue]",
+                        f"[bold cyan]Get: [/bold cyan]{index} [blue]{url}[/blue] [bold blue]{repo}[/bold blue]",
                         highlight=False,
                     )
                     index += 1
-
-                elif "downloading" in lower_line:
-                    # extracting repo name. Format could be:
-                    # "downloading core.db..."
-                    # "downloading core..."
-                    # ":: downloading core..."
-
-                    parts = line_clean.split()
-                    repo = ""
-
-                    # Find word containing "downloading"
-                    try:
-                        # Find index of word matching "downloading"
-                        idx = -1
-                        for i, p in enumerate(parts):
-                            if "downloading" in p.lower():
-                                idx = i
-                                break
-
-                        if idx != -1:
-                            # Check word After (downloading core...)
-                            if idx + 1 < len(parts):
-                                candidate = parts[idx + 1]
-                                # Heuristic: usually repo names are alphanumeric.
-                                # If candidate is "...", skip.
-                                if "..." not in candidate:
-                                    repo = (
-                                        candidate.replace("...", "")
-                                        .replace(".db", "")
-                                        .replace(".files", "")
-                                    )
-
-                            # Check word Before (core downloading...) if not found after
-                            if not repo and idx - 1 >= 0:
-                                candidate = parts[idx - 1]
-                                # Ignore "::"
-                                if candidate != "::":
-                                    repo = (
-                                        candidate.replace("...", "")
-                                        .replace(".db", "")
-                                        .replace(".files", "")
-                                    )
-                    except Exception:
-                        pass
-
-                    # heuristic: check if any map key is in the line (fallback)
-                    if not repo and repo_url_map:
-                        for r in repo_url_map:
-                            if r in line_clean:
-                                repo = r
-                                break
-
-                    if repo:
-                        index_str = f"{index} "
-                        if repo in repo_url_map:
-                            short = repo_url_map[repo]
-                            # Get: NUMERO URL repo
-                            console.print(
-                                f"[bold cyan]Get: [/bold cyan]{index_str}[blue]{short}[/blue] [bold blue]{repo}[/bold blue]",
-                                highlight=False,
-                            )
-                        else:
-                            # Fallback: no URL available
-                            console.print(
-                                f"[bold cyan]Get: [/bold cyan]{index_str}[bold blue]{repo}[/bold blue]",
-                                highlight=False,
-                            )
-                        index += 1
-                    else:
-                        # Fallback if we can't identify repo
-                        console.print(f"[dim]{line_clean}[/dim]", highlight=False)
-
-                elif "synchronizing package databases" in lower_line:
-                    # Ignore introductory line
-                    pass
                 else:
-                    # Fallback: print unknown lines (dimmed)
-                    console.print(f"[dim]{line_clean}[/dim]")
+                    # Fallback if we can't identify repo
+                    console.print(f"[dim]{line_clean}[/dim]", highlight=False)
+
+            elif "synchronizing package databases" in lower_line:
+                # Ignore introductory line
+                pass
+            else:
+                # Fallback: print unknown lines (dimmed)
+                console.print(f"[dim]{line_clean}[/dim]")
 
         process.wait()
 
