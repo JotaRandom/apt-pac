@@ -33,7 +33,7 @@ from rich.panel import Panel
 from rich.progress import (
     Progress,
     TextColumn,
-    BarColumn,
+    ProgressColumn,
 )
 
 
@@ -1003,11 +1003,28 @@ def simulate_apt_download_output(pacman_cmd, config):
                 i, total, info["short_url"], final_str, action=action
             )
 
+        return total
+
     except Exception:
         pass
+    return 0
 
 
-def run_pacman_with_apt_output(cmd, show_hooks=True):
+class ASCIIBarColumn(ProgressColumn):
+    """Renders a standard APT-style ASCII bar: [######      ]"""
+
+    def render(self, task):
+        total = task.total or 100
+        completed = min(task.completed, total)
+        percent = completed / total if total > 0 else 0
+        width = 20
+        filled = int(width * percent)
+        empty = width - filled
+        bar = "#" * filled + "." * empty
+        return Text(f"[{bar}]", style="white")
+
+
+def run_pacman_with_apt_output(cmd, show_hooks=True, total_pkgs=None):
     """
     Runs pacman command and parses output to show:
     - Package installation progress in APT style
@@ -1047,21 +1064,23 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
         # But explicitly asking for a simple style might help.
         # Removing SpinnerColumn as requested.
 
+        if total_pkgs:
+            total_pkgs_int = int(total_pkgs)
+        else:
+            total_pkgs_int = None
+
         with Progress(
-            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            BarColumn(
-                bar_width=None,
-                complete_style="white",
-                finished_style="white",
-                pulse_style="white",
-            ),
-            TextColumn("[{task.completed}/{task.total}]"),
             TextColumn("[bold blue]{task.description}"),
+            TextColumn("[{task.completed}/{task.total}]"),
+            ASCIIBarColumn(),
+            TextColumn("[white]{task.percentage:>3.0f}%"),
             console=console,
             transient=True,  # Remove bar when done
         ) as progress:
-            # APT style: [ 0%] [....] [0/10] Description
-            task_id = progress.add_task(description=current_action, total=None)
+            # APT style: Description [0/10] [#####] 0%
+            task_id = progress.add_task(
+                description=current_action, total=total_pkgs_int
+            )
 
             for line in iter(process.stdout.readline, ""):
                 if not line:
@@ -2763,8 +2782,11 @@ def execute_command(apt_cmd, extra_args):
             # 3. Simulate Download Output (Get: ...)
             # Use a specific command for simulation: pacman -Su
             sim_cmd = ["pacman", "-Su"]
+            total_pkgs = 0
             if not is_simulation:
-                simulate_apt_download_output(sim_cmd, config)
+                count = simulate_apt_download_output(sim_cmd, config)
+                if count:
+                    total_pkgs = count
 
             # 4. Execute Upgrade (Official)
             if run_official:
@@ -2789,7 +2811,9 @@ def execute_command(apt_cmd, extra_args):
                 if quiet_level > 0:
                     exec_cmd.append("-q")
 
-                success = run_pacman_with_apt_output(exec_cmd, show_hooks=True)
+                success = run_pacman_with_apt_output(
+                    exec_cmd, show_hooks=True, total_pkgs=total_pkgs
+                )
                 if not success:
                     print_error(_("Upgrade failed"))
                     sys.exit(1)
