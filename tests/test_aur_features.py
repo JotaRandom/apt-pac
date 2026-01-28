@@ -36,13 +36,13 @@ class TestAurFeatures(unittest.TestCase):
         self.assertEqual(updates[0]['current'], '1.0')
         self.assertEqual(updates[0]['new'], '2.0')
 
+    @patch('pathlib.Path.exists')
     @patch('subprocess.run')
-    def test_download_aur_source(self, mock_run):
+    def test_download_aur_source(self, mock_run, mock_exists):
         # Test download fallback
         with patch('apt_pac.config.get_config') as mock_config:
-            mock_cache = MagicMock()
-            mock_cache.exists.return_value = False # Target doesn't exist
             mock_config.return_value.cache_dir = Path("/tmp/cache")
+            mock_exists.return_value = False # Force git clone
             
             # Run
             target = aur.download_aur_source("test-pkg")

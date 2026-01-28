@@ -1,4 +1,5 @@
 import json
+import re
 import time
 import urllib.request
 import urllib.parse
@@ -665,9 +666,12 @@ class AurInstaller:
             subprocess.run(["chown", "-R", f"{real_user}:", str(self.build_dir)], check=False)
 
         # 2. Build
-        # makepkg -f (force rebuild), --needed (skip if existing?), --noconfirm
+        # makepkg -f (force rebuild), --needed (skip if existing?)
         # IMPORTANT: NO -s (syncdeps) because we handled deps manually!
-        cmd = ["makepkg", "-f", "--needed", "--noconfirm"]
+        cmd = ["makepkg", "-f", "--needed"]
+        
+        if auto_confirm:
+            cmd.append("--noconfirm")
         
         if ui.console.no_color:
             cmd.append("-m")
@@ -735,8 +739,46 @@ class AurInstaller:
             return valid_pkg_files
 
         except subprocess.CalledProcessError as e:
-             print_error(_(f"Failed to build {name}"))
-             sys.exit(1)
+            # Check for GPG error
+            # "unknown public key D1483FA6C3C07136"
+            # "One or more PGP signatures could not be verified"
+            output = e.stderr.decode('utf-8', errors='ignore') if e.stderr else ""
+            if not output and e.stdout:
+                 output = e.stdout.decode('utf-8', errors='ignore')
+                 
+            gpg_match = re.search(r'unknown public key ([0-9A-F]+)', output)
+            if gpg_match:
+                key_id = gpg_match.group(1)
+                ui.console.print(f"[yellow]{_('Missing GPG Key detected:')} {key_id}[/yellow]")
+                ui.console.print(_("Attempting to import key..."))
+                
+                try:
+                    subprocess.run(["gpg", "--recv-keys", key_id], check=True)
+                    # Retry build
+                    ui.console.print(_("Key imported. Retrying build..."))
+                    subprocess.run(cmd, cwd=run_cwd, check=True)
+                    
+                    # If we get here, it succeeded on retry
+                    # Need to duplicate the success logic (find packages)
+                    # Ideally we loop or recurse, but recursion is risky.
+                    # Copy-paste finding logic for now or refactor? 
+                    # Refactoring _build_pkg is better but let's just do find logic.
+                    
+                    # 3. Find built packages (Copy from above)
+                    all_pkg_files = list(pkg_dir.glob("*.pkg.tar.*"))
+                    valid_pkg_files = []
+                    for f in all_pkg_files:
+                        fname = f.name
+                        if "-debug" in fname and not name.endswith("-debug"): continue
+                        valid_pkg_files.append(f)
+                    return valid_pkg_files
+
+                except subprocess.CalledProcessError:
+                     print_error(_(f"Failed to import key {key_id} or rebuild failed."))
+                     sys.exit(1)
+            
+            print_error(_(f"Failed to build {name}"))
+            sys.exit(1)
 
     def _download_source_silent(self, package_name, target_dir, verbose):
         # Wrapper to reuse download_aur_source but suppress output

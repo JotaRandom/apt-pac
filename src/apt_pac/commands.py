@@ -1586,9 +1586,8 @@ def execute_command(apt_cmd, extra_args):
             if matching:
                 console.print(f"\n{_('Packages matching search:')}")
                 # Use columnar layout
-                from rich.table import Table
-                from rich.padding import Padding
-                from rich.text import Text
+                # Local imports removed
+
                 
                 width = console.size.width
                 # Calculate max length (without markup)
@@ -1625,9 +1624,8 @@ def execute_command(apt_cmd, extra_args):
             for pkg in all_pkgs:
                 all_formatted.append(f"{pkg.name} [dim]{pkg.version}[/dim]")
             
-            from rich.table import Table
-            from rich.padding import Padding
-            from rich.text import Text
+            # Local imports removed
+
             
             width = console.size.width
             max_len = max(Text.from_markup(p).cell_len for p in all_formatted)

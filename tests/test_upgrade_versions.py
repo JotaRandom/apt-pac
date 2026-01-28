@@ -22,10 +22,14 @@ class TestUpgradeVersions(unittest.TestCase):
     @patch('apt_pac.commands.console')
     @patch.object(commands, 'get_config')
     @patch.object(commands, 'run_pacman')
+    @patch('apt_pac.commands.run_pacman_with_apt_output', return_value=True)
     @patch('apt_pac.commands.subprocess.run')
+    @patch('apt_pac.aur.download_aur_source', return_value=True)
+    @patch('apt_pac.aur.subprocess.run')
+    @patch.dict(os.environ, {"SUDO_USER": "testuser"})
     @patch('os.getuid', return_value=0)
     @patch('builtins.input', return_value='y')
-    def test_upgrade_official_version(self, mock_input, mock_getuid, mock_sub, mock_run, mock_config, mock_console, mock_print_col, mock_alpm_helper, mock_sync):
+    def test_upgrade_official_version(self, mock_input, mock_getuid, mock_sub, mock_run_apt, mock_run, mock_config, mock_console, mock_print_col, mock_alpm_helper, mock_sync):
         # Mocks
         sim_mock = MagicMock(returncode=0, stdout="http://mirror/core-pkg-2.0-1-any.pkg.tar.zst\n") 
         qi_mock = MagicMock(returncode=0, stdout="Name : core-pkg\nInstalled Size : 100.00 KiB\n")
@@ -78,10 +82,14 @@ class TestUpgradeVersions(unittest.TestCase):
     @patch('apt_pac.commands.console')
     @patch.object(commands, 'get_config')
     @patch.object(commands, 'run_pacman')
+    @patch('apt_pac.commands.run_pacman_with_apt_output', return_value=True)
     @patch('apt_pac.commands.subprocess.run')
+    @patch('apt_pac.aur.download_aur_source', return_value=True)
+    @patch('apt_pac.aur.subprocess.run')
+    @patch.dict(os.environ, {"SUDO_USER": "testuser"})
     @patch('os.getuid', return_value=0)
     @patch('builtins.input', return_value='y')
-    def test_upgrade_aur_version(self, mock_input, mock_getuid, mock_sub, mock_run, mock_config, mock_console, mock_print_col, mock_alpm_helper, mock_sync):
+    def test_upgrade_aur_version(self, mock_input, mock_getuid, mock_sub, mock_run_apt, mock_run, mock_config, mock_console, mock_print_col, mock_alpm_helper, mock_sync):
         # Mocks
         sim_mock = MagicMock(returncode=0, stdout="http://mirror/aur-pkg-1.1-any.pkg.tar.zst\n") 
         qi_mock = MagicMock(returncode=0, stdout="Name : aur-pkg\nInstalled Size : 100.00 KiB\n")

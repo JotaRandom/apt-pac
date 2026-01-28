@@ -61,6 +61,10 @@ class TestRecursiveAur(unittest.TestCase):
         mock_pkg.stem = "test-pkg-1.0-1-any"
         mock_pkg.__str__.return_value = "/tmp/mock_build/pkg/test-pkg-1.0-1-any.pkg.tar.zst"
         self.mock_glob.return_value = [mock_pkg]
+        
+        # Mock Path.exists to force git clone (return False)
+        self.exists_patcher = patch('pathlib.Path.exists', return_value=False)
+        self.mock_exists = self.exists_patcher.start()
 
     def tearDown(self):
         self.console_patcher.stop()
@@ -74,6 +78,7 @@ class TestRecursiveAur(unittest.TestCase):
         self.installed_patcher.stop()
         self.official_patcher.stop()
         self.glob_patcher.stop()
+        self.exists_patcher.stop()
 
     def test_recursive_aur_build_and_cleanup(self):
         # Scenario:
@@ -83,7 +88,7 @@ class TestRecursiveAur(unittest.TestCase):
         
         # Set up RPC return values
         def side_effect_rpc(pkgs):
-            print(f"DEBUG: get_aur_info called with: {pkgs}")
+            # print(f"DEBUG: get_aur_info called with: {pkgs}")
             results = []
             for p in pkgs:
                 if p == 'leaf-pkg':

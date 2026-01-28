@@ -55,9 +55,27 @@ class TestUpgrade(unittest.TestCase):
              patch.object(commands, 'run_pacman_with_apt_output', return_value=True) as mock_run_apt, \
              patch('apt_pac.commands.sync_databases'), \
              patch('apt_pac.alpm_helper') as mock_alpm, \
-             patch('subprocess.run') as mock_sub:
+             patch('subprocess.run') as mock_sub, \
+             patch('apt_pac.aur.check_updates') as mock_aur_check, \
+             patch('apt_pac.aur.get_installed_aur_packages') as mock_aur_installed, \
+             patch('apt_pac.aur.AurResolver') as mock_resolver_cls, \
+             patch('apt_pac.aur.get_resolved_package_info') as mock_resolve_info, \
+             patch('apt_pac.aur.download_aur_source', return_value=True):
              
-             # Mock update info
+             # Mock AUR updates
+             mock_aur_installed.return_value = ['aur-pkg']
+             # Return one AUR update to complement the one official update (total 2)
+             mock_aur_check.return_value = [{'name': 'aur-pkg', 'current': '1.0', 'new': '2.0', 'version': '2.0'}]
+             
+             # Mock Resolver
+             mock_resolver = mock_resolver_cls.return_value
+             mock_resolver.resolve.return_value = [{'Name': 'aur-pkg', 'PackageBase': 'aur-pkg', 'Version': '2.0'}]
+             mock_resolver.official_deps = []
+             
+             # Mock resolved info
+             mock_resolve_info.return_value = [('aur-pkg', '2.0')]
+             
+             # Mock official update info
              mock_alpm.get_available_updates.return_value = [('pkg', '1.0', '2.0')]
              mock_pkg = MagicMock()
              mock_pkg.download_size = 100 * 1024
@@ -108,7 +126,24 @@ class TestUpgrade(unittest.TestCase):
              patch.object(commands, 'run_pacman_with_apt_output', return_value=True) as mock_run_apt, \
              patch('apt_pac.commands.sync_databases'), \
              patch('apt_pac.alpm_helper') as mock_alpm, \
-             patch('subprocess.run') as mock_sub:
+             patch('subprocess.run') as mock_sub, \
+             patch('apt_pac.aur.check_updates') as mock_aur_check, \
+             patch('apt_pac.aur.get_installed_aur_packages') as mock_aur_installed, \
+             patch('apt_pac.aur.AurResolver') as mock_resolver_cls, \
+             patch('apt_pac.aur.get_resolved_package_info') as mock_resolve_info, \
+             patch('apt_pac.aur.download_aur_source', return_value=True):
+             
+             # Mock AUR updates
+             mock_aur_installed.return_value = ['aur-pkg']
+             mock_aur_check.return_value = [{'name': 'aur-pkg', 'current': '1.0', 'new': '2.0', 'version': '2.0'}]
+             
+             # Mock Resolver
+             mock_resolver = mock_resolver_cls.return_value
+             mock_resolver.resolve.return_value = [{'Name': 'aur-pkg', 'PackageBase': 'aur-pkg', 'Version': '2.0'}]
+             mock_resolver.official_deps = []
+             
+             # Mock resolved info
+             mock_resolve_info.return_value = [('aur-pkg', '2.0')]
              
              # Mock update info
              mock_alpm.get_available_updates.return_value = [('pkg', '1.0', '2.0')]

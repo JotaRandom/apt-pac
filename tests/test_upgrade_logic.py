@@ -10,12 +10,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../s
 from apt_pac import commands, alpm_helper
 
 class TestUpgradeLogic(unittest.TestCase):
-    @patch.object(commands.os, 'getuid', create=True)
-    @patch.object(commands, 'console')
-    @patch.object(commands.subprocess, 'run')
-    @patch.object(commands.sys, 'exit')
-    @patch.object(commands, 'get_config')
-    def test_partial_upgrade_warning(self, mock_config, mock_exit, mock_run, mock_console, mock_getuid):
+    @patch('apt_pac.commands.console')
+    @patch('apt_pac.commands.os.getuid', create=True)
+    @patch('apt_pac.alpm_helper.get_available_updates')
+    @patch('apt_pac.commands.get_config')
+    def test_partial_upgrade_warning(self, mock_config, mock_get_updates, mock_getuid, mock_console):
         """Test that install warns about pending upgrades"""
         # Mock root or not-root doesn't strictly matter for this check, but let's say root
         mock_getuid.return_value = 0 
@@ -24,14 +23,8 @@ class TestUpgradeLogic(unittest.TestCase):
         mock_config.return_value = MagicMock()
         mock_config.return_value.get.return_value = 1 # verbosity
         
-        # Mock pacman -Qu to return updates
-        def side_effect(*args, **kwargs):
-            cmd = args[0] if args else kwargs.get('args', [])
-            if "-Qu" in cmd:
-                 return MagicMock(returncode=0, stdout="package1 1.0 -> 2.0\npackage2 3.0 -> 3.1")
-            return MagicMock(returncode=0, stdout="")
-
-        mock_run.side_effect = side_effect
+        # Mock available updates
+        mock_get_updates.return_value = [('pkg', '1.0', '2.0')]
         
         # Mock valid input (Proceed? No -> Exit)
         mock_console.input.return_value = 'n'
