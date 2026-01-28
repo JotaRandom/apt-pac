@@ -1,0 +1,42 @@
+name: Bug Report
+description: File a bug report
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: input
+    id: version
+    attributes:
+      label: apt-pac version
+      description: Output of `apt-pac --version`
+      placeholder: 2026.01.17
+    validations:
+      required: true
+  - type: dropdown
+    id: distro
+    attributes:
+      label: Distribution
+      options:
+        - Arch Linux
+        - Manjaro
+        - EndeavourOS
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Also tell us, what did you expect to happen?
+      placeholder: I typed 'apt install code' and it deleted my home folder...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Please copy and paste any relevant log output.
+      render: shell

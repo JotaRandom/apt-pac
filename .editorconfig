@@ -13,3 +13,13 @@ indent_size = 2
 
 [*.md]
 trim_trailing_whitespace = false
+
+[*.{py,pyi}]
+indent_style = space
+indent_size = 4
+quote_type = double
+
+[*.{yaml,yml,json,toml}]
+indent_style = space
+indent_size = 2
+
