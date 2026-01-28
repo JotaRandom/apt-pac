@@ -35,7 +35,6 @@ from rich.progress import (
     Progress,
     TextColumn,
     BarColumn,
-    ProgressColumn,
 )
 
 
@@ -738,6 +737,9 @@ def sync_databases(cmd=None):
     ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
     try:
+        # Give immediate feedback before Popen to prevent "frozen" feeling
+        console.print(f"0% [{_('Connecting...')}]", end="\r")
+
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -2121,7 +2123,7 @@ def execute_command(apt_cmd, extra_args):
 
     elif apt_cmd == "news":
         url = "https://archlinux.org/feeds/news/"
-        with console.status(
+        with ui.status(
             f"[bold blue]{_('Fetching Arch Linux news...')}[/bold blue]", spinner="dots"
         ):
             try:
@@ -2591,9 +2593,7 @@ def execute_command(apt_cmd, extra_args):
             # Extract query from extra_args (assume arg not starting with - is the query)
             queries = [arg for arg in extra_args if not arg.startswith("-")]
             if queries:
-                with console.status(
-                    "[magenta]Searching AUR...[/magenta]", spinner="dots"
-                ):
+                with ui.status("[magenta]Searching AUR...[/magenta]", spinner="dots"):
                     matches = aur.search_aur(queries[0])  # Search first query arg
                 if matches:
                     format_aur_search_results(matches)
@@ -2620,7 +2620,7 @@ def execute_command(apt_cmd, extra_args):
             # Fallback to AUR if not found
             if not found:
                 if queries:
-                    with console.status(
+                    with ui.status(
                         "[magenta]Checking AUR...[/magenta]", spinner="dots"
                     ):
                         # aur.get_aur_info returns detailed info list
@@ -2724,12 +2724,9 @@ def execute_command(apt_cmd, extra_args):
 
             # Run the file sync pacman -Fy
             if config.get("ui", "always_sync_files", True):
-                with console.status(
-                    f"[bold blue]{_('Syncing file database...')}[/bold blue]",
-                    spinner="dots",
-                ):
-                    sync_cmd = ["pacman", "-Fy"]
-                    subprocess.run(sync_cmd, check=False, capture_output=True)
+                sync_cmd = ["pacman", "-Fy"]
+                # Use Candy Bar for file sync progress
+                run_pacman_with_apt_output(sync_cmd, show_hooks=False)
 
             # print_reading_status() would add newline, so just print first line
             console.print(
@@ -2792,7 +2789,7 @@ def execute_command(apt_cmd, extra_args):
                         # Resolve dependencies immediately (One-Pass)
                         aur_candidates = [u["name"] for u in aur_updates]
                         resolver = aur.AurResolver()
-                        with console.status(
+                        with ui.status(
                             f"[blue]{_('Resolving')} AUR {_('dependencies...')}[/blue]",
                             spinner="dots",
                         ):

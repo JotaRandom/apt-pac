@@ -5,6 +5,7 @@ from rich.panel import Panel
 from rich.padding import Padding
 from .i18n import _
 from rich.text import Text
+import contextlib
 
 custom_theme = Theme(
     {
@@ -67,6 +68,16 @@ def print_reading_status():
         f"{_('Reading state information...')} [green]{_('Done')}[/green]",
         highlight=False,
     )
+
+
+@contextlib.contextmanager
+def status(msg, spinner="dots"):
+    """
+    Simulates console.status but just prints the message once (no spinner).
+    Useful for adhering to 'no ugly spinners' rule.
+    """
+    console.print(msg, highlight=False)
+    yield
 
 
 def print_apt_download_line(index, total, url, filename, size_str="", action="Get"):

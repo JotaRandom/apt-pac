@@ -491,9 +491,7 @@ class AurInstaller:
     ):
         if build_queue is None:
             resolver = AurResolver()
-            with ui.console.status(
-                "[blue]Resolving AUR dependencies...[/blue]", spinner="dots"
-            ):
+            with ui.status("[blue]Resolving AUR dependencies...[/blue]"):
                 try:
                     build_queue = resolver.resolve(packages)
                 except CyclicDependencyError as e:

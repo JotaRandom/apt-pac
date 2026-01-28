@@ -413,6 +413,7 @@ class TestUpgradeLogic(unittest.TestCase):
     @patch("apt_pac.commands.console")
     @patch("apt_pac.commands.run_pacman")
     @patch("apt_pac.commands.print_transaction_summary")
+    @patch("apt_pac.commands.run_pacman_with_apt_output")
     @patch("apt_pac.commands.subprocess.run")
     @patch("apt_pac.commands.os.getuid", create=True)
     @patch("apt_pac.commands.sync_databases")
@@ -421,6 +422,7 @@ class TestUpgradeLogic(unittest.TestCase):
         mock_sync,
         mock_getuid,
         mock_subprocess,
+        mock_run_progress,
         mock_summary,
         mock_run,
         mock_console,
@@ -440,19 +442,21 @@ class TestUpgradeLogic(unittest.TestCase):
 
             commands.execute_command("update", [])
 
-            # Verify pacman -Fy was called
+            # Verify run_pacman_with_apt_output was called for -Fy
             called = False
-            for call in mock_subprocess.call_args_list:
-                args = call[0][0]  # cmd list
+            for call in mock_run_progress.call_args_list:
+                args = call[0][0]  # First arg is cmd list
                 if "pacman" in args and "-Fy" in args:
                     called = True
                     break
             self.assertTrue(
-                called, "pacman -Fy should be called when always_sync_files is True"
+                called,
+                "pacman -Fy should be called via run_pacman_with_apt_output when always_sync_files is True",
             )
 
         # Reset mocks
         mock_subprocess.reset_mock()
+        mock_run_progress.reset_mock()
 
         # Case 2: Disabled
         with patch("apt_pac.commands.get_config") as mock_conf:
@@ -465,9 +469,9 @@ class TestUpgradeLogic(unittest.TestCase):
 
             commands.execute_command("update", [])
 
-            # Verify pacman -Fy was NOT called
+            # Verify NOT called
             called = False
-            for call in mock_subprocess.call_args_list:
+            for call in mock_run_progress.call_args_list:
                 args = call[0][0]
                 if "pacman" in args and "-Fy" in args:
                     called = True
