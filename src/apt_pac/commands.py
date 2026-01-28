@@ -3,7 +3,6 @@ import sys
 import shutil
 import os
 import re
-import platform
 import urllib.request
 import xml.etree.ElementTree as ET
 import html
@@ -697,48 +696,32 @@ def sync_databases(cmd=None):
     if cmd is None:
         cmd = ["pacman", "-Sy"]
 
-    # 1. Pre-fetch URLs using --print
-    # We use this to map repo names to URLs for the "Get:" lines
-    repo_url_map = {}  # repo -> (short_url, arch)
+    # 1. Map repo names to URLs using pacman-conf
+    repo_url_map = {}  # repo -> short_url
 
     try:
-        # pacman -Sy --print prints the URIs for the databases
-        print_cmd = list(cmd) + ["--print"]
-
-        # This might fail if not root, but if we are here we expect to be able to run it?
-        # Or if we rely on sudo in the real cmd, here we might fail if not wrapped?
-        # But 'cmd' usually contains 'pacman'. If 'apt-pac' was run with sudo, this inherits it.
-        result = subprocess.run(print_cmd, capture_output=True, text=True)
-        if result.returncode == 0:
-            urls = [
-                line.strip() for line in result.stdout.splitlines() if "://" in line
-            ]
-            for url in urls:
-                # Format: http://mirror/repo/os/arch/repo.db
-                # We need to extract repo name and arch
-                try:
-                    filename = url.split("/")[-1]
-                    # core.db -> core
-                    repo_name = filename.replace(".db", "").replace(".files", "")
-
-                    # Arch: usually 2nd to last part? /os/x86_64/core.db
-                    # But structure varies.
-                    # Heuristic: verify if any part matches current machine arch
-                    parts = url.split("/")
-                    arch = platform.machine()  # fallback
-                    if arch in parts:
-                        pass  # confirmed
-                    elif "x86_64" in parts:
-                        arch = "x86_64"
-                    elif "aarch64" in parts:
-                        arch = "aarch64"
-
-                    short = get_short_url(url)
-                    repo_url_map[repo_name] = (short, arch)
-                except Exception:
-                    pass
+        # Use pacman-conf -l to get repo list
+        repo_list_cmd = ["pacman-conf", "-l"]
+        repo_list_result = subprocess.run(repo_list_cmd, capture_output=True, text=True)
+        if repo_list_result.returncode == 0:
+            repos = repo_list_result.stdout.strip().splitlines()
+            for repo in repos:
+                # Use pacman-conf -r <repo> to get server URL
+                repo_conf_cmd = ["pacman-conf", "-r", repo]
+                repo_conf_result = subprocess.run(
+                    repo_conf_cmd, capture_output=True, text=True
+                )
+                if repo_conf_result.returncode == 0:
+                    for line in repo_conf_result.stdout.splitlines():
+                        if line.strip().startswith("Server ="):
+                            url = line.split("=", 1)[1].strip()
+                            if url:
+                                # Get short URL
+                                short = get_short_url(url)
+                                repo_url_map[repo] = short
+                                break
     except Exception:
-        pass  # Ignore errors in pre-fetch, fallback to basic output
+        pass  # Fallback to basic output if pacman-conf fails
 
     # Force C locale for parsing
     env = os.environ.copy()
@@ -780,7 +763,7 @@ def sync_databases(cmd=None):
                     if "::" in repo:
                         repo = repo.split("::")[-1].strip()
                     console.print(
-                        f"[bold cyan]Hit:[/bold cyan]{index} [bold blue]{repo}[/bold blue]",
+                        f"[bold cyan]Hit: [/bold cyan]{index} [bold blue]{repo}[/bold blue]",
                         highlight=False,
                     )
                     index += 1
@@ -837,18 +820,18 @@ def sync_databases(cmd=None):
                                 break
 
                     if repo:
+                        index_str = f"{index} "
                         if repo in repo_url_map:
-                            short, arch = repo_url_map[repo]
-                            # Get:NUMERO URL repo arch
+                            short = repo_url_map[repo]
+                            # Get: NUMERO URL repo
                             console.print(
-                                f"[bold cyan]Get:[/bold cyan]{index} [blue]{short}[/blue] [bold blue]{repo}[/bold blue] {arch}",
+                                f"[bold cyan]Get: [/bold cyan]{index_str}[blue]{short}[/blue] [bold blue]{repo}[/bold blue]",
                                 highlight=False,
                             )
                         else:
-                            # Fallback: no URL available, but keep arch for consistency
-                            arch = platform.machine()
+                            # Fallback: no URL available
                             console.print(
-                                f"[bold cyan]Get:[/bold cyan]{index} [bold blue]{repo}[/bold blue] {arch}",
+                                f"[bold cyan]Get: [/bold cyan]{index_str}[bold blue]{repo}[/bold blue]",
                                 highlight=False,
                             )
                         index += 1
@@ -864,6 +847,17 @@ def sync_databases(cmd=None):
                     console.print(f"[dim]{line_clean}[/dim]")
 
         process.wait()
+
+        # Re-add AUR sync message at the end
+        try:
+            # We show this as Get:N https://aur.archlinux.org AUR
+            console.print(
+                f"[bold cyan]Get: [/bold cyan]{index} [blue]https://aur.archlinux.org[/blue] [bold blue]AUR[/bold blue]",
+                highlight=False,
+            )
+        except Exception:
+            pass
+
         if process.returncode != 0:
             print_error(_("Failed to synchronize databases"))
             sys.exit(1)

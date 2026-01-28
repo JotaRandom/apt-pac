@@ -56,9 +56,17 @@ def print_success(text):
 
 def print_reading_status():
     """Print standard APT-style reading/building status messages."""
-    console.print(f"\n{_('Reading package lists...')} [green]{_('Done')}[/green]")
-    console.print(f"{_('Building dependency tree...')} [green]{_('Done')}[/green]")
-    console.print(f"{_('Reading state information...')} [green]{_('Done')}[/green]")
+    console.print(
+        f"\n{_('Reading package lists...')} [green]{_('Done')}[/green]", highlight=False
+    )
+    console.print(
+        f"{_('Building dependency tree...')} [green]{_('Done')}[/green]",
+        highlight=False,
+    )
+    console.print(
+        f"{_('Reading state information...')} [green]{_('Done')}[/green]",
+        highlight=False,
+    )
 
 
 def print_apt_download_line(index, total, url, filename, size_str="", action="Get"):

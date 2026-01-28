@@ -365,8 +365,15 @@ class TestUpgradeLogic(unittest.TestCase):
     @patch("apt_pac.commands.print_transaction_summary")
     @patch("apt_pac.commands.subprocess.run")
     @patch("apt_pac.commands.os.getuid", create=True)
+    @patch("apt_pac.commands.alpm_helper.get_available_updates", return_value=[])
     def test_mass_removal_warning(
-        self, mock_getuid, mock_subprocess, mock_summary, mock_run, mock_console
+        self,
+        mock_updates,
+        mock_getuid,
+        mock_subprocess,
+        mock_summary,
+        mock_run,
+        mock_console,
     ):
         """Test mass removal warning logic"""
         mock_getuid.return_value = 1000

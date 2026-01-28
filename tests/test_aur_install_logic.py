@@ -15,8 +15,17 @@ class TestAurInstallLogic(unittest.TestCase):
     @patch("apt_pac.aur.search_aur")
     @patch("subprocess.run")
     @patch("os.getuid", return_value=0, create=True)
+    @patch("apt_pac.commands.alpm_helper.get_available_updates", return_value=[])
+    @patch("apt_pac.commands.console.input", return_value="y")
     def test_mixed_install(
-        self, mock_getuid, mock_run, mock_search, mock_is_official, mock_installer_cls
+        self,
+        mock_input,
+        mock_updates,
+        mock_getuid,
+        mock_run,
+        mock_search,
+        mock_is_official,
+        mock_installer_cls,
     ):
         """Test mixed Official + AUR install"""
         print("\nTesting Mixed Install Logic...")

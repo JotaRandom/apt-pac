@@ -437,8 +437,11 @@ class TestAurFeatures(unittest.TestCase):
 class TestPrivileges(unittest.TestCase):
     @patch("apt_pac.commands.subprocess.run")
     @patch("apt_pac.commands.os.getuid", create=True)
-    @patch("apt_pac.ui.console")
-    def test_system_install_no_root(self, mock_console, mock_getuid, mock_run):
+    @patch("apt_pac.commands.console")
+    @patch("apt_pac.commands.alpm_helper.get_available_updates", return_value=[])
+    def test_system_install_no_root(
+        self, mock_updates, mock_console, mock_getuid, mock_run
+    ):
         from apt_pac import commands as apt_commands
 
         # Mock user as non-root (1000)
