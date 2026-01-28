@@ -927,6 +927,10 @@ def simulate_apt_download_output(pacman_cmd, config):
 
             # Shorten URL to scheme://netloc/
             short_url = f"{parsed.scheme}://{parsed.netloc}/"
+            if parsed.scheme == "file":
+                # Use directory path for local files
+                short_url = f"file://{os.path.dirname(parsed.path)}/"
+
             if not short_url.endswith("/"):
                 short_url += "/"
 
@@ -1287,21 +1291,30 @@ def run_pacman_with_apt_output(cmd, show_hooks=True, total_pkgs=None):
                 # Hooks / Triggers
                 # ":: Running post-transaction hooks..."
                 if "hooks" in line_lower and show_hooks:
-                    # Try to clean it up
-                    # just print hook lines as "Processing triggers for ..."
+                    # Clean up ":: " prefix
+                    cleaned = line.replace(":: ", "").strip()
                     console.print(
-                        f"{_('Processing triggers for')} {line.strip()} ...",
+                        f"{_('Processing triggers for')} {cleaned} ...",
                         highlight=False,
                     )
                     continue
 
-                if show_hooks and line.strip().startswith("("):
-                    # Hook output: "(1/5) Arming ConditionNeedsUpdate..."
-                    # Show as "Setting up ..."
-                    parts = line.split(")", 1)
-                    if len(parts) > 1:
-                        desc = parts[1].strip()
-                        console.print(f"{_('Setting up system')} ({desc}) ...")
+                if show_hooks:
+                    line_strip = line.strip()
+                    if line_strip.startswith("("):
+                        # Hook output: "(1/5) Arming ConditionNeedsUpdate..."
+                        # Show as "Setting up ..."
+                        parts = line.split(")", 1)
+                        if len(parts) > 1:
+                            desc = parts[1].strip()
+                            console.print(
+                                f"{_('Setting up system')} ({desc}) ...",
+                                highlight=False,
+                            )
+                            continue
+                    elif line_strip.startswith("==>") or line_strip.startswith("->"):
+                        # Important hook output (e.g. mkinitcpio)
+                        console.print(line_strip, highlight=False)
                         continue
 
                 # Default: Don't print internal pacman messages unless error or important
