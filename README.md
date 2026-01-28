@@ -12,6 +12,7 @@
 ![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue)
 ![Platform: Arch Linux](https://img.shields.io/badge/Platform-Arch_Linux-blue)
 ![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)
+
 ![Stars](https://img.shields.io/github/stars/JotaRandom/apt-pac?style=social)
 ![Forks](https://img.shields.io/github/forks/JotaRandom/apt-pac?style=social)
 ![Watchers](https://img.shields.io/github/watchers/JotaRandom/apt-pac?style=social)
