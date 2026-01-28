@@ -1986,20 +1986,50 @@ def execute_command(apt_cmd, extra_args):
     elif apt_cmd == "policy":
         # Simulate apt-cache policy: show installed version and repo version
         pkg = extra_args[0] if extra_args else ""
+        handle = alpm_helper.get_handle()
+        dbs = handle.get_syncdbs()
+
+        # Calculate priorities based on order (Arch behavior)
+        # Starting at 500, decreasing by 5 per repo to keep a spread
+        db_priorities = {}
+        curr_prio = 500
+        for db in dbs:
+            db_priorities[db.name] = curr_prio
+            curr_prio -= 50
+
         if pkg:
-            console.print(f"[bold]{pkg}:[/bold]")
+            console.print(f"{pkg}:")
 
             # Check installed version
             local_pkg = alpm_helper.get_local_package(pkg)
             if local_pkg:
-                console.print(f"  Installed: {local_pkg.version}")
+                console.print(f"  {_('Installed:')} {local_pkg.version}")
             else:
                 console.print(f"  {_('Installed:')} ({_('none')})")
 
             # Check candidate (repo) version
-            remote_pkg = alpm_helper.get_package(pkg)
-            if remote_pkg:
-                console.print(f"  Candidate: {remote_pkg.version}")
+            sync_pkg = alpm_helper.get_package(pkg)
+            if sync_pkg:
+                console.print(f"  {_('Candidate:')} {sync_pkg.version}")
+
+                # Version table (simplified APT style)
+                console.print(f"  {_('Version table:')}")
+                if local_pkg:
+                    console.print(f" *** {local_pkg.version} 100")
+                    console.print("        100 /var/lib/pacman/local")
+
+                prio = db_priorities.get(sync_pkg.db.name, 500)
+                console.print(f"     {sync_pkg.version} {prio}")
+                console.print(f"        {prio} {sync_pkg.db.name}")
+            return
+        else:
+            # APT policy without arguments shows repo/priority info
+            print_info(_("Package files:"))
+            for dbname, prio in db_priorities.items():
+                console.print(f"  {prio} {dbname}")
+
+            # Print status file equivalent
+            console.print("  100 /var/lib/pacman/local")
             return
     elif apt_cmd == "apt-mark":
         if not extra_args:
@@ -2043,24 +2073,37 @@ def execute_command(apt_cmd, extra_args):
         else:
             console.print(f"{_('All packages:')} [green]{_('OK')}[/green]")
 
+        # Library check is slow, allow skipping
+        skip_lddd = "--no-lddd" in extra_args
+        if skip_lddd:
+            console.print(f"[dim]{_('Library links check skipped.')}[/dim]")
+            return
+
         if (
             subprocess.run(
                 ["command", "-v", "lddd"], shell=True, capture_output=True
             ).returncode
             == 0
         ):
-            try:
-                result_lddd = subprocess.run(
-                    ["lddd"], capture_output=True, text=True, check=False
-                )
-                if result_lddd.returncode == 0:
-                    if result_lddd.stdout.strip():
-                        console.print(f"\nW: {_('Broken libraries detected')}")
-                    else:
-                        console.print(f"{_('Library links:')} [green]{_('OK')}[/green]")
-            except (FileNotFoundError, OSError):
-                # lddd not actually available, skip check silently
-                pass
+            console.print(
+                f"\n[yellow]{_('W:')}[/yellow] {_('Checking library links (lddd) can take several minutes.')}"
+            )
+            console.print(f"[dim]{_('Use --no-lddd to skip this check.')}[/dim]")
+            with ui.status(f"[blue]{_('Checking library links (lddd)...')}[/blue]"):
+                try:
+                    result_lddd = subprocess.run(
+                        ["lddd"], capture_output=True, text=True, check=False
+                    )
+                    if result_lddd.returncode == 0:
+                        if result_lddd.stdout.strip():
+                            console.print(f"\nW: {_('Broken libraries detected')}")
+                        else:
+                            console.print(
+                                f"{_('Library links:')} [green]{_('OK')}[/green]"
+                            )
+                except (FileNotFoundError, OSError):
+                    # lddd not actually available, skip check silently
+                    pass
         return
 
     elif apt_cmd == "pkgnames":
