@@ -34,7 +34,6 @@ from rich.progress import (
     Progress,
     TextColumn,
     BarColumn,
-    TimeRemainingColumn,
 )
 
 
@@ -995,7 +994,14 @@ def simulate_apt_download_output(pacman_cmd, config):
                 # Use name we parsed from filename
                 final_str = f"{name} [?]"
 
-            print_apt_download_line(i, total, info["short_url"], final_str)
+            # Determine action (Get vs Hit)
+            action = "Get"
+            if info["full_url"].startswith("file://"):
+                action = "Hit"
+
+            print_apt_download_line(
+                i, total, info["short_url"], final_str, action=action
+            )
 
     except Exception:
         pass
@@ -1042,13 +1048,19 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
         # Removing SpinnerColumn as requested.
 
         with Progress(
-            TextColumn("[bold blue]{task.description}"),
-            BarColumn(bar_width=None, complete_style="blue", finished_style="green"),
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            TimeRemainingColumn(),
+            BarColumn(
+                bar_width=None,
+                complete_style="white",
+                finished_style="white",
+                pulse_style="white",
+            ),
+            TextColumn("[{task.completed}/{task.total}]"),
+            TextColumn("[bold blue]{task.description}"),
             console=console,
             transient=True,  # Remove bar when done
         ) as progress:
+            # APT style: [ 0%] [....] [0/10] Description
             task_id = progress.add_task(description=current_action, total=None)
 
             for line in iter(process.stdout.readline, ""):
@@ -2693,9 +2705,6 @@ def execute_command(apt_cmd, extra_args):
 
             # Check for AUR updates EARLY (Pre-calc)
             if run_aur:
-                console.print(
-                    f"[bold blue]{_('Checking for')} AUR {_('updates...')}[/bold blue]"
-                )
                 try:
                     aur_updates = aur.check_updates(verbose=verbose)
 
