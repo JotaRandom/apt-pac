@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script to extract, update, and compile translation files
 
-set -e
+set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOCALES_DIR="$REPO_ROOT/locales"
@@ -60,7 +60,7 @@ fi
 # Process each locale
 for lang in $LOCALES; do
     PO_FILE="$LOCALES_DIR/${lang}.po"
-    
+
     if [ ! -f "$PO_FILE" ]; then
         echo "==> Initializing new locale: $lang"
         if command_exists msginit; then

@@ -2,7 +2,7 @@
 # Syncs pyproject.toml version to the current date (YYYY.MM.DD)
 # This matches the behavior of src/apt_pac/__init__.py
 
-set -e
+set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PYPROJECT="$REPO_ROOT/pyproject.toml"
