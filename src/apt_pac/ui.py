@@ -57,7 +57,7 @@ def print_success(text):
 def print_reading_status():
     """Print standard APT-style reading/building status messages."""
     console.print(
-        f"\n{_('Reading package lists...')} [green]{_('Done')}[/green]", highlight=False
+        f"\n{_('Reading package lists')}... [green]{_('Done')}[/green]", highlight=False
     )
     console.print(
         f"{_('Building dependency tree...')} [green]{_('Done')}[/green]",
