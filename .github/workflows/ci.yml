@@ -25,7 +25,7 @@ jobs:
         pacman -S --noconfirm --needed git base-devel python python-pip pyalpm python-rich
 
     - name: Checkout Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
 
     - name: Install Development Environment
       run: |
