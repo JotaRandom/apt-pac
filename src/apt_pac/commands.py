@@ -30,6 +30,14 @@ from rich.text import Text
 from rich.table import Table
 from rich.padding import Padding
 from rich.panel import Panel
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+    TimeRemainingColumn,
+)
 
 
 def run_pacman(cmd, **kwargs):
@@ -1017,16 +1025,24 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
             env=env,
         )
 
-        current_action = _("Processing...")
+        current_action = _("Processing")
 
         # Regex for progress: ( 1/15) or 25%
         # Pacman style: "( 1/ 5) Installing package"
         progress_re = re.compile(r"\(\s*(\d+)/(\d+)\s*\)")
         percent_re = re.compile(r"(\d+)%")
 
-        with console.status(
-            f"[bold blue]{current_action}[/bold blue]", spinner="dots"
-        ) as status:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(bar_width=None),
+            TaskProgressColumn(),
+            TimeRemainingColumn(),
+            console=console,
+            transient=True,  # Remove bar when done
+        ) as progress:
+            task_id = progress.add_task(description=current_action, total=None)
+
             for line in iter(process.stdout.readline, ""):
                 if not line:
                     break
@@ -1037,57 +1053,102 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
                 p_match = progress_re.search(line)
                 pct_match = percent_re.search(line)
 
-                progress_info = ""
-                if p_match:
-                    curr, total = p_match.groups()
-                    # Calculate percentage?
-                    try:
-                        pct = int(curr) / int(total) * 100
-                        progress_info = f" {int(pct)}% ({curr}/{total})"
-                    except ZeroDivisionError:
-                        progress_info = f" ({curr}/{total})"
-                elif pct_match:
-                    progress_info = f" {pct_match.group(1)}%"
+                progress_suffix = ""
+                if pct_match:
+                    progress_suffix = f" {pct_match.group(1)}%"
 
-                # Determine action
+                # Determine action and update description
                 if "downloading" in line_lower:
                     current_action = _("Downloading")
-                    status.update(
-                        f"[bold blue]{current_action}{progress_info}...[/bold blue]"
+                    # Extract package name if possible
+                    parts = line.split()
+                    pkg_name = ""
+                    # "downloading package-1.2.3..."
+                    # Find word after "downloading" if exists
+                    idx = -1
+                    try:
+                        idx = [
+                            i
+                            for i, part in enumerate(parts)
+                            if "downloading" in part.lower()
+                        ][0]
+                        if idx + 1 < len(parts) and "..." not in parts[idx + 1]:
+                            pkg_name = parts[idx + 1]
+                        elif (
+                            idx - 1 >= 0
+                            and "..." not in parts[idx - 1]
+                            and parts[idx - 1] != "::"
+                        ):
+                            pkg_name = parts[idx - 1]
+                    except (IndexError, ValueError):
+                        pass
+
+                    desc = (
+                        f"{current_action} {pkg_name}{progress_suffix}"
+                        if pkg_name
+                        else f"{current_action}{progress_suffix}"
                     )
+                    progress.update(task_id, description=desc)
+
                 elif "installing" in line_lower:
                     current_action = _("Installing")
-                    status.update(
-                        f"[bold blue]{current_action}{progress_info}...[/bold blue]"
+                    # (N/M) Installing foo...
+                    parts = line.split()
+                    pkg_name = ""
+                    if (
+                        len(parts) >= 4 and "installing" in parts[2].lower()
+                    ):  # ( 1/ 5) installing foo
+                        pkg_name = parts[3]
+
+                    desc = (
+                        f"{current_action} {pkg_name}{progress_suffix}"
+                        if pkg_name
+                        else f"{current_action}{progress_suffix}"
                     )
+                    progress.update(task_id, description=desc)
+
                 elif "upgrading" in line_lower:
                     current_action = _("Upgrading")
-                    status.update(
-                        f"[bold blue]{current_action}{progress_info}...[/bold blue]"
+                    parts = line.split()
+                    pkg_name = ""
+                    if len(parts) >= 4 and "upgrading" in parts[2].lower():
+                        pkg_name = parts[3]
+                    desc = (
+                        f"{current_action} {pkg_name}{progress_suffix}"
+                        if pkg_name
+                        else f"{current_action}{progress_suffix}"
                     )
+                    progress.update(task_id, description=desc)
+
                 elif "removing" in line_lower:
                     current_action = _("Removing")
-                    status.update(
-                        f"[bold blue]{current_action}{progress_info}...[/bold blue]"
+                    parts = line.split()
+                    pkg_name = ""
+                    if len(parts) >= 4 and "removing" in parts[2].lower():
+                        pkg_name = parts[3]
+                    desc = (
+                        f"{current_action} {pkg_name}{progress_suffix}"
+                        if pkg_name
+                        else f"{current_action}{progress_suffix}"
                     )
+                    progress.update(task_id, description=desc)
+
                 elif "checking keys" in line_lower or "keyring" in line_lower:
                     current_action = _("Checking keys")
-                    status.update(
-                        f"[bold blue]{current_action}{progress_info}...[/bold blue]"
-                    )
+                    progress.update(task_id, description=current_action)
+
                 elif "checking" in line_lower:
                     # Generic checking
                     pass
-                elif progress_info:
-                    # Update just progress if action didn't change
-                    status.update(
-                        f"[bold blue]{current_action}{progress_info}...[/bold blue]"
-                    )
+                # Update Progress Match (N/M)
+                if p_match:
+                    curr = int(p_match.group(1))
+                    total = int(p_match.group(2))
+                    progress.update(task_id, completed=curr, total=total)
 
-                # APT Style Output Parsing
+                # APT Style Output Parsing (Preserved)
 
                 # Case 1: "(N/M) Installing foo (1.0-1)..."
-
                 if "installing" in line_lower and formatting_is_ok(line):
                     # Extract pkg name
                     # "( 1/ 4) installing python (3.11...)"
@@ -1114,24 +1175,28 @@ def run_pacman_with_apt_output(cmd, show_hooks=True):
                         pkg = parts[3]
                         ver = parts[4].strip("()") if len(parts) > 4 else ""
                         console.print(
-                            f"{_('Preparing to unpack')} .../{pkg}_{ver}_... ...",
+                            f"{_('Preparing to unpack')} .../{pkg}_{ver}_amd64.deb ...",
                             highlight=False,
                         )
                         console.print(
-                            f"{_('Unpacking')} {pkg} ({ver}) over ({ver}) ...",
-                            highlight=False,
+                            f"{_('Unpacking')} {pkg} ({ver}) ...", highlight=False
                         )  # Approximate
+                        continue
+
+                if "removing" in line_lower and formatting_is_ok(line):
+                    parts = line.split()
+                    if len(parts) >= 4 and parts[2] == "removing":
+                        pkg = parts[3]
+                        console.print(f"{_('Removing')} {pkg} ...", highlight=False)
                         continue
 
                 # Hooks / Triggers
                 # ":: Running post-transaction hooks..."
-                if "running" in line_lower and "hooks" in line_lower:
-                    # APT: "Processing triggers for man-db (2.12.0-1) ..."
-                    # Pacman: ":: Running post-transaction hooks..."
-                    # We can't know exactly which trigger maps to which package easily.
-                    # But we can show it as Processing triggers.
+                if "hooks" in line_lower and show_hooks:
+                    # Try to clean it up
+                    # just print hook lines as "Processing triggers for ..."
                     console.print(
-                        f"[bold]{_('Processing triggers for system')} ...[/bold]",
+                        f"{_('Processing triggers for')} {line.strip()} ...",
                         highlight=False,
                     )
                     continue
