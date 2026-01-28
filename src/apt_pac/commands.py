@@ -3,6 +3,7 @@ import sys
 import shutil
 import os
 import re
+from pathlib import Path
 import urllib.request
 import xml.etree.ElementTree as ET
 import html
@@ -1950,21 +1951,28 @@ def execute_command(apt_cmd, extra_args):
     elif apt_cmd == "reinstall":
         pacman_cmd = ["pacman", "-S", "--force"] + extra_args
     elif apt_cmd == "clean":
-        # Run pacman clean
+        # 1. Fix for "download-*" directories in pacman cache (FIRST to avoid pacman errors)
+        pacman_cache = Path("/var/cache/pacman/pkg/")
+        if pacman_cache.exists():
+            try:
+                for d in pacman_cache.glob("download-*"):
+                    if d.is_dir():
+                        shutil.rmtree(d)
+            except PermissionError:
+                pass
+
+        # 2. Run pacman clean
         subprocess.run(["pacman", "-Scc"], check=False)
 
-        # Clean apt-pac cache
+        # 3. Clean apt-pac cache
         cache_dir = config.cache_dir
         if cache_dir.exists():
-            console.print(
-                f"\n[bold]{_('Cleaning apt-pac cache')} ({cache_dir})...[/bold]"
-            )
+            print_info(f"\n[bold]{_('Cleaning apt-pac cache')} ({cache_dir})...[/bold]")
             sources_dir = cache_dir / "sources"
             if sources_dir.exists():
                 shutil.rmtree(sources_dir)
-                console.print(f"[green]{_('Removed')} {sources_dir}[/green]")
+                print_info(f"[green]{_('Removed')} {sources_dir}[/green]")
         return
-
     elif apt_cmd == "autoclean":
         # Use native python implementation replacing paccache -rk3
         print_info(_("Cleaning up package cache (keeping latest 3 versions)..."))

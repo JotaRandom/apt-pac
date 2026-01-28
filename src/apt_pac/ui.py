@@ -1,7 +1,6 @@
 from rich.console import Console
 from rich.theme import Theme
 from rich.table import Table
-from rich.panel import Panel
 from rich.padding import Padding
 from .i18n import _
 from rich.text import Text
@@ -19,7 +18,7 @@ custom_theme = Theme(
     }
 )
 
-console = Console(theme=custom_theme)
+console = Console(theme=custom_theme, highlight=False)
 
 
 def set_force_colors(force: bool):
@@ -28,7 +27,10 @@ def set_force_colors(force: bool):
         # Re-initialize to strictly force it, or just set option if supported
         global console
         console = Console(
-            theme=custom_theme, force_terminal=True, force_interactive=True
+            theme=custom_theme,
+            force_terminal=True,
+            force_interactive=True,
+            highlight=False,
         )
 
 
@@ -254,7 +256,7 @@ def format_show(output):
         text.append(f"{mapped_key:<20}", style="bold cyan")
         text.append(f": {current_val}\n")
 
-    console.print(Panel(text, title=_("Package Information"), border_style="blue"))
+    console.print(text, highlight=False)
 
 
 def format_aur_info(packages):
@@ -295,11 +297,7 @@ def format_aur_info(packages):
         add_field(_("Vote-Count"), str(pkg.get("NumVotes", 0)))
         add_field(_("Popularity"), str(pkg.get("Popularity", 0)))
 
-        console.print(
-            Panel(
-                text, title=f"{_('Package Information')} (AUR)", border_style="magenta"
-            )
-        )
+        console.print(text, highlight=False)
 
 
 def print_columnar_list(pkgs, color_tag="green"):
@@ -496,6 +494,7 @@ def show_help():
         f"\n[italic grey70]{_('This APT has Super Pacman Powers.')}[/italic grey70]"
     )
 
+
 def print_showsrc_info(package_name, info, pkg_dir):
     """
     Format and print source information in APT style.
@@ -519,20 +518,20 @@ def print_showsrc_info(package_name, info, pkg_dir):
     for key, label in fields:
         if key not in info:
             continue
-        
+
         val = info[key]
         if isinstance(val, list):
             val = ", ".join(val)
-        
+
         if key == "pkgver":
             rel = info.get("pkgrel", "1")
             val = f"{val}-{rel}"
-        
+
         if label:
-            text.append(f"{label+':':<20}", style="bold cyan")
+            text.append(f"{label + ':':<20}", style="bold cyan")
             text.append(f" {val}\n")
 
-    text.append(f"\n{_('Source Directory:')+' ':<20}", style="bold cyan")
+    text.append(f"\n{_('Source Directory:') + ' ':<20}", style="bold cyan")
     text.append(f" {pkg_dir}\n")
 
     console.print(text, highlight=False)
