@@ -1064,33 +1064,33 @@ class CandyBar:
 
         bar_text = Text("[", style="bold white")
 
-        # Calculate inner width
+        # Calculate inner width available for the bar content (excluding [])
+        # Width is the full width of the renderable allowed by Rich
         inner_width = width - 2
         if inner_width < 1:
             inner_width = 1
 
         filled_len = int(inner_width * percent)
+        # Cap filled length
         if filled_len > inner_width:
             filled_len = inner_width
 
         # Draw filled part
         if filled_len > 0:
-            # -1 for pacman
-            dash_len = filled_len - 1
-            if dash_len > 0:
-                bar_text.append("-" * dash_len, style="bold magenta")
-            bar_text.append(pacman_icon, style="bold yellow")
+            # -1 for pacman if space permits
+            if filled_len >= 1:
+                dash_len = filled_len - 1
+                if dash_len > 0:
+                    bar_text.append("-" * dash_len, style="bold magenta")
+                bar_text.append(pacman_icon, style="bold yellow")
+            else:
+                # Should not happen given logic, but safe fallback
+                pass
 
         # Draw empty part
         remaining_len = inner_width - filled_len
         if remaining_len > 0:
-            # Space + dots
-            # But the first char of empty space is space?
-            # Original: bar = " " + ("⚬ " * ... )
-            # Let's simplify: just dots, maybe leading space if we want separation?
-            # Pacman needs to eat dots.
-            # If we just put dots: C⚬⚬⚬
-
+            # Check if supported
             dots = empty_char * remaining_len
             bar_text.append(dots, style="white")
 
@@ -1205,6 +1205,7 @@ def run_pacman_with_apt_output(cmd, show_hooks=True, total_pkgs=None):
                             and parts[idx - 1] != "::"
                         ):
                             # Look back for "core downloading..."
+                            # e.g. "core.db downloading..."
                             pkg_name = parts[idx - 1]
                     except (IndexError, ValueError):
                         pass
