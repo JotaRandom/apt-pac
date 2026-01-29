@@ -30,7 +30,7 @@ from . import aur
 from . import alpm_helper
 from rich.console import Console, ConsoleOptions, RenderResult
 from rich.text import Text
-from rich.table import Table
+from rich.table import Table, Column
 from rich.padding import Padding
 from rich.panel import Panel
 from rich.progress import (
@@ -1040,11 +1040,9 @@ class CandyBar:
         self.time_t = time_t
 
     def __rich_measure__(self, console, options):
-        # Heuristic: Reserve space for neighbors (approx 50 chars for description + stats)
-        # to prevent starvation, while allowing bar to take remaining space.
-        # If we return options.max_width, Rich might starve auto-width columns.
-        safe_max = max(1, options.max_width - 50)
-        return Measurement(1, safe_max)
+        # Allow full expansion (ratio=1 handles distribution)
+        # We rely on neighbors being hardened (min_width) to prevent crushing.
+        return Measurement(1, options.max_width)
 
     def __rich_console__(
         self, console: Console, options: ConsoleOptions
@@ -1169,7 +1167,10 @@ def run_pacman_with_apt_output(cmd, show_hooks=True, total_pkgs=None):
             total_pkgs_int = None
 
         with Progress(
-            TextColumn("[bold blue]{task.description}"),
+            TextColumn(
+                "[bold blue]{task.description}",
+                table_column=Column(no_wrap=True, min_width=40),
+            ),
             TotalCountColumn(),
             CandyBarColumn(bar_width=None),
             TextColumn("[white]{task.percentage:>3.0f}%"),
