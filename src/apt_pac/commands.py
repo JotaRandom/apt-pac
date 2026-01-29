@@ -1024,6 +1024,11 @@ def simulate_apt_download_output(pacman_cmd, config):
 class TotalCountColumn(ProgressColumn):
     """Renders completed/total, handling None totals gracefully."""
 
+    def __init__(self):
+        from rich.table import Column
+
+        super().__init__(table_column=Column(no_wrap=True, min_width=12))
+
     def render(self, task: "Task") -> Text:
         total = task.total
         if total is None:
@@ -1169,7 +1174,7 @@ def run_pacman_with_apt_output(cmd, show_hooks=True, total_pkgs=None):
         with Progress(
             TextColumn(
                 "[bold blue]{task.description}",
-                table_column=Column(no_wrap=True, min_width=40),
+                table_column=Column(no_wrap=True, min_width=20),
             ),
             TotalCountColumn(),
             CandyBarColumn(bar_width=None),
