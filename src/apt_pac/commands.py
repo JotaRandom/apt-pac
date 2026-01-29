@@ -8,6 +8,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import html
 from datetime import datetime, timedelta, timezone
+from rich.measure import Measurement
 from .i18n import _
 from . import ui
 from .ui import (
@@ -1037,6 +1038,13 @@ class CandyBar:
         self.completed = completed
         self.total = total
         self.time_t = time_t
+
+    def __rich_measure__(self, console, options):
+        # Heuristic: Reserve space for neighbors (approx 50 chars for description + stats)
+        # to prevent starvation, while allowing bar to take remaining space.
+        # If we return options.max_width, Rich might starve auto-width columns.
+        safe_max = max(1, options.max_width - 50)
+        return Measurement(1, safe_max)
 
     def __rich_console__(
         self, console: Console, options: ConsoleOptions
