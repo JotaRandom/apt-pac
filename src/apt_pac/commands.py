@@ -1103,7 +1103,11 @@ class CandyBarColumn(ProgressColumn):
     """Rich column for CandyBar."""
 
     def __init__(self, bar_width=None):
-        super().__init__()
+        from rich.table import Column
+
+        super().__init__(
+            table_column=Column(no_wrap=True, ratio=1 if bar_width is None else 0)
+        )
         self.bar_width = bar_width
 
     def render(self, task) -> RenderResult:
