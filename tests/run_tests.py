@@ -1,43 +1,44 @@
-import unittest
+import pytest
 import sys
 import os
-import time
+from datetime import datetime
 
-def run_tests():
-    # Ensure src is in python path
+def main():
+    """Run tests with pytest and coverage."""
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     src_path = os.path.join(project_root, 'src')
     if src_path not in sys.path:
         sys.path.insert(0, src_path)
 
-    # Setup logging directory
+    # Ensure test logs directory
     log_dir = os.path.join(project_root, 'test_logs')
     os.makedirs(log_dir, exist_ok=True)
     
-    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     log_file = os.path.join(log_dir, f"test_run_{timestamp}.log")
 
-    # Discover and run tests
-    loader = unittest.TestLoader()
-    start_dir = os.path.dirname(__file__)
-    suite = loader.discover(start_dir, pattern='test_*.py')
-
-    print(f"Running tests... logging to {log_file}")
+    print(f"Running tests at {datetime.now().isoformat()}")
+    print(f"Logging detailed output to: {log_file}")
     
-    with open(log_file, "w") as f:
-        runner = unittest.TextTestRunner(stream=f, verbosity=2)
-        result = runner.run(suite)
-        
-        # Also print brief summary to console
-        print(f"Ran {result.testsRun} tests")
-        if not result.wasSuccessful():
-            print("FAILED")
-            print(f"Errors: {len(result.errors)}, Failures: {len(result.failures)}")
-            print(f"See {log_file} for details.")
-            sys.exit(1)
-        else:
-            print("OK")
-            sys.exit(0)
+    args = [
+        "tests",
+        "-v",
+        "--tb=short",
+        "--cov=apt_pac",
+        "--cov-report=term-missing",
+        "--cov-report=html:coverage-report",
+        "--durations=10",
+        "--cov-fail-under=70",  # Require at least 70% coverage
+    ]
+    
+    retcode = pytest.main(args)
+    
+    if retcode == 0:
+        print("\n✅ All tests passed successfully!")
+    else:
+        print("\n❌ Some tests failed. Check the output above.")
+    
+    sys.exit(retcode)
 
 if __name__ == '__main__':
-    run_tests()
+    main()
