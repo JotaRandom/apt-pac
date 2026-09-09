@@ -29,6 +29,12 @@
 - [x] **Split Package Support**:
     - Detects packages with same `PackageBase`, builds only once, and handles sub-packages correctly.
 
+- [x] **Automatic + Interactive PKGBUILD Review**:
+    - Static analysis for dangerous patterns (curl|sh, rm -rf /, base64 obfuscation, sudo inside PKGBUILD, etc.).
+    - Interactive prompt: Yes / No / Edit / View full.
+    - Modes: `ask` (default), `auto` (only on findings), `never`.
+    - Critical findings + `--noconfirm` → abort for safety.
+
 ## Critical Features (To Match Full APT/Helper Experience)
 
 - [x] **AUR Upgrades (`apt upgrade`)**: 
@@ -63,7 +69,7 @@
 - [x] **Package Statistics**: `apt stats` shows system package analytics
 - [x] **Version Policy**: `apt policy` displays installed vs candidate versions
 - [x] **Download-Only Mode**: `--download-only` flag for package caching
-- [ ] **Automatic PKGBUILD Review**: Security prompts before building
+- [x] **Automatic PKGBUILD Review**: Security prompts before building
 - [ ] **AUR Voting**: Vote for packages from CLI
 - [ ] **Local Repository**: Create custom package repos
 - [ ] **Change Analytics**: Track installation/removal patterns
@@ -73,7 +79,7 @@
 ### AUR Enhancements
 - [ ] **Conflict Detection**: Detect conflicts between AUR packages before building
 - [ ] **Provides/Replaces Handling**: Check provides lists before declaring "not found"
-- [ ] **PKGBUILD Review Prompts**: Security-focused review before building untrusted code
+- [x] **PKGBUILD Review Prompts**: Security-focused review before building untrusted code
 - [ ] **VCS Package Updates**: Smart version checking for `-git`, `-svn`, `-hg` packages
 - [ ] **Out-of-date Flagging**: Integration with AUR's flag system
 
