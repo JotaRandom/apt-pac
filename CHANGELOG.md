@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **PKGBUILD security review** before building AUR packages:
+  - Static analysis detecting dangerous patterns (`curl|sh`, `rm -rf /`, base64 obfuscation, `sudo` inside PKGBUILD, etc.).
+  - Interactive prompt: **Y**es / **n**o / **e**dit / **v**iew full.
+  - Configurable modes via `review_pkgbuild`: `ask` (default), `auto`, `never`.
+  - Critical findings combined with `--noconfirm` abort the build for safety.
 - Standard development dotfiles: `.pre-commit-config.yaml`, `.editorconfig`, `.vscode/extensions.json`.
 - Comprehensive GitHub Actions CI workflow.
 - Many new badges to the README (CI, Tests, License, etc.).
