@@ -23,6 +23,7 @@ DEFAULT_CONFIG = {
     "safeguards": {
         "mass_removal_threshold": 20,
         "warn_partial_upgrades": True,
+        "review_pkgbuild": "ask",  # ask | auto | never
     },
     "tools": {
         "privilege_tool": "auto",  # auto, sudo, doas, run0
@@ -58,6 +59,12 @@ mass_removal_threshold = 20
 # Warn about partial upgrades (installing packages when updates available)
 warn_partial_upgrades = true
 
+# Review PKGBUILD before building AUR packages
+# "ask"   = always show the PKGBUILD and ask (default, recommended)
+# "auto"  = only prompt when suspicious patterns are found
+# "never" = skip review (NOT recommended)
+review_pkgbuild = "ask"
+
 [tools]
 # Privilege escalation tool: "auto", "sudo", "doas", "run0"
 # "auto" tries run0 > doas > sudo in order
@@ -68,7 +75,7 @@ privilege_tool = "auto"
 # Default: "auto"
 build_user = "auto"
 
-# Editor for edit-sources command (empty = use $EDITOR)
+# Editor for edit-sources command and PKGBUILD review (empty = use $EDITOR)
 editor = ""
 
 [ui]
@@ -329,6 +336,13 @@ class Config:
             privilege_tool = config["tools"].get("privilege_tool")
             if privilege_tool and privilege_tool not in ["auto", "sudo", "doas", "run0"]:
                 config["tools"]["privilege_tool"] = "auto"
+
+        if "safeguards" in config and isinstance(config["safeguards"], dict):
+            review = config["safeguards"].get("review_pkgbuild")
+            if review is not None and str(review).lower() not in (
+                "ask", "auto", "never", "true", "false", "1", "0", "yes", "no"
+            ):
+                config["safeguards"]["review_pkgbuild"] = "ask"
         
         return True
     
