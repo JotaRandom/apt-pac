@@ -534,9 +534,14 @@ class TestUpgradeLogic(unittest.TestCase):
 
         with (
             patch("apt_pac.commands.sys.argv", ["/usr/bin/apt-pac"]),
-            patch("apt_pac.commands.sys.exit"),
+            patch(
+                "apt_pac.commands.sys.exit", side_effect=SystemExit(0)
+            ) as mock_exit,
         ):
-            commands.execute_command("install", ["pkg"])
+            with self.assertRaises(SystemExit) as cm:
+                commands.execute_command("install", ["pkg"])
+            self.assertEqual(cm.exception.code, 0)
+            mock_exit.assert_called_once_with(0)
 
             # Verify input prompt uses Text object with correct content
             if mock_console.input.called:
