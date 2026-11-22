@@ -87,9 +87,12 @@ def print_apt_download_line(index, total, url, filename, size_str="", action="Ge
     - URL in blue
     - Filename and size in default color
     """
-    size_part = f" [{size_str}]" if size_str else ""
+    safe_action = escape(str(action))
+    safe_url = escape(str(url))
+    safe_filename = escape(str(filename))
+    size_part = f" {escape(f'[{size_str}]')}" if size_str else ""
     console.print(
-        f"[bold cyan]{action}:[/bold cyan]{index} [blue]{url}[/blue] {filename}{size_part}",
+        f"[bold cyan]{safe_action}:[/bold cyan]{index} [blue]{safe_url}[/blue] {safe_filename}{size_part}",
         highlight=False,
     )
 

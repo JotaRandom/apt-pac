@@ -1,8 +1,13 @@
+import codecs
+import errno
+import select
 import subprocess
 import sys
 import shutil
 import os
 import re
+
+_ORIGINAL_POPEN = subprocess.Popen
 from pathlib import Path
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -209,7 +214,7 @@ def show_summary(
         result = run_pacman(cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
-            return True
+            return None
 
         urls = [line.strip() for line in result.stdout.splitlines() if "://" in line]
 
@@ -383,15 +388,18 @@ def show_summary(
 
         final_suggestions = []
         for sug in sorted_sug:
+            safe_sug = escape(sug)
             if sug in already_installed:
-                final_suggestions.append(f"{sug} [dim][installed][/dim]")
+                final_suggestions.append(
+                    f"{safe_sug} [dim]\\[{_('installed')}][/dim]"
+                )
             else:
                 # Check if it is being installed in this transaction?
                 # If it is in new_pkgs names, it will be installed.
                 # Usually suggestions are for things NOT being installed.
                 # But if user requested it specifically?
                 # Let's just print it as is (clean).
-                final_suggestions.append(sug)
+                final_suggestions.append(safe_sug)
 
         if final_suggestions:
             console.print(f"{_('Suggested packages:')}")
@@ -911,21 +919,20 @@ def simulate_apt_download_output(pacman_cmd, config):
         # Run pacman -Sp ...
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            return  # Fail silently on simulation
+            return 0  # Fail silently on simulation
 
         lines = result.stdout.strip().splitlines()
         urls = [line.strip() for line in lines if "://" in line]
 
         if not urls:
-            return
+            return 0
 
         # 1. Parse Names from Filenames
         # Filename format: name-version-release-arch.pkg.tar.zst
-        # We need 'name' to query -Si for the proper Version string (with Epoch)
-
+        # We need 'name' to query repo/version/download size via pyalpm
         names_to_query = set()
 
-        url_info = []  # list of (url, filename, pkg_name)
+        url_info = []
 
         for url in urls:
             parsed = urllib.parse.urlparse(url)
@@ -934,7 +941,6 @@ def simulate_apt_download_output(pacman_cmd, config):
             # Shorten URL to scheme://netloc/
             short_url = f"{parsed.scheme}://{parsed.netloc}/"
             if parsed.scheme == "file":
-                # Use directory path for local files
                 short_url = f"[{_('in cache')}]"
 
             if not short_url.endswith("/") and parsed.scheme != "file":
@@ -958,16 +964,13 @@ def simulate_apt_download_output(pacman_cmd, config):
                     break
 
             # base is now "name-ver-rel-arch"
-            # Split by '-'
             parts = base.split("-")
             pkg_name = base  # fallback
+            ver_fallback = ""
 
             if len(parts) >= 4:
-                # Last part: arch
-                # 2nd last: rel
-                # 3rd last: ver
-                # Rest: name (joined by -)
                 pkg_name = "-".join(parts[:-3])
+                ver_fallback = f"{parts[-3]}-{parts[-2]}"
                 names_to_query.add(pkg_name)
 
             url_info.append(
@@ -976,48 +979,72 @@ def simulate_apt_download_output(pacman_cmd, config):
                     "short_url": short_url,
                     "filename": filename,
                     "pkg_name": pkg_name,
+                    "ver_fallback": ver_fallback,
                 }
             )
 
-        # 2. Batch Query Version Info (including Epoch) using pyalpm
-        # Much faster than subprocess call to pacman -Si
-        version_map = {}  # name -> full_version (with epoch)
+        # 2. Batch Query Version, Repo, and Download Size using pyalpm
+        pkg_meta = {}  # name -> (version_str, repo_name, download_size_bytes)
 
         if names_to_query:
-            # Use pyalpm to get package versions (includes epoch automatically)
             for name in names_to_query:
                 pkg = alpm_helper.get_package(name)
                 if pkg:
-                    version_map[name] = (
-                        pkg.version
-                    )  # pyalpm includes epoch in version string
+                    ver_val = getattr(pkg, "version", None)
+                    ver_str = ver_val if isinstance(ver_val, str) else ""
 
-        # 3. Print Output
+                    db_obj = getattr(pkg, "db", None)
+                    repo_val = getattr(db_obj, "name", None) if db_obj else None
+                    repo_name = repo_val if isinstance(repo_val, str) else ""
+
+                    raw_dl = getattr(pkg, "download_size", 0)
+                    if not isinstance(raw_dl, (int, float)) or isinstance(raw_dl, bool):
+                        raw_dl = 0
+                    if raw_dl <= 0:
+                        raw_sz = getattr(pkg, "size", 0)
+                        if (
+                            isinstance(raw_sz, (int, float))
+                            and not isinstance(raw_sz, bool)
+                            and raw_sz > 0
+                        ):
+                            raw_dl = raw_sz
+
+                    pkg_meta[name] = (ver_str, repo_name, raw_dl)
+
+        # 3. Print Output in APT style: Get:1 https://mirror/ repo/pkg ver [size]
         total = len(urls)
         for i, info in enumerate(url_info, 1):
             name = info["pkg_name"]
+            meta = pkg_meta.get(name)
+            repo_name = ""
+            size_bytes = 0
+            version_str = info["ver_fallback"]
 
-            # Get version from -Si if available, otherwise fallback to filename parsing if possible?
-            # Or just name.
-            if name in version_map:
-                version_str = version_map[name]
-                # Format: name-version
-                # version_str includes epoch if present (e.g. 1:2.0-3)
-                final_str = f"{name}-{version_str}"
+            if meta:
+                meta_ver, meta_repo, meta_size = meta
+                if meta_ver:
+                    version_str = meta_ver
+                repo_name = meta_repo
+                size_bytes = meta_size
+
+            display_pkg = f"{repo_name}/{name}" if repo_name else name
+            if version_str:
+                final_str = f"{display_pkg} {version_str}"
             else:
-                # Fallback: display filename? or just name
-                # If we couldn't parse name correctly, using filename is safer than nothing.
-                # But info['filename'] is bulky.
-                # Use name we parsed from filename
-                final_str = f"{name} [?]"
+                final_str = f"{display_pkg} [?]"
+
+            size_str = fmt_adaptive_size(size_bytes) if size_bytes > 0 else ""
 
             # Determine action (Get vs Hit)
-            action = "Get"
-            if info["full_url"].startswith("file://"):
-                action = "Hit"
+            action = "Hit" if info["full_url"].startswith("file://") else "Get"
 
             print_apt_download_line(
-                i, total, info["short_url"], final_str, action=action
+                i,
+                total,
+                info["short_url"],
+                final_str,
+                size_str=size_str,
+                action=action,
             )
 
         return total
@@ -1131,225 +1158,664 @@ class CandyBarColumn(ProgressColumn):
         return CandyBar(task.completed, task.total, task.get_time())
 
 
+_PROMPT_RE = re.compile(
+    r"(?:\[[yYnN]/[yYnN]\]|\([yYnN]/[yYnN]\)|Enter a (?:selection|number)[^:\n]*|password[^:\n]*:\s*|\?\s*$)\s*$"
+)
+
+_AUTO_PROMPT_LINE_RE = re.compile(
+    r"^(?::: )?(?:Proceed with installation\?|Do you want to remove)\s*\[[yYnN]/[yYnN]\]\s*$",
+    re.I,
+)
+
+_BOILERPLATE_RE = re.compile(
+    r"^(?:"
+    r"resolving dependencies\.{0,3}|"
+    r"looking for conflicting packages\.{0,3}|"
+    r"loading packages\.{0,3}|"
+    r"loading package files\.{0,3}|"
+    r"checking dependencies\.{0,3}|"
+    r"checking package integrity\.{0,3}|"
+    r"checking keys in keyring\.{0,3}|"
+    r"checking for file conflicts\.{0,3}|"
+    r"checking available disk space\.{0,3}|"
+    r"there is nothing to do|"
+    r"Packages\s*\(\d+\).*|"
+    r"Total (?:Download|Installed|Removed) Size:.*|"
+    r"Net Upgrade Size:.*|"
+    r"(?::: )?Synchronizing package databases\.{0,3}|"
+    r"(?::: )?Starting full system upgrade\.{0,3}|"
+    r"(?::: )?Retrieving packages\.{0,3}|"
+    r"(?::: )?Processing package changes\.{0,3}|"
+    r"\S+\s+is up to date"
+    r")$",
+    re.I,
+)
+
+_PACMAN_ANSI_RE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
+def _iter_process_events(process, stream_fd=None):
+    """
+    Yield ('line', text) or ('prompt', text) events from a child process without
+    blocking indefinitely on interactive prompts that do not end in a newline.
+    """
+    fd = stream_fd
+    if fd is None and process.stdout is not None:
+        fileno_fn = getattr(process.stdout, "fileno", None)
+        if callable(fileno_fn):
+            try:
+                candidate_fd = fileno_fn()
+                if (
+                    isinstance(candidate_fd, int)
+                    and not isinstance(candidate_fd, bool)
+                    and candidate_fd >= 0
+                ):
+                    fd = candidate_fd
+            except Exception:
+                fd = None
+
+    if fd is None:
+        if process.stdout is not None:
+            for line in iter(process.stdout.readline, ""):
+                if not line:
+                    break
+                yield ("line", line)
+        return
+
+    decoder = codecs.getincrementaldecoder("utf-8")("replace")
+    buf = ""
+    idle_timeouts = 0
+    eof = False
+
+    while not eof:
+        try:
+            ready, _, _ = select.select([fd], [], [], 0.12)
+        except (ValueError, OSError):
+            break
+
+        if ready:
+            try:
+                chunk = os.read(fd, 4096)
+            except OSError as exc:
+                if exc.errno == errno.EIO:
+                    eof = True
+                    chunk = b""
+                elif exc.errno in (errno.EAGAIN, errno.EWOULDBLOCK, errno.EINTR):
+                    continue
+                else:
+                    break
+
+            if not chunk:
+                eof = True
+            else:
+                idle_timeouts = 0
+                buf += decoder.decode(chunk, final=False)
+        else:
+            idle_timeouts += 1
+            if buf:
+                if buf.endswith("\r"):
+                    seg = buf[:-1]
+                    buf = ""
+                    if seg:
+                        yield ("line", seg + "\n")
+                    continue
+
+                clean_buf = _PACMAN_ANSI_RE.sub("", buf)
+                if process.poll() is None and (
+                    _PROMPT_RE.search(clean_buf)
+                    or (idle_timeouts >= 10 and not clean_buf.rstrip().endswith("..."))
+                ):
+                    prompt_text = buf
+                    buf = ""
+                    idle_timeouts = 0
+                    yield ("prompt", prompt_text)
+                    continue
+
+        buf = buf.replace("\r\n", "\n")
+        while True:
+            nl_idx = buf.find("\n")
+            cr_idx = buf.find("\r")
+            if cr_idx == len(buf) - 1:
+                cr_idx = -1
+
+            if nl_idx == -1 and cr_idx == -1:
+                break
+
+            if nl_idx != -1 and (cr_idx == -1 or nl_idx < cr_idx):
+                seg = buf[: nl_idx + 1]
+                buf = buf[nl_idx + 1 :]
+                yield ("line", seg)
+            else:
+                seg = buf[:cr_idx]
+                buf = buf[cr_idx + 1 :]
+                if seg:
+                    yield ("line", seg + "\n")
+
+    buf += decoder.decode(b"", final=True)
+    buf = buf.replace("\r\n", "\n")
+    if buf:
+        for seg in buf.replace("\r", "\n").splitlines(keepends=True):
+            yield ("line", seg)
+
+
 def run_pacman_with_apt_output(cmd, show_hooks=True, total_pkgs=None):
     """
     Runs pacman command and parses output to show:
     - Package installation progress in APT style
-    - Hooks/triggers in APT trigger format
+    - Interactive prompts (even without trailing newline) without deadlocking
+    - Hooks/triggers, optional dependencies, scriptlets, warnings, and errors
     Returns True if successful, False otherwise
 
     Preserves stdin for interactive prompts (e.g., remove confirmations)
     """
+    master_fd = None
+    slave_fd = None
     try:
-        # Run pacman with stdout/stderr captured, but stdin passed through
-        # This allows user interaction while we parse the output
         env = os.environ.copy()
         env["LC_ALL"] = "C"
 
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            stdin=None,  # stdin not captured - passes through to user
-            text=True,
-            bufsize=1,
-            env=env,
-        )
+        use_pty = False
+        if subprocess.Popen is _ORIGINAL_POPEN:
+            try:
+                import pty
+
+                master_fd, slave_fd = pty.openpty()
+                use_pty = True
+            except (ImportError, OSError):
+                master_fd = None
+                slave_fd = None
+                use_pty = False
+
+        if use_pty:
+            try:
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=slave_fd,
+                    stderr=slave_fd,
+                    stdin=None,  # stdin not captured - passes through to user
+                    close_fds=True,
+                    env=env,
+                )
+            finally:
+                if slave_fd is not None:
+                    try:
+                        os.close(slave_fd)
+                    except OSError:
+                        pass
+                    slave_fd = None
+        else:
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                stdin=None,  # stdin not captured - passes through to user
+                text=True,
+                bufsize=1,
+                env=env,
+            )
 
         current_action = _("Processing")
 
         # Regex for progress: ( 1/15) or 25%
-        # Pacman style: "( 1/ 5) Installing package"
         progress_re = re.compile(r"\(\s*(\d+)/(\d+)\s*\)")
         percent_re = re.compile(r"(\d+)%")
         pkg_action_re = re.compile(
-            r"\)\s+(installing|upgrading|removing)\s+(\S+)(?:\s+\(([^)]+)\))?",
+            r"\)\s+(installing|upgrading|reinstalling|downgrading|removing)\s+(\S+)(?:\s+\(([^)]+)\))?",
             re.I,
         )
-        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
-
-        # Determine bar characters based on encoding/support?
-        # Rich usually handles this, but user complained about "bicolor gris o azul y morado"
-        # and "linea NO se va a dibujar bien en un TTY".
-        # We can use simple ascii bar characters if we want to be safe,
-        # or just rely on Rich's auto-detection.
-        # But explicitly asking for a simple style might help.
-        # Removing SpinnerColumn as requested.
+        ansi_escape = _PACMAN_ANSI_RE
+        error_start_re = re.compile(
+            r"^(?::: )?(?:error\s*:|(?:failed to (?:commit|prepare|retrieve|synchronize)|could not satisfy|errors occurred)\b)",
+            re.I,
+        )
+        warning_start_re = re.compile(r"^(?::: )?warning:\s*", re.I)
 
         if total_pkgs:
             total_pkgs_int = int(total_pkgs)
         else:
             total_pkgs_int = None
 
-        with Progress(
-            TextColumn(
-                "[bold blue]{task.description}",
-                table_column=Column(no_wrap=True, min_width=20),
-            ),
-            TotalCountColumn(),
-            CandyBarColumn(bar_width=None),
-            TextColumn("[white]{task.percentage:>3.0f}%"),
-            console=console,
-            transient=True,  # Remove bar when done
-        ) as progress:
-            # APT style: Description [0/10] [#####] 0%
-            task_id = progress.add_task(
-                description=current_action, total=total_pkgs_int
-            )
+        printed_reading_db = False
+        in_hooks = False
+        in_optdeps = False
+        in_error_block = False
+        in_pkg_list = False
+        pacnew_files = []
+        progress_paused = False
 
-            for line in iter(process.stdout.readline, ""):
-                if not line:
-                    break
+        try:
+            with Progress(
+                TextColumn(
+                    "[bold blue]{task.description}",
+                    table_column=Column(no_wrap=True, min_width=20),
+                ),
+                TotalCountColumn(),
+                CandyBarColumn(bar_width=None),
+                TextColumn("[white]{task.percentage:>3.0f}%"),
+                console=console,
+                transient=True,  # Remove bar when done
+            ) as progress:
+                # APT style: Description [0/10] [#####] 0%
+                task_id = progress.add_task(
+                    description=current_action, total=total_pkgs_int
+                )
 
-                # Strip ANSI codes for parsing
-                line_clean = ansi_escape.sub("", line)
-                line_lower = line_clean.lower()
-
-                # Check for progress info in the line
-                p_match = progress_re.search(line_clean)
-                pct_match = percent_re.search(line_clean)
-                a_match = pkg_action_re.search(line_clean)
-
-                progress_suffix = ""
-                if pct_match:
-                    progress_suffix = f" {pct_match.group(1)}%"
-
-                # Determine action and update description
-                if (
-                    "downloading" in line_lower
-                    or "synchronizing" in line_lower
-                    or ((".files" in line_lower or ".db" in line_lower) and pct_match)
+                for event_kind, line in _iter_process_events(
+                    process, stream_fd=master_fd
                 ):
-                    current_action = _("Downloading")
-                    parts = line_clean.split()
-                    pkg_name = ""
-                    keywords = ["downloading", "synchronizing"]
-                    idx = -1
-                    try:
-                        idx_list = [
-                            i
-                            for i, part in enumerate(parts)
-                            if any(kw in part.lower() for kw in keywords)
-                        ]
-                        if idx_list:
-                            idx = idx_list[0]
-                            if idx + 1 < len(parts):
-                                candidate = parts[idx + 1]
-                                pkg_name = candidate.replace("...", "")
-                            elif (
-                                idx - 1 >= 0
-                                and "..." not in parts[idx - 1]
-                                and parts[idx - 1] != "::"
-                            ):
-                                pkg_name = parts[idx - 1]
-                        else:
-                            if parts and (
-                                ".files" in parts[0].lower()
-                                or ".db" in parts[0].lower()
-                            ):
-                                pkg_name = parts[0]
-                    except (IndexError, ValueError):
-                        pass
+                    if event_kind == "prompt":
+                        if not progress_paused:
+                            try:
+                                progress.stop()
+                            except Exception:
+                                pass
+                            progress_paused = True
 
-                    desc = (
-                        f"{current_action} {pkg_name}{progress_suffix}"
-                        if pkg_name
-                        else f"{current_action}{progress_suffix}"
-                    )
-                    progress.update(task_id, description=desc)
-
-                elif a_match:
-                    verb = a_match.group(1).lower()
-                    pkg_name = a_match.group(2).rstrip(".")
-                    if verb == "installing":
-                        current_action = _("Installing")
-                    elif verb == "upgrading":
-                        current_action = _("Upgrading")
-                    else:
-                        current_action = _("Removing")
-                    progress.update(task_id, description=f"{current_action} {pkg_name}")
-
-                elif "checking keys" in line_lower or "keyring" in line_lower:
-                    current_action = _("Checking keys")
-                    progress.update(task_id, description=current_action)
-
-                elif "checking" in line_lower:
-                    pass
-
-                # Update Progress Match (N/M)
-                if p_match:
-                    curr = int(p_match.group(1))
-                    total = int(p_match.group(2))
-                    progress.update(task_id, completed=curr, total=total)
-
-                # APT Style Output Parsing
-                if a_match and formatting_is_ok(line_clean):
-                    verb = a_match.group(1).lower()
-                    pkg = a_match.group(2).rstrip(".")
-                    ver = (a_match.group(3) or "").strip()
-                    if verb == "installing":
-                        console.print(
-                            f"{_('Selecting previously unselected package')} {pkg}.",
-                            highlight=False,
-                        )
-                        console.print(
-                            f"({_('Reading database')} ... 100% {_('files and directories currently installed')}.)",
-                            highlight=False,
-                        )
-                        console.print(
-                            f"{_('Unpacking')} {pkg} ({ver}) ...", highlight=False
-                        )
-                        continue
-                    elif verb == "upgrading":
-                        new_ver = ver.split("->")[-1].strip() if "->" in ver else ver
-                        console.print(
-                            f"{_('Preparing to unpack')} .../{pkg}_{new_ver}.pkg ...",
-                            highlight=False,
-                        )
-                        console.print(
-                            f"{_('Unpacking')} {pkg} ({ver}) ...", highlight=False
-                        )
-                        continue
-                    elif verb == "removing":
-                        console.print(f"{_('Removing')} {pkg} ...", highlight=False)
+                        clean_prompt = ansi_escape.sub("", line).rstrip("\r\n")
+                        if clean_prompt.strip():
+                            in_hooks = False
+                            in_optdeps = False
+                            in_pkg_list = False
+                            console.print(escape(clean_prompt), end="", highlight=False)
+                            try:
+                                console.file.flush()
+                            except Exception:
+                                pass
                         continue
 
-                # Hooks / Triggers
-                # ":: Running post-transaction hooks..."
-                if "hooks" in line_lower and show_hooks:
-                    cleaned = line_clean.replace(":: ", "").strip()
-                    if cleaned.endswith("..."):
-                        cleaned = cleaned[:-3].strip()
+                    if progress_paused:
+                        try:
+                            progress.start()
+                        except Exception:
+                            pass
+                        progress_paused = False
 
-                    console.print(
-                        f"[bold]{_('Processing triggers for')}[/bold] {cleaned} ...",
-                        highlight=False,
-                    )
-                    continue
-
-                if show_hooks:
+                    # Strip ANSI codes for parsing
+                    line_clean = ansi_escape.sub("", line)
                     line_strip = line_clean.strip()
-                    if line_strip.startswith("("):
-                        parts = line_clean.split(")", 1)
-                        if len(parts) > 1:
-                            desc = parts[1].strip()
-                            if desc.endswith("..."):
-                                desc = desc[:-3].strip()
+                    line_lower = line_clean.lower()
 
+                    if not line_strip:
+                        in_optdeps = False
+                        in_error_block = False
+                        in_pkg_list = False
+                        continue
+
+                    # Check for progress info in the line
+                    p_match = progress_re.search(line_clean)
+                    pct_match = percent_re.search(line_clean)
+                    a_match = pkg_action_re.search(line_clean)
+
+                    progress_suffix = ""
+                    if pct_match:
+                        progress_suffix = f" {pct_match.group(1)}%"
+
+                    is_error_line = bool(error_start_re.match(line_strip))
+                    is_warning_line = bool(warning_start_re.match(line_strip))
+
+                    # Determine action and update description
+                    is_dl_bar = bool(
+                        pct_match
+                        and (
+                            "/s " in line_lower
+                            or "b/s" in line_lower
+                            or line_lower.lstrip().startswith("total (")
+                        )
+                    )
+                    if (
+                        "downloading" in line_lower
+                        or "synchronizing" in line_lower
+                        or ((".files" in line_lower or ".db" in line_lower) and pct_match)
+                        or is_dl_bar
+                    ) and not (is_error_line or is_warning_line):
+                        in_hooks = False
+                        in_optdeps = False
+                        in_pkg_list = False
+                        in_error_block = False
+                        current_action = _("Downloading")
+                        parts = line_clean.split()
+                        pkg_name = ""
+                        keywords = ["downloading", "synchronizing"]
+                        try:
+                            idx_list = [
+                                i
+                                for i, part in enumerate(parts)
+                                if any(kw in part.lower() for kw in keywords)
+                            ]
+                            if idx_list:
+                                idx = idx_list[0]
+                                if idx + 1 < len(parts):
+                                    candidate = parts[idx + 1]
+                                    pkg_name = candidate.replace("...", "")
+                                elif (
+                                    idx - 1 >= 0
+                                    and "..." not in parts[idx - 1]
+                                    and parts[idx - 1] != "::"
+                                ):
+                                    pkg_name = parts[idx - 1]
+                            elif parts:
+                                if (
+                                    ".files" in parts[0].lower()
+                                    or ".db" in parts[0].lower()
+                                ):
+                                    pkg_name = parts[0]
+                                elif parts[0].lower() != "total":
+                                    pkg_name = parts[0]
+                        except (IndexError, ValueError):
+                            pass
+
+                        desc = (
+                            f"{current_action} {pkg_name}{progress_suffix}"
+                            if pkg_name
+                            else f"{current_action}{progress_suffix}"
+                        )
+                        progress.update(task_id, description=desc)
+                        if p_match:
+                            progress.update(
+                                task_id,
+                                completed=int(p_match.group(1)),
+                                total=int(p_match.group(2)),
+                            )
+                        continue
+
+                    if a_match:
+                        in_hooks = False
+                        in_optdeps = False
+                        in_pkg_list = False
+                        in_error_block = False
+                        verb = a_match.group(1).lower()
+                        pkg_name = a_match.group(2).rstrip(".")
+                        if verb in ("installing", "reinstalling"):
+                            current_action = _("Installing")
+                        elif verb in ("upgrading", "downgrading"):
+                            current_action = _("Upgrading")
+                        else:
+                            current_action = _("Removing")
+                        progress.update(
+                            task_id, description=f"{current_action} {pkg_name}"
+                        )
+                    elif not in_hooks and (
+                        "checking keys" in line_lower
+                        or "keyring" in line_lower
+                        or (
+                            line_strip.startswith("(")
+                            and any(
+                                kw in line_lower
+                                for kw in (
+                                    "checking package integrity",
+                                    "loading package files",
+                                    "checking for file conflicts",
+                                    "checking available disk space",
+                                )
+                            )
+                        )
+                    ):
+                        if "checking keys" in line_lower or "keyring" in line_lower:
+                            current_action = _("Checking keys")
+                        elif "integrity" in line_lower:
+                            current_action = _("Checking integrity")
+                        elif "file conflicts" in line_lower:
+                            current_action = _("Checking conflicts")
+                        elif "disk space" in line_lower:
+                            current_action = _("Checking disk space")
+                        else:
+                            current_action = _("Loading packages")
+                        progress.update(task_id, description=current_action)
+                        if p_match:
+                            progress.update(
+                                task_id,
+                                completed=int(p_match.group(1)),
+                                total=int(p_match.group(2)),
+                            )
+                        if not (is_error_line or is_warning_line):
+                            continue
+
+                    # Update Progress Match (N/M)
+                    if p_match:
+                        curr = int(p_match.group(1))
+                        total = int(p_match.group(2))
+                        progress.update(task_id, completed=curr, total=total)
+
+                    # APT Style Output Parsing
+                    if a_match and formatting_is_ok(line_clean):
+                        verb = a_match.group(1).lower()
+                        pkg = a_match.group(2).rstrip(".")
+                        ver = (a_match.group(3) or "").strip()
+                        if verb == "installing":
                             console.print(
-                                f"{_('Setting up system')} ({desc}) ...",
+                                f"{_('Selecting previously unselected package')} {escape(pkg)}.",
+                                highlight=False,
+                            )
+                            if not printed_reading_db:
+                                console.print(
+                                    f"({_('Reading database')} ... 100% {_('files and directories currently installed')}.)",
+                                    highlight=False,
+                                )
+                                printed_reading_db = True
+                            ver_part = f" ({escape(ver)})" if ver else ""
+                            console.print(
+                                f"{_('Unpacking')} {escape(pkg)}{ver_part} ...",
                                 highlight=False,
                             )
                             continue
-                    elif line_strip.startswith("==>") or line_strip.startswith("->"):
-                        console.print(line_strip, highlight=False, markup=False)
+                        elif verb in ("upgrading", "downgrading"):
+                            if not printed_reading_db:
+                                console.print(
+                                    f"({_('Reading database')} ... 100% {_('files and directories currently installed')}.)",
+                                    highlight=False,
+                                )
+                                printed_reading_db = True
+                            new_ver = (
+                                ver.split("->")[-1].strip() if "->" in ver else ver
+                            )
+                            old_ver = ver.split("->")[0].strip() if "->" in ver else ""
+                            console.print(
+                                f"{_('Preparing to unpack')} .../{escape(pkg)}_{escape(new_ver)}.pkg ...",
+                                highlight=False,
+                            )
+                            if verb == "downgrading" and old_ver and "->" in ver:
+                                console.print(
+                                    f"[yellow]{_('dpkg: warning: downgrading')}[/yellow] {escape(pkg)} {_('from')} {escape(old_ver)} {_('to')} {escape(new_ver)}",
+                                    highlight=False,
+                                )
+                            if old_ver and "->" in ver:
+                                console.print(
+                                    f"{_('Unpacking')} {escape(pkg)} ({escape(new_ver)}) over ({escape(old_ver)}) ...",
+                                    highlight=False,
+                                )
+                            else:
+                                console.print(
+                                    f"{_('Unpacking')} {escape(pkg)} ({escape(ver)}) ...",
+                                    highlight=False,
+                                )
+                            continue
+                        elif verb == "reinstalling":
+                            if not printed_reading_db:
+                                console.print(
+                                    f"({_('Reading database')} ... 100% {_('files and directories currently installed')}.)",
+                                    highlight=False,
+                                )
+                                printed_reading_db = True
+                            console.print(
+                                f"{_('Preparing to unpack')} .../{escape(pkg)}_{escape(ver)}.pkg ...",
+                                highlight=False,
+                            )
+                            console.print(
+                                f"{_('Unpacking')} {escape(pkg)} ({escape(ver)}) over ({escape(ver)}) ...",
+                                highlight=False,
+                            )
+                            continue
+                        elif verb == "removing":
+                            if not printed_reading_db:
+                                console.print(
+                                    f"({_('Reading database')} ... 100% {_('files and directories currently installed')}.)",
+                                    highlight=False,
+                                )
+                                printed_reading_db = True
+                            console.print(
+                                f"{_('Removing')} {escape(pkg)} ...",
+                                highlight=False,
+                            )
+                            continue
+
+                    # Hooks / Triggers
+                    # ":: Running post-transaction hooks..."
+                    if (
+                        "hooks" in line_lower
+                        and (
+                            line_strip.startswith("::")
+                            or "running" in line_lower
+                            or "transaction hooks" in line_lower
+                        )
+                        and not (is_error_line or is_warning_line)
+                    ):
+                        in_hooks = True
+                        in_optdeps = False
+                        in_pkg_list = False
+                        in_error_block = False
+                        if show_hooks:
+                            cleaned = line_clean.replace(":: ", "").strip()
+                            if cleaned.endswith("..."):
+                                cleaned = cleaned[:-3].strip()
+                            console.print(
+                                f"[bold]{_('Processing triggers for')}[/bold] {escape(cleaned)} ...",
+                                highlight=False,
+                            )
                         continue
 
-                # Default: Don't print internal pacman messages unless error or important
-                if "error" in line_lower or "warning" in line_lower:
-                    console.print(line_clean.strip(), markup=False)
+                    if in_hooks:
+                        if line_strip.startswith("("):
+                            if show_hooks:
+                                parts = line_clean.split(")", 1)
+                                if len(parts) > 1:
+                                    desc = parts[1].strip()
+                                    if desc.endswith("..."):
+                                        desc = desc[:-3].strip()
+                                    console.print(
+                                        f"{_('Setting up system')} ({escape(desc)}) ...",
+                                        highlight=False,
+                                    )
+                            continue
+                        elif line_strip.startswith("::"):
+                            in_hooks = False
+
+                    # Optional dependencies block
+                    if line_strip.lower().startswith("optional dependencies for "):
+                        in_optdeps = True
+                        in_hooks = False
+                        in_pkg_list = False
+                        in_error_block = False
+                        console.print(f"[bold]{escape(line_strip)}[/bold]", highlight=False)
+                        continue
+
+                    if in_optdeps:
+                        if line_clean[0].isspace():
+                            dep_text = line_strip
+                            badge = ""
+                            if dep_text.endswith("[installed]"):
+                                dep_text = dep_text[: -len("[installed]")].rstrip()
+                                badge = f" [green]\\[{_('installed')}][/green]"
+                            elif dep_text.endswith("[pending]"):
+                                dep_text = dep_text[: -len("[pending]")].rstrip()
+                                badge = f" [yellow]\\[{_('pending')}][/yellow]"
+                            console.print(
+                                f"   {escape(dep_text)}{badge}",
+                                highlight=False,
+                            )
+                            continue
+                        in_optdeps = False
+
+                    # Warnings & .pacnew/.pacsave/.pacorig tracking
+                    if is_warning_line:
+                        in_error_block = False
+                        msg = warning_start_re.sub("", line_strip, count=1).strip()
+                        if any(
+                            ext in line_lower
+                            for ext in (".pacnew", ".pacsave", ".pacorig")
+                        ):
+                            pacnew_files.append(msg)
+                        console.print(
+                            f"[bold yellow]{_('W:')}[/bold yellow] {escape(msg)}",
+                            highlight=False,
+                        )
+                        continue
+
+                    # Error blocks (dependency conflicts, file conflicts, target not found)
+                    if is_error_line:
+                        in_error_block = True
+                        in_hooks = False
+                        in_optdeps = False
+                        in_pkg_list = False
+                        msg = re.sub(r"^error:\s*", "", line_strip, count=1, flags=re.I)
+                        console.print(
+                            f"[bold red]{_('E:')}[/bold red] {escape(msg)}",
+                            highlight=False,
+                        )
+                        continue
+
+                    if in_error_block:
+                        console.print(
+                            f"[red]{escape(line_strip)}[/red]",
+                            highlight=False,
+                        )
+                        continue
+
+                    # Suppress pacman transaction boilerplate / multi-line Packages (N) list
+                    if in_pkg_list:
+                        if (
+                            "total " in line_lower
+                            or "net upgrade size" in line_lower
+                        ):
+                            in_pkg_list = False
+                            continue
+                        if not line_strip.startswith("::"):
+                            continue
+                        in_pkg_list = False
+
+                    if re.match(r"^Packages\s*\(\d+\)", line_strip, re.I):
+                        in_pkg_list = True
+                        continue
+
+                    if _BOILERPLATE_RE.match(line_strip) or _AUTO_PROMPT_LINE_RE.match(
+                        line_strip
+                    ):
+                        continue
+
+                    # Scriptlets and any other meaningful messages (providers, conflicts, notes)
+                    if line_strip.startswith("==>"):
+                        rest = line_strip[3:].strip()
+                        console.print(
+                            f"[bold cyan]==>[/bold cyan] {escape(rest)}",
+                            highlight=False,
+                        )
+                    elif line_strip.startswith("->"):
+                        rest = line_strip[2:].strip()
+                        console.print(
+                            f"  [blue]->[/blue] {escape(rest)}",
+                            highlight=False,
+                        )
+                    else:
+                        console.print(escape(line_clean.rstrip()), highlight=False)
+        finally:
+            if master_fd is not None:
+                try:
+                    os.close(master_fd)
+                except OSError:
+                    pass
 
         process.wait()
+
+        if pacnew_files:
+            console.print(
+                f"\n[bold yellow]{_('W:')}[/bold yellow] {_('Configuration file updates detected (.pacnew/.pacsave/.pacorig):')}",
+                highlight=False,
+            )
+            for item in pacnew_files:
+                console.print(f"   {escape(item)}", highlight=False)
+            console.print(
+                f"   {_('Review these files (e.g. with pacdiff) to merge changes.')}",
+                highlight=False,
+            )
 
         # Sync filesystem on success
         if process.returncode == 0:
@@ -2756,9 +3222,11 @@ def execute_command(apt_cmd, extra_args):
                 show_summary(apt_cmd, extra_args, auto_confirm=True)
             return
         if not locals().get("is_local_install", False):
-            show_summary(apt_cmd, extra_args, auto_confirm=auto_confirm)
+            summary_result = show_summary(
+                apt_cmd, extra_args, auto_confirm=auto_confirm
+            )
 
-            if "--noconfirm" not in pacman_cmd:
+            if (summary_result or auto_confirm) and "--noconfirm" not in pacman_cmd:
                 pacman_cmd.append("--noconfirm")
         elif auto_confirm and "--noconfirm" not in pacman_cmd:
             pacman_cmd.append("--noconfirm")
@@ -3030,9 +3498,18 @@ def execute_command(apt_cmd, extra_args):
         else:
             # For install/reinstall/remove/purge/autoremove: use APT-style output with hooks
             if apt_cmd in ["install", "reinstall", "remove", "purge", "autoremove"]:
-                if not is_simulation:
-                    simulate_apt_download_output(current_cmd, config)
-                success = run_pacman_with_apt_output(current_cmd, show_hooks=True)
+                total_pkgs = None
+                if (
+                    apt_cmd in ["install", "reinstall"]
+                    and not is_simulation
+                    and not locals().get("is_local_install", False)
+                ):
+                    count = simulate_apt_download_output(current_cmd, config)
+                    if isinstance(count, int) and count > 0:
+                        total_pkgs = count
+                success = run_pacman_with_apt_output(
+                    current_cmd, show_hooks=True, total_pkgs=total_pkgs
+                )
                 if not success:
                     sys.exit(1)
             else:
