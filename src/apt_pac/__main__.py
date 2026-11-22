@@ -44,11 +44,12 @@ def main():
 
         execute_command(args.command, args.args)
     except BrokenPipeError:
-        if sys.stdout is sys.__stdout__:
+        orig_stdout = sys.__stdout__
+        if orig_stdout is not None and sys.stdout is orig_stdout:
             try:
                 devnull = os.open(os.devnull, os.O_WRONLY)
                 try:
-                    os.dup2(devnull, sys.stdout.fileno())
+                    os.dup2(devnull, orig_stdout.fileno())
                 finally:
                     os.close(devnull)
             except Exception:
