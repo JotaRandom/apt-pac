@@ -221,66 +221,44 @@ class Config:
         else:
             self.user_config_path = None
         
-        # Load config early to get custom cache path
+        # Load configuration hierarchy: defaults -> global -> user
         self.data = self._deep_copy(DEFAULT_CONFIG)
-        self._load_config_only()
-        
+        self._load()
+
         # Get custom cache dir from config (if set)
         custom_cache = self.data.get("directories", {}).get("cache_dir", "")
         self.cache_dir = _get_cache_dir(custom_cache if custom_cache else None)
-        
+
         # Warn if cache is unavailable
         if self.cache_dir is None:
             import sys
             from .i18n import _
-            print(f"[yellow]{_('W:')}[/yellow] {_('Cannot create cache directory - system appears to be read-only')}", file=sys.stderr)
-            print(f"[yellow]{_('W:')}[/yellow] ABS/AUR {_('features will not be available')}", file=sys.stderr)
-        
-        # Re-load to get all settings
-        self._load()
-    
+            print(f"{_('W:')} {_('Cannot create cache directory - system appears to be read-only')}", file=sys.stderr)
+            print(f"{_('W:')} ABS/AUR {_('features will not be available')}", file=sys.stderr)
+
     def _deep_copy(self, d: Dict) -> Dict:
         """Deep copy a dictionary."""
         import copy
         return copy.deepcopy(d)
-    
-    def _load_config_only(self):
-        """Load config early (before cache dir setup) to get custom cache path."""
-        if self.user_config_path:
-            self._ensure_user_config()
-            user_loaded = self._try_load_config(self.user_config_path)
-            if user_loaded:
-                return
-        
-        # Try global if user failed
-        self._try_load_config(self.global_config_path)
-    
+
     def _load(self):
-        """Load configuration with hierarchical fallback."""
-        # 1. Ensure user config exists (copy from global if needed)
+        """Load configuration with hierarchical fallback (defaults -> global -> user)."""
+        # 1. Load global defaults first if present
+        self._try_load_config(self.global_config_path)
+
+        # 2. Ensure user config exists and merge user overrides on top
         if self.user_config_path:
             self._ensure_user_config()
-            
-            # 2. Try to load user config first
-            user_loaded = self._try_load_config(self.user_config_path)
-            
-            if user_loaded:
-                return
-        
-        # 3. If user config failed or unavailable, try global
-        global_loaded = self._try_load_config(self.global_config_path)
-        if not global_loaded:
-            # Both failed, use hardcoded defaults (already loaded)
-            pass
-    
+            self._try_load_config(self.user_config_path)
+
     def _ensure_user_config(self):
         """Ensure user config exists, creating from global or defaults."""
         if not self.user_config_path:
             return
-            
+
         if self.user_config_path.exists():
             return
-        
+
         # Try to copy from global
         if self.global_config_path.exists():
             try:
@@ -288,10 +266,10 @@ class Config:
                 return
             except (OSError, IOError):
                 pass  # Fall through to create from defaults
-        
+
         # Create from defaults
         try:
-            with open(self.user_config_path, "w") as f:
+            with open(self.user_config_path, "w", encoding="utf-8") as f:
                 f.write(DEFAULT_CONFIG_TOML)
         except (OSError, IOError):
             pass  # Can't create config, will use defaults

@@ -1,4 +1,5 @@
 from rich.console import Console
+from rich.markup import escape
 from rich.theme import Theme
 from rich.table import Table
 from rich.padding import Padding
@@ -24,14 +25,9 @@ console = Console(theme=custom_theme, highlight=False)
 def set_force_colors(force: bool):
     """Update console to force terminal output (colors) if requested."""
     if force:
-        # Re-initialize to strictly force it, or just set option if supported
-        global console
-        console = Console(
-            theme=custom_theme,
-            force_terminal=True,
-            force_interactive=True,
-            highlight=False,
-        )
+        console._force_terminal = True
+        console._force_interactive = True
+        console._color_system = console._detect_color_system()
 
 
 def print_info(text):
@@ -118,26 +114,23 @@ def format_search_results(output):
         try:
             repo_part, rest = header_line.split("/", 1)
             # rest is 'pkgname pkgver (groups) [installed]'
-            # split by spaces
             parts = rest.split()
             pkgname = parts[0]
             pkgver = parts[1]
 
             # Reconstruct meta (groups/status)
             meta = " ".join(parts[2:]) if len(parts) > 2 else ""
-            # Escape markup characters in meta
-            from rich.markup import escape
 
-            meta = escape(meta)
-
-            # APT Style: pkgname/repo
-            # We color pkgname in specific apt-like color (usually green or bold)
-            apt_style_header = f"[bold green]{pkgname}[/bold green]/[bold blue]{repo_part}[/bold blue] [bold]{pkgver}[/bold] {meta}"
-        except ValueError:
+            apt_style_header = (
+                f"[bold green]{escape(pkgname)}[/bold green]/"
+                f"[bold blue]{escape(repo_part)}[/bold blue] "
+                f"[bold]{escape(pkgver)}[/bold] {escape(meta)}"
+            )
+        except (ValueError, IndexError):
             # Fallback if format is unexpected
-            apt_style_header = header_line
+            apt_style_header = escape(header_line)
 
-        desc = lines[i + 1].strip()
+        desc = escape(lines[i + 1].strip())
 
         table.add_row(apt_style_header)
         table.add_row(f"  {desc}")
@@ -153,13 +146,16 @@ def format_aur_search_results(results):
     table = Table(show_header=False, box=None, padding=(0, 1))
 
     for pkg in results:
-        name = pkg.get("Name", "unknown")
-        ver = pkg.get("Version", "unknown")
-        desc = pkg.get("Description", "") or "No description"
+        name = escape(str(pkg.get("Name", "unknown")))
+        ver = escape(str(pkg.get("Version", "unknown")))
+        desc = escape(str(pkg.get("Description", "") or "No description"))
         votes = pkg.get("NumVotes", 0)
 
         # APT Style: pkgname/aur
-        apt_style_header = f"[bold green]{name}[/bold green]/[bold magenta]aur[/bold magenta] [bold]{ver}[/bold] [desc](Votes: {votes})[/desc]"
+        apt_style_header = (
+            f"[bold green]{name}[/bold green]/[bold magenta]aur[/bold magenta] "
+            f"[bold]{ver}[/bold] [desc](Votes: {votes})[/desc]"
+        )
 
         table.add_row(apt_style_header)
         table.add_row(f"  {desc}")
@@ -185,7 +181,7 @@ def format_show(output):
         "Description": _("Description"),
         "Architecture": _("Architecture"),
         "URL": _("Homepage"),
-        "Licenses": _("Section"),
+        "Licenses": _("License"),
         "Groups": _("Tag"),
         "Provides": _("Provides"),
         "Depends On": _("Depends"),
@@ -477,15 +473,17 @@ def show_help():
         ("download", _("download packages without installing (pacman -Sw)")),
         ("source", _("download package source (uses pkgctl)")),
         ("showsrc", _("show source package information")),
-        ("build-dep", _("show how to install build dependencies")),
+        ("build-dep", _("install build dependencies for a package")),
         ("edit-sources", _("edit the pacman.conf information file")),
         ("clean", _("remove all cached package files (pacman -Scc)")),
         ("autoclean", _("erase old downloaded archives (keeps last 3)")),
         ("file-search", _("search for packages containing a file")),
+        ("news", _("read the latest Arch Linux news")),
+        ("help", _("show package manual page")),
     ]
 
     for cmd, desc in commands:
-        table.add_row(cmd, _(desc))
+        table.add_row(cmd, desc)
 
     console.print(text)
     console.print(f"[bold]{_('Most used commands:')}[/bold]")

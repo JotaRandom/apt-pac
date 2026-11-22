@@ -12,11 +12,13 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 from typing import List, Tuple
+
+from rich.markup import escape
 
 from . import ui
 from .config import get_config
@@ -48,7 +50,25 @@ _PATTERNS: List[Tuple[re.Pattern, str, str]] = [
         "curl … | python (remote code execution)",
     ),
     (
-        re.compile(r"\brm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+)?/", re.I),
+        re.compile(r"wget\s+[^|\n]*\|\s*python", re.I),
+        "critical",
+        "wget … | python (remote code execution)",
+    ),
+    (
+        re.compile(r"(?:ba)?sh\s+<\(\s*(?:curl|wget)\b", re.I),
+        "critical",
+        "shell process substitution from curl/wget (remote code execution)",
+    ),
+    (
+        re.compile(r"(?:ba)?sh\s+-c\s+[\"'].*\$\(\s*(?:curl|wget)\b", re.I),
+        "critical",
+        "shell -c executing downloaded curl/wget payload (remote code execution)",
+    ),
+    (
+        re.compile(
+            r"\brm\s+(?:(?:-[a-zA-Z]+\s+)*--no-preserve-root|(?:-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*|-[a-zA-Z]*f[a-zA-Z]*r[a-zA-Z]*)\s+/(?:\s|$|\*|(?:etc|usr|bin|sbin|lib|boot|home|var|opt|root)\b))",
+            re.I,
+        ),
         "critical",
         "rm -rf / or similar destructive command on root",
     ),
@@ -94,12 +114,18 @@ _PATTERNS: List[Tuple[re.Pattern, str, str]] = [
         "wget ignoring certificate validation",
     ),
     (
-        re.compile(r"chmod\s+[0-7]*[675][0-7]{2}", re.I),
+        re.compile(
+            r"\bchmod\s+(?:-[a-zA-Z]+\s+)*(?:0*[2-7][0-7]{3}\b|[ugoa]*\+[rwxXst]*s\b)",
+            re.I,
+        ),
         "warning",
-        "sets setuid/setgid bit (chmod with 4xxx/2xxx)",
+        "sets setuid/setgid bit (chmod with 4xxx/2xxx or +s)",
     ),
     (
-        re.compile(r"install\s+.*-m\s*[0-7]*[675][0-7]{2}", re.I),
+        re.compile(
+            r"\binstall\b[^\n]*(?:\s-[a-zA-Z]*m\s*|\s--mode[=\s]+)(?:0*[2-7][0-7]{3}\b|[ugoa]*\+[rwxXst]*s\b)",
+            re.I,
+        ),
         "warning",
         "install with setuid/setgid mode",
     ),
@@ -119,9 +145,25 @@ _PATTERNS: List[Tuple[re.Pattern, str, str]] = [
         "inline python downloading content via urllib",
     ),
     (
-        re.compile(r"source\s*=\s*\([^)]*https?://(?!github\.com|gitlab\.com|bitbucket\.org|codeberg\.org|git\.sr\.ht|aur\.archlinux\.org)[^)]+\)", re.I),
+        re.compile(r"source(?:_[a-z0-9_]+)?\s*=\s*\([^)]*\bhttp://[^)]+\)", re.I),
         "warning",
-        "source=() contains unusual remote URL (not common git hosts)",
+        "source=() uses unencrypted http:// URL",
+    ),
+    (
+        re.compile(
+            r"source(?:_[a-z0-9_]+)?\s*=\s*\([^)]*https?://\d{1,3}(?:\.\d{1,3}){3}[:/][^)]*\)",
+            re.I,
+        ),
+        "warning",
+        "source=() downloads from a raw IP address",
+    ),
+    (
+        re.compile(
+            r"source(?:_[a-z0-9_]+)?\s*=\s*\([^)]*https?://(?:[^/\s)]*\.)?(?:pastebin\.com|0x0\.st|transfer\.sh|ix\.io|paste\.rs|dpaste\.org|hastebin\.com)/[^)]+\)",
+            re.I,
+        ),
+        "warning",
+        "source=() downloads from an anonymous paste/file-drop host",
     ),
 ]
 
@@ -134,8 +176,13 @@ def analyze_pkgbuild(content: str) -> List[Tuple[str, str]]:
     findings: List[Tuple[str, str]] = []
     seen = set()
 
+    # Ignore full-line comments so commented instructions/notes do not false-positive
+    code_content = "\n".join(
+        line for line in content.splitlines() if not line.lstrip().startswith("#")
+    )
+
     for pattern, severity, desc in _PATTERNS:
-        if pattern.search(content):
+        if pattern.search(code_content):
             key = (severity, desc)
             if key not in seen:
                 findings.append(key)
@@ -144,36 +191,45 @@ def analyze_pkgbuild(content: str) -> List[Tuple[str, str]]:
     return findings
 
 
-def _get_editor() -> str:
+def _get_editor() -> List[str]:
     config = get_config()
-    editor = config.get("tools", "editor", "") or os.environ.get("EDITOR") or os.environ.get("VISUAL")
+    editor = (
+        config.get("tools", "editor", "")
+        or os.environ.get("EDITOR")
+        or os.environ.get("VISUAL")
+    )
     if editor:
-        return editor
+        try:
+            parts = shlex.split(editor)
+            if parts:
+                return parts
+        except ValueError:
+            pass
     for candidate in ("nano", "vim", "vi", "micro", "emacs"):
         if shutil.which(candidate):
-            return candidate
-    return "nano"
+            return [candidate]
+    return ["nano"]
 
 
 def _show_pkgbuild_preview(pkgbuild_path: Path, max_lines: int = 50) -> None:
-    """Pretty-print the beginning of the PKGBUILD."""
+    """Pretty-print the beginning of the PKGBUILD with markup escaping."""
     try:
         lines = pkgbuild_path.read_text(encoding="utf-8", errors="replace").splitlines()
     except OSError as e:
-        print_error(_(f"Cannot read PKGBUILD: {e}"))
+        print_error(_("Cannot read PKGBUILD: {error}").format(error=e))
         return
 
     ui.console.print()
-    ui.console.rule(f"[bold]PKGBUILD[/bold] — {pkgbuild_path.parent.name}")
+    ui.console.rule(f"[bold]PKGBUILD[/bold] — {escape(pkgbuild_path.parent.name)}")
     shown = lines[:max_lines]
     for i, line in enumerate(shown, 1):
-        # Very light syntax hinting
+        safe_line = escape(line)
         if line.strip().startswith("#"):
-            ui.console.print(f"[dim]{i:3}│ {line}[/dim]", highlight=False)
+            ui.console.print(f"[dim]{i:3}│ {safe_line}[/dim]", highlight=False)
         elif re.match(r"^[a-zA-Z_]+=", line):
-            ui.console.print(f"[cyan]{i:3}│[/cyan] {line}", highlight=False)
+            ui.console.print(f"[cyan]{i:3}│[/cyan] {safe_line}", highlight=False)
         else:
-            ui.console.print(f"{i:3}│ {line}", highlight=False)
+            ui.console.print(f"{i:3}│ {safe_line}", highlight=False)
 
     if len(lines) > max_lines:
         ui.console.print(
@@ -207,13 +263,13 @@ def review_pkgbuild(
 
     pkgbuild_path = pkg_dir / "PKGBUILD"
     if not pkgbuild_path.is_file():
-        print_error(_(f"PKGBUILD not found in {pkg_dir}"))
+        print_error(_("PKGBUILD not found in {pkg_dir}").format(pkg_dir=pkg_dir))
         return False
 
     try:
         content = pkgbuild_path.read_text(encoding="utf-8", errors="replace")
     except OSError as e:
-        print_error(_(f"Cannot read PKGBUILD: {e}"))
+        print_error(_("Cannot read PKGBUILD: {error}").format(error=e))
         return False
 
     findings = analyze_pkgbuild(content)
@@ -228,19 +284,21 @@ def review_pkgbuild(
     ui.console.print()
     ui.console.print(
         f"[bold yellow]{_('PKGBUILD Review')}[/bold yellow] — "
-        f"[bold]{package_name}[/bold]"
+        f"[bold]{escape(package_name)}[/bold]"
     )
 
     if critical:
         ui.console.print(f"[bold red]{_('CRITICAL findings:')}[/bold red]")
         for desc in critical:
-            ui.console.print(f"  [red]✗[/red] {desc}")
+            ui.console.print(f"  [red]✗[/red] {escape(desc)}")
     if warnings:
         ui.console.print(f"[bold yellow]{_('Warnings:')}[/bold yellow]")
         for desc in warnings:
-            ui.console.print(f"  [yellow]![/yellow] {desc}")
+            ui.console.print(f"  [yellow]![/yellow] {escape(desc)}")
     if not findings:
-        ui.console.print(f"[green]{_('No obvious dangerous patterns detected.')}[/green]")
+        ui.console.print(
+            f"[green]{_('No obvious dangerous patterns detected.')}[/green]"
+        )
 
     _show_pkgbuild_preview(pkgbuild_path)
 
@@ -266,7 +324,7 @@ def review_pkgbuild(
         try:
             answer = (
                 ui.console.input(
-                    f"{_('Continue building')} [bold]{package_name}[/bold]? "
+                    f"{_('Continue building')} [bold]{escape(package_name)}[/bold]? "
                     f"[Y/n/e/v] "
                 )
                 .strip()
@@ -283,12 +341,19 @@ def review_pkgbuild(
             print_info(_("Build aborted by user."))
             return False
         if answer in ("e", "edit"):
-            editor = _get_editor()
-            ui.console.print(f"[dim]{_('Opening')} {pkgbuild_path} {_('in')} {editor}…[/dim]")
+            editor_cmd = _get_editor() + [str(pkgbuild_path)]
+            from . import aur
+
+            real_user = aur._get_real_build_user(config)
+            if os.getuid() == 0 and real_user:
+                editor_cmd = aur.get_privilege_command(real_user, editor_cmd)
+            ui.console.print(
+                f"[dim]{_('Opening')} {pkgbuild_path} {_('in')} {editor_cmd[0]}…[/dim]"
+            )
             try:
-                subprocess.run([editor, str(pkgbuild_path)], check=False)
+                subprocess.run(editor_cmd, check=False)
             except Exception as e:
-                print_error(_(f"Failed to launch editor: {e}"))
+                print_error(_("Failed to launch editor: {error}").format(error=e))
             # Re-analyse after edit
             try:
                 content = pkgbuild_path.read_text(encoding="utf-8", errors="replace")
@@ -296,19 +361,29 @@ def review_pkgbuild(
                 critical = [d for s, d in findings if s == "critical"]
                 warnings = [d for s, d in findings if s == "warning"]
                 if critical:
-                    ui.console.print(f"[bold red]{_('Still has CRITICAL findings:')}[/bold red]")
+                    ui.console.print(
+                        f"[bold red]{_('Still has CRITICAL findings:')}[/bold red]"
+                    )
                     for desc in critical:
-                        ui.console.print(f"  [red]✗[/red] {desc}")
+                        ui.console.print(f"  [red]✗[/red] {escape(desc)}")
                 elif warnings:
                     ui.console.print(f"[yellow]{_('Still has warnings.')}[/yellow]")
                 else:
-                    ui.console.print(f"[green]{_('No obvious dangerous patterns detected.')}[/green]")
+                    ui.console.print(
+                        f"[green]{_('No obvious dangerous patterns detected.')}[/green]"
+                    )
             except OSError:
                 pass
             continue
         if answer in ("v", "view"):
             pager = shutil.which("less") or shutil.which("more") or "cat"
-            subprocess.run([pager, str(pkgbuild_path)], check=False)
+            pager_cmd = [pager, str(pkgbuild_path)]
+            from . import aur
+
+            real_user = aur._get_real_build_user(config)
+            if os.getuid() == 0 and real_user:
+                pager_cmd = aur.get_privilege_command(real_user, pager_cmd)
+            subprocess.run(pager_cmd, check=False)
             continue
 
         ui.console.print(

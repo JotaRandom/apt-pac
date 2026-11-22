@@ -40,6 +40,11 @@ class TestComplexAurDeps(unittest.TestCase):
         self.getuid_patcher = patch("os.getuid", return_value=1000, create=True)
         self.mock_getuid = self.getuid_patcher.start()
 
+        self.review_patcher = patch(
+            "apt_pac.pkgbuild_review.review_pkgbuild", return_value=True
+        )
+        self.mock_review = self.review_patcher.start()
+
     def tearDown(self):
         self.console_patcher.stop()
         self.input_patcher.stop()
@@ -48,6 +53,7 @@ class TestComplexAurDeps(unittest.TestCase):
         self.config_patcher.stop()
         self.summary_patcher.stop()
         self.getuid_patcher.stop()
+        self.review_patcher.stop()
 
     def test_install_mixed_deps(self):
         # Simulate:

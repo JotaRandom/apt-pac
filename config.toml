@@ -46,3 +46,15 @@ show_pacman_command = false
 [defaults]
 # Always sync file database (-Fy) during upgrade
 always_sync_files = true
+
+[directories]
+# Custom cache directory (empty = auto-detect)
+# If set, overrides XDG fallback logic
+cache_dir = ""
+
+# Custom locale directory (optional)
+locale_dir = ""
+
+[performance]
+# Time to live for AUR RPC cache in minutes (0 = disable cache)
+rpc_cache_ttl = 30

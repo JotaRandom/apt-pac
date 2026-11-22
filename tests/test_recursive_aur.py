@@ -72,6 +72,11 @@ class TestRecursiveAur(unittest.TestCase):
         self.exists_patcher = patch("pathlib.Path.exists", return_value=False)
         self.mock_exists = self.exists_patcher.start()
 
+        self.review_patcher = patch(
+            "apt_pac.pkgbuild_review.review_pkgbuild", return_value=True
+        )
+        self.mock_review = self.review_patcher.start()
+
     def tearDown(self):
         self.console_patcher.stop()
         self.input_patcher.stop()
@@ -85,6 +90,7 @@ class TestRecursiveAur(unittest.TestCase):
         self.official_patcher.stop()
         self.glob_patcher.stop()
         self.exists_patcher.stop()
+        self.review_patcher.stop()
 
     def test_recursive_aur_build_and_cleanup(self):
         # Scenario:

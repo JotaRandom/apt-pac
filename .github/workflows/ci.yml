@@ -22,20 +22,11 @@ jobs:
 
     - name: Install Build Dependencies
       run: |
-        pacman -S --noconfirm --needed git base-devel python python-pip pyalpm python-rich
+        pacman -S --noconfirm --needed git base-devel python pyalpm python-rich python-pytest python-pytest-cov python-pytest-mock
 
     - name: Checkout Code
       uses: actions/checkout@v7
 
-    - name: Install Development Environment
-      run: |
-        pip install .[dev]
-
-    - name: Lint Code
-      run: |
-        # Skip fail for now
-        pre-commit run --all-files || true
-
     - name: Run Tests
       run: |
-        python tests/run_tests.py
+        PYTHONPATH=src python tests/run_tests.py

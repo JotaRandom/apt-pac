@@ -10,9 +10,64 @@ using the Arch Build System (ABS) and the AUR.
 
 import subprocess
 import shutil
+from pathlib import Path
+from typing import Dict, List, Optional
 from .config import get_config
 from .ui import print_error, print_info, console, print_showsrc_info
 from .i18n import _
+
+
+_SRCINFO_LIST_KEYS = {
+    "pkgname",
+    "arch",
+    "license",
+    "depends",
+    "makedepends",
+    "checkdepends",
+    "optdepends",
+    "provides",
+    "conflicts",
+    "replaces",
+    "source",
+}
+
+_SRCINFO_SCALAR_KEYS = {"pkgbase", "pkgver", "pkgrel", "epoch", "pkgdesc", "url"}
+
+
+def _parse_srcinfo(srcinfo_path: Path) -> Optional[Dict]:
+    """
+    Parse a .SRCINFO file safely in pure Python without executing bash.
+    Returns parsed metadata dict or None if missing/unreadable/empty.
+    """
+    if not srcinfo_path.is_file():
+        return None
+    try:
+        text = srcinfo_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+    info: Dict = {}
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, val = line.split("=", 1)
+        key = key.strip()
+        val = val.strip()
+        if not val:
+            continue
+
+        base_key = key.split("_", 1)[0]
+        if base_key in _SRCINFO_LIST_KEYS and key == base_key:
+            info.setdefault(key, [])
+            if val not in info[key]:
+                info[key].append(val)
+        elif key in _SRCINFO_SCALAR_KEYS:
+            info[key] = val
+
+    if not info:
+        return None
+    return info
 
 
 def check_pkgctl_available():
@@ -68,7 +123,7 @@ def download_source(package_name, verbose=False):
     # Check if package exists
     if not check_package_in_repos(package_name):
         print_error(
-            f"[red]{_('E:')}[/red] {_(f'Unable to find a source package for {package_name}')}"
+            f"[red]{_('E:')}[/red] {_('Unable to find a source package for {pkg}').format(pkg=package_name)}"
         )
         return None
 
@@ -91,7 +146,7 @@ def download_source(package_name, verbose=False):
 
     if result.returncode != 0:
         print_error(
-            f"[red]{_('E:')}[/red] {_(f'Failed to download source for {package_name}')}"
+            f"[red]{_('E:')}[/red] {_('Failed to download source for {pkg}').format(pkg=package_name)}"
         )
         if result.stderr:
             print_error(result.stderr.strip())
@@ -102,37 +157,43 @@ def download_source(package_name, verbose=False):
         return pkg_dir
     else:
         print_error(
-            f"[red]{_('E:')}[/red] {_(f'Source download incomplete for {package_name}')}"
+            f"[red]{_('E:')}[/red] {_('Source download incomplete for {pkg}').format(pkg=package_name)}"
         )
         return None
 
 
 def get_source_dir(package_name):
-    """Get the source directory for a package if it exists."""
-    sources_dir = get_sources_dir()
-    if not sources_dir:
+    """Get the source directory for a package (ABS or AUR) if it exists."""
+    cache_dir = get_config().get_cache_dir()
+    if not cache_dir:
         return None
 
-    pkg_dir = sources_dir / package_name
-    if pkg_dir.exists() and (pkg_dir / "PKGBUILD").exists():
-        return pkg_dir
+    for subdir in ("abs", "aur"):
+        pkg_dir = cache_dir / "sources" / subdir / package_name
+        if pkg_dir.exists() and (pkg_dir / "PKGBUILD").exists():
+            return pkg_dir
     return None
 
 
-def parse_pkgbuild_makedepends(pkgbuild_path):
+def parse_pkgbuild_makedepends(pkgbuild_path) -> List[str]:
     """
-    Extract makedepends from PKGBUILD.
+    Extract makedepends from .SRCINFO (safe) or PKGBUILD fallback.
+    """
+    srcinfo_data = _parse_srcinfo(pkgbuild_path.parent / ".SRCINFO")
+    if srcinfo_data is not None:
+        deps = srcinfo_data.get("makedepends", [])
+        return deps if isinstance(deps, list) else [deps]
 
-    Uses bash to source the PKGBUILD and extract the makedepends array.
-    """
     if not pkgbuild_path.exists():
         return []
 
-    # Use bash to source PKGBUILD and print makedepends
+    # Fallback for PKGBUILDs without .SRCINFO: pass path safely via $1
     cmd = [
         "bash",
         "-c",
-        f"source '{pkgbuild_path}' && printf '%s\\n' \"${{makedepends[@]}}\"",
+        'source "$1" && printf "%s\\n" "${makedepends[@]}"',
+        "_",
+        str(pkgbuild_path),
     ]
 
     try:
@@ -149,10 +210,20 @@ def parse_pkgbuild_makedepends(pkgbuild_path):
 
 def parse_pkgbuild_info(pkgbuild_path):
     """
-    Extract basic info from PKGBUILD.
+    Extract basic info from .SRCINFO (safe) or PKGBUILD fallback.
 
     Returns a dict with pkgname, pkgver, pkgrel, pkgdesc, etc.
     """
+    srcinfo_data = _parse_srcinfo(pkgbuild_path.parent / ".SRCINFO")
+    if srcinfo_data is not None:
+        normalized = {}
+        for k, v in srcinfo_data.items():
+            if isinstance(v, list) and len(v) == 1:
+                normalized[k] = v[0]
+            else:
+                normalized[k] = v
+        return normalized
+
     if not pkgbuild_path.exists():
         return {}
 
@@ -176,7 +247,13 @@ def parse_pkgbuild_info(pkgbuild_path):
             f"echo '{var}:' && printf '%s\\n' \"${{{var}[@]}}\" && echo '---'"
         )
 
-    cmd = ["bash", "-c", f"source '{pkgbuild_path}' && " + " && ".join(bash_commands)]
+    cmd = [
+        "bash",
+        "-c",
+        'source "$1" && ' + " && ".join(bash_commands),
+        "_",
+        str(pkgbuild_path),
+    ]
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
@@ -244,7 +321,7 @@ def handle_apt_source(package_name, extra_args, verbose=False):
 
     if verbose:
         print_error(
-            f"[red]{_('E:')}[/red] {_(f'Failed to find source for {package_name} in')} ABS or AUR"
+            f"[red]{_('E:')}[/red] {_('Failed to find source for {pkg} in').format(pkg=package_name)} ABS or AUR"
         )
     return False
 
@@ -303,7 +380,7 @@ def handle_build_dep(package_name, verbose=False):
         execute_command("install", makedepends)
         return True
     except Exception as e:
-        print_error(_(f"Failed to install build dependencies: {e}"))
+        print_error(_("Failed to install build dependencies: {error}").format(error=e))
         return False
 
 

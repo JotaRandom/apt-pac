@@ -1,5 +1,6 @@
 import json
 import re
+import shlex
 import time
 import urllib.request
 import urllib.parse
@@ -9,7 +10,7 @@ import os
 import sys
 import shutil
 from pathlib import Path
-from . import ui
+from . import __version__, ui
 from .ui import print_error, print_info, print_transaction_summary
 from .i18n import _
 from .config import get_config
@@ -30,7 +31,31 @@ def is_valid_package(path: str) -> bool:
                 if member.name == ".PKGINFO":
                     return True
             return False
-    except (tarfile.TarError, OSError, Exception):
+    except tarfile.TarError:
+        if shutil.which("bsdtar"):
+            try:
+                res = subprocess.run(
+                    ["bsdtar", "-tf", str(path), ".PKGINFO"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                return res.returncode == 0
+            except (OSError, subprocess.SubprocessError):
+                pass
+        if shutil.which("pacman"):
+            try:
+                res = subprocess.run(
+                    ["pacman", "-Qp", str(path)],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                return res.returncode == 0
+            except (OSError, subprocess.SubprocessError):
+                pass
+        return False
+    except OSError:
         return False
 
 
@@ -66,6 +91,17 @@ def _save_cache(cache: Dict):
         CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
         with open(CACHE_FILE, "w", encoding="utf-8") as f:
             json.dump(cache, f)
+        if hasattr(os, "getuid") and os.getuid() == 0:
+            real_user = _get_real_build_user()
+            if real_user:
+                import pwd
+
+                try:
+                    pw = pwd.getpwnam(real_user)
+                    os.chown(CACHE_FILE, pw.pw_uid, pw.pw_gid)
+                    os.chown(CACHE_FILE.parent, pw.pw_uid, pw.pw_gid)
+                except (KeyError, OSError):
+                    pass
     except Exception:
         pass
 
@@ -73,6 +109,8 @@ def _save_cache(cache: Dict):
 def _get_cached(key: str) -> Optional[List[Dict]]:
     config = get_config()
     ttl_minutes = config.get("performance", "rpc_cache_ttl", 30)
+    if ttl_minutes <= 0:
+        return None
     ttl_seconds = ttl_minutes * 60
 
     cache = _load_cache()
@@ -87,6 +125,9 @@ def _get_cached(key: str) -> Optional[List[Dict]]:
 
 
 def _set_cached(key: str, data: List[Dict]):
+    config = get_config()
+    if config.get("performance", "rpc_cache_ttl", 30) <= 0:
+        return
     cache = _load_cache()
     cache[key] = {"timestamp": time.time(), "data": data}
     _save_cache(cache)
@@ -104,7 +145,7 @@ def search_aur(query: str) -> List[Dict]:
         url = f"{AUR_RPC_URL}search/{safe_query}"
 
         req = urllib.request.Request(url)
-        req.add_header("User-Agent", "apt-pac/2026.01.01")
+        req.add_header("User-Agent", f"apt-pac/{__version__}")
 
         with urllib.request.urlopen(req, timeout=10) as response:
             if response.status != 200:
@@ -144,7 +185,7 @@ def get_aur_info(package_names: List[str]) -> List[Dict]:
 
     try:
         req = urllib.request.Request(url)
-        req.add_header("User-Agent", "apt-pac/2026.01.01")
+        req.add_header("User-Agent", f"apt-pac/{__version__}")
 
         with urllib.request.urlopen(req, timeout=10) as response:
             if response.status != 200:
@@ -229,9 +270,30 @@ def check_updates(verbose=False) -> List[Dict]:
                     updates.append({"name": name, "current": local_ver, "new": aur_ver})
         except Exception as e:
             if verbose:
-                print_error(_(f"Error checking updates for chunk: {e}"))
+                print_error(
+                    _("Error checking updates for chunk: {error}").format(error=e)
+                )
 
     return updates
+
+
+def _get_real_build_user(config=None) -> Optional[str]:
+    """Return the unprivileged user to build AUR packages as."""
+    if config is None:
+        config = get_config()
+    build_user_config = config.get("tools", "build_user", "auto")
+    if build_user_config and build_user_config != "auto":
+        return build_user_config
+    return os.environ.get("SUDO_USER") or os.environ.get("DOAS_USER")
+
+
+def _confirm_yes_aur(prompt: str) -> bool:
+    """Confirm [Y/n] prompt accepting Enter (empty) or yes."""
+    resp = ui.console.input(prompt)
+    if isinstance(resp, str):
+        ans = resp.strip().lower()
+        return ans == "" or ans.startswith("y")
+    return bool(resp)
 
 
 def get_privilege_command(target_user: str, cmd: List[str]) -> List[str]:
@@ -239,7 +301,10 @@ def get_privilege_command(target_user: str, cmd: List[str]) -> List[str]:
     tool = config.get("tools", "privilege_tool", "auto")
 
     if tool == "auto":
-        if shutil.which("run0"):
+        has_systemd = os.path.isdir("/run/systemd/system")
+        if shutil.which("run0") and (
+            has_systemd or not (shutil.which("doas") or shutil.which("sudo"))
+        ):
             tool = "run0"
         elif shutil.which("doas"):
             tool = "doas"
@@ -262,6 +327,9 @@ def download_aur_source(
 
     if target_dir is None:
         config = get_config()
+        if not config.cache_dir:
+            print_error(_("Cache directory is not available."))
+            return None
         target_dir = config.cache_dir / "sources" / "aur" / package_name
 
     if target_dir.exists():
@@ -287,7 +355,7 @@ def download_aur_source(
         subprocess.run(["git", "clone", clone_url, str(target_dir)], check=True)
         return target_dir
     except subprocess.CalledProcessError:
-        print_error(_(f"Failed to clone {package_name} from AUR"))
+        print_error(_("Failed to clone {pkg} from AUR").format(pkg=package_name))
         return None
 
 
@@ -330,7 +398,9 @@ class AurResolver:
             info = get_aur_info([pkg_name])
             if not info:
                 print_error(
-                    _(f"Package '{pkg_name}' not found in AUR or official repos.")
+                    _("Package '{pkg}' not found in AUR or official repos.").format(
+                        pkg=pkg_name
+                    )
                 )
                 sys.exit(1)
             self.aur_info_cache[pkg_name] = info[0]
@@ -370,21 +440,30 @@ class AurInstaller:
     def __init__(self):
         self.config = get_config()
         if os.getuid() == 0:
-            real_user = os.environ.get("SUDO_USER")
+            real_user = _get_real_build_user(self.config)
             if real_user:
                 import pwd
+
                 try:
                     user_info = pwd.getpwnam(real_user)
                     user_home = Path(user_info.pw_dir)
-                    user_cache = Path(
-                        os.environ.get("XDG_CACHE_HOME", user_home / ".cache")
+                    self.build_dir = (
+                        user_home / ".cache" / "apt-pac" / "sources" / "aur"
                     )
-                    self.build_dir = user_cache / "apt-pac" / "sources" / "aur"
                 except KeyError:
+                    if not self.config.cache_dir:
+                        print_error(_("Cache directory is not available."))
+                        sys.exit(1)
                     self.build_dir = self.config.cache_dir / "sources" / "aur"
             else:
+                if not self.config.cache_dir:
+                    print_error(_("Cache directory is not available."))
+                    sys.exit(1)
                 self.build_dir = self.config.cache_dir / "sources" / "aur"
         else:
+            if not self.config.cache_dir:
+                print_error(_("Cache directory is not available."))
+                sys.exit(1)
             self.build_dir = self.config.cache_dir / "sources" / "aur"
 
         if not self.build_dir.exists():
@@ -400,7 +479,10 @@ class AurInstaller:
         build_queue=None,
         official_deps=None,
         skip_summary=False,
+        confirm_pacman: Optional[bool] = None,
     ):
+        pacman_noconfirm = auto_confirm if confirm_pacman is None else confirm_pacman
+
         if build_queue is None:
             resolver = AurResolver()
             with ui.status("[blue]Resolving AUR dependencies...[/blue]"):
@@ -451,17 +533,13 @@ class AurInstaller:
                 ui.console.print(
                     f"{_('Do you want to continue?')} [Y/n] [bold green]{_('Yes')}[/bold green]"
                 )
-            elif (
-                not ui.console.input(f"{_('Do you want to continue?')} [Y/n] ")
-                .lower()
-                .startswith("y")
-            ):
+            elif not _confirm_yes_aur(f"{_('Do you want to continue?')} [Y/n] "):
                 print_info(_("Aborted."))
                 sys.exit(0)
 
         if official_deps:
             cmd = ["pacman", "-S", "--needed", "--asdeps"] + list(official_deps)
-            if auto_confirm:
+            if pacman_noconfirm:
                 cmd.append("--noconfirm")
 
             from .commands import run_pacman_with_apt_output
@@ -489,28 +567,41 @@ class AurInstaller:
 
         for i, pkg in enumerate(build_queue):
             pkg_name = pkg["Name"]
+            base = pkg.get("PackageBase", pkg_name)
+            base_names = (
+                self.resolver.package_bases.get(base, {pkg_name})
+                if self.resolver and hasattr(self.resolver, "package_bases")
+                else {pkg_name}
+            )
 
             needed_by_future = False
             for j in range(i + 1, len(build_queue)):
                 future_pkg = build_queue[j]
                 future_name = future_pkg["Name"]
-                if pkg_name in queue_deps[future_name]:
+                if any(n in queue_deps[future_name] for n in base_names):
                     needed_by_future = True
                     break
 
             built_files = self._build_pkg(pkg, verbose, auto_confirm)
 
             if not built_files:
-                print_error(_(f"Build failed for {pkg_name}"))
+                print_error(_("Build failed for {pkg}").format(pkg=pkg_name))
                 sys.exit(1)
 
             if needed_by_future:
-                cmd = ["pacman", "-U", "--asdeps", "--needed"] + [str(f) for f in built_files]
-                if auto_confirm:
+                cmd = ["pacman", "-U", "--asdeps", "--needed"] + [
+                    str(f) for f in built_files
+                ]
+                if pacman_noconfirm:
                     cmd.append("--noconfirm")
                 from .commands import run_pacman_with_apt_output
+
                 if not run_pacman_with_apt_output(cmd, show_hooks=True):
-                    print_error(_(f"Failed to install intermediate dependency {pkg_name}"))
+                    print_error(
+                        _("Failed to install intermediate dependency {pkg}").format(
+                            pkg=pkg_name
+                        )
+                    )
                     sys.exit(1)
             else:
                 final_batch_paths.extend(built_files)
@@ -518,12 +609,72 @@ class AurInstaller:
 
         if final_batch_paths:
             cmd = ["pacman", "-U", "--needed"] + [str(f) for f in final_batch_paths]
-            if auto_confirm:
+            if pacman_noconfirm:
                 cmd.append("--noconfirm")
             from .commands import run_pacman_with_apt_output
+
             if not run_pacman_with_apt_output(cmd, show_hooks=True):
                 print_error(_("Failed to install final packages"))
                 sys.exit(1)
+
+    def _collect_built_packages(self, pkg_dir: Path, name: str) -> List[Path]:
+        all_pkg_files = list(pkg_dir.glob("*.pkg.tar.*"))
+        valid_pkg_files = []
+        for f in all_pkg_files:
+            fname = f.name
+            if isinstance(fname, str):
+                if fname.endswith(".sig"):
+                    continue
+                if "-debug-" in fname and not name.endswith("-debug"):
+                    continue
+            valid_pkg_files.append(f)
+        return valid_pkg_files
+
+    def _detect_missing_gpg_keys(
+        self, output: str, pkg_dir: Path, real_user: Optional[str]
+    ) -> List[str]:
+        keys = list(dict.fromkeys(re.findall(r"unknown public key ([0-9A-F]+)", output)))
+        if keys:
+            return keys
+
+        # When makepkg output goes directly to TTY (uncaptured), check validpgpkeys
+        valid_keys: List[str] = []
+        srcinfo_path = pkg_dir / ".SRCINFO"
+        if srcinfo_path.is_file():
+            try:
+                for line in srcinfo_path.read_text(
+                    encoding="utf-8", errors="replace"
+                ).splitlines():
+                    stripped = line.strip()
+                    if stripped.startswith("validpgpkeys ="):
+                        val = stripped.split("=", 1)[1].strip()
+                        if val:
+                            valid_keys.append(val)
+            except OSError:
+                pass
+        if not valid_keys:
+            pkgbuild_path = pkg_dir / "PKGBUILD"
+            if pkgbuild_path.is_file():
+                try:
+                    text = pkgbuild_path.read_text(encoding="utf-8", errors="replace")
+                    m = re.search(r"validpgpkeys\s*=\s*\(([^)]+)\)", text, re.S)
+                    if m:
+                        valid_keys = re.findall(r"[0-9A-Fa-f]{8,}", m.group(1))
+                except OSError:
+                    pass
+
+        missing: List[str] = []
+        for key in valid_keys:
+            check_cmd = ["gpg", "--list-keys", key]
+            if os.getuid() == 0 and real_user:
+                check_cmd = get_privilege_command(real_user, check_cmd)
+            try:
+                res = subprocess.run(check_cmd, capture_output=True)
+                if res.returncode != 0:
+                    missing.append(key)
+            except OSError:
+                pass
+        return missing
 
     def _build_pkg(
         self, pkg_info: Dict, verbose: bool, auto_confirm: bool
@@ -538,15 +689,13 @@ class AurInstaller:
         )
 
         if not self._download_source_silent(base, pkg_dir, verbose):
-            print_error(_(f"Failed to download source for {base}"))
+            print_error(
+                _("Failed to download source for {base}").format(base=base)
+            )
             sys.exit(1)
 
         config = get_config()
-        build_user_config = config.get("tools", "build_user", "auto")
-        if build_user_config == "auto":
-            real_user = os.environ.get("SUDO_USER")
-        else:
-            real_user = build_user_config
+        real_user = _get_real_build_user(config)
 
         if os.getuid() == 0 and real_user:
             subprocess.run(
@@ -555,6 +704,7 @@ class AurInstaller:
 
         # 1.5 Security review of the downloaded PKGBUILD
         from .pkgbuild_review import review_pkgbuild
+
         if not review_pkgbuild(pkg_dir, name, auto_confirm=auto_confirm):
             print_info(_("Build aborted."))
             sys.exit(1)
@@ -569,27 +719,8 @@ class AurInstaller:
 
         if os.getuid() == 0:
             if real_user:
-                config = get_config()
-                tool = config.get("tools", "privilege_tool", "auto")
-
-                if tool == "auto":
-                    if shutil.which("run0"):
-                        tool = "run0"
-                    elif shutil.which("doas"):
-                        tool = "doas"
-                    else:
-                        tool = "sudo"
-
-                makepkg_cmd_str = " ".join(cmd)
-                shell_cmd = f"cd {pkg_dir} && {makepkg_cmd_str}"
-
-                if tool == "run0":
-                    cmd = ["run0", f"--user={real_user}", "sh", "-c", shell_cmd]
-                elif tool == "doas":
-                    cmd = ["doas", "-u", real_user, "sh", "-c", shell_cmd]
-                else:
-                    cmd = ["sudo", "-u", real_user, "sh", "-c", shell_cmd]
-
+                shell_cmd = f"cd {shlex.quote(str(pkg_dir))} && {shlex.join(cmd)}"
+                cmd = get_privilege_command(real_user, ["sh", "-c", shell_cmd])
                 run_cwd = None
             else:
                 print_error(_("Cannot build as root without SUDO_USER"))
@@ -605,50 +736,46 @@ class AurInstaller:
                     pass
 
             subprocess.run(cmd, cwd=run_cwd, check=True)
-
-            all_pkg_files = list(pkg_dir.glob("*.pkg.tar.*"))
-            valid_pkg_files = []
-
-            for f in all_pkg_files:
-                fname = f.name
-                if "-debug" in fname and not name.endswith("-debug"):
-                    continue
-                valid_pkg_files.append(f)
-
-            return valid_pkg_files
+            return self._collect_built_packages(pkg_dir, name)
 
         except subprocess.CalledProcessError as e:
             output = e.stderr.decode("utf-8", errors="ignore") if e.stderr else ""
             if not output and e.stdout:
                 output = e.stdout.decode("utf-8", errors="ignore")
 
-            gpg_match = re.search(r"unknown public key ([0-9A-F]+)", output)
-            if gpg_match:
-                key_id = gpg_match.group(1)
-                ui.console.print(
-                    f"[yellow]{_('Missing GPG Key detected:')} {key_id}[/yellow]"
-                )
-                ui.console.print(_("Attempting to import key..."))
+            missing_keys = self._detect_missing_gpg_keys(output, pkg_dir, real_user)
+            if missing_keys:
+                for key_id in missing_keys:
+                    ui.console.print(
+                        f"[yellow]{_('Missing GPG Key detected:')} {key_id}[/yellow]"
+                    )
+                    ui.console.print(_("Attempting to import key..."))
+                    gpg_cmd = ["gpg", "--recv-keys", key_id]
+                    if os.getuid() == 0 and real_user:
+                        gpg_cmd = get_privilege_command(real_user, gpg_cmd)
+                    try:
+                        subprocess.run(gpg_cmd, check=True)
+                    except subprocess.CalledProcessError:
+                        print_error(
+                            _(
+                                "Failed to import key {key_id} or rebuild failed."
+                            ).format(key_id=key_id)
+                        )
+                        sys.exit(1)
 
                 try:
-                    subprocess.run(["gpg", "--recv-keys", key_id], check=True)
                     ui.console.print(_("Key imported. Retrying build..."))
                     subprocess.run(cmd, cwd=run_cwd, check=True)
-
-                    all_pkg_files = list(pkg_dir.glob("*.pkg.tar.*"))
-                    valid_pkg_files = []
-                    for f in all_pkg_files:
-                        fname = f.name
-                        if "-debug" in fname and not name.endswith("-debug"):
-                            continue
-                        valid_pkg_files.append(f)
-                    return valid_pkg_files
-
+                    return self._collect_built_packages(pkg_dir, name)
                 except subprocess.CalledProcessError:
-                    print_error(_(f"Failed to import key {key_id} or rebuild failed."))
+                    print_error(
+                        _("Failed to import key {key_id} or rebuild failed.").format(
+                            key_id=missing_keys[0]
+                        )
+                    )
                     sys.exit(1)
 
-            print_error(_(f"Failed to build {name}"))
+            print_error(_("Failed to build {pkg}").format(pkg=name))
             sys.exit(1)
 
     def _download_source_silent(self, package_name, target_dir, verbose):

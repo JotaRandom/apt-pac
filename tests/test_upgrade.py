@@ -72,6 +72,7 @@ class TestUpgrade(unittest.TestCase):
             patch(
                 "apt_pac.aur.AurInstaller._download_source_silent", return_value=True
             ),
+            patch("apt_pac.pkgbuild_review.review_pkgbuild", return_value=True),
             patch.dict(os.environ, {"SUDO_USER": "testuser"}),
             patch("pathlib.Path.glob") as mock_glob,
         ):
@@ -181,6 +182,7 @@ class TestUpgrade(unittest.TestCase):
             patch(
                 "apt_pac.aur.AurInstaller._download_source_silent", return_value=True
             ),
+            patch("apt_pac.pkgbuild_review.review_pkgbuild", return_value=True),
             patch.dict(os.environ, {"SUDO_USER": "testuser"}),
             patch("pathlib.Path.glob") as mock_glob,
         ):

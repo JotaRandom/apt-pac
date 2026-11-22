@@ -12,7 +12,7 @@ import apt_pac.commands as commands
 class TestAurInstallLogic(unittest.TestCase):
     @patch("apt_pac.aur.AurInstaller")
     @patch("apt_pac.aur.is_in_official_repos")
-    @patch("apt_pac.aur.search_aur")
+    @patch("apt_pac.aur.get_aur_info")
     @patch("subprocess.run")
     @patch("os.getuid", return_value=0, create=True)
     @patch("apt_pac.commands.alpm_helper.get_available_updates", return_value=[])
@@ -23,7 +23,7 @@ class TestAurInstallLogic(unittest.TestCase):
         mock_updates,
         mock_getuid,
         mock_run,
-        mock_search,
+        mock_aur_info,
         mock_is_official,
         mock_installer_cls,
     ):
@@ -38,7 +38,7 @@ class TestAurInstallLogic(unittest.TestCase):
             return pkg == "git"
 
         mock_is_official.side_effect = is_official_side_effect
-        mock_search.return_value = True  # Assume found in AUR if checked
+        mock_aur_info.return_value = [{"Name": "google-chrome"}]
 
         mock_installer_instance = MagicMock()
         mock_installer_cls.return_value = mock_installer_instance

@@ -57,6 +57,9 @@ apt-pac-*/
 # i18n compiled files
 *.mo
 
-# Test Logs
+# Test Logs & Coverage
 test_logs/*
+coverage-report/
+.coverage
+.pytest_cache/
 

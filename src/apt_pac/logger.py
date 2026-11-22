@@ -12,7 +12,7 @@ def setup_logger():
     2. /run/log/apt-pac.log (if writable)
     3. User local state: $XDG_STATE_HOME/apt-pac/history.log
     """
-    uid = os.getuid()
+    uid = os.getuid() if hasattr(os, "getuid") else 1000
 
     # Potential system paths
     system_paths = [Path("/var/log/apt-pac.log"), Path("/run/log/apt-pac.log")]
@@ -73,8 +73,8 @@ def log_action(apt_cmd, extra_args):
     try:
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
 
-        # Get real user if running via sudo
-        sudo_user = os.environ.get("SUDO_USER")
+        # Get real user if running via sudo/doas
+        sudo_user = os.environ.get("SUDO_USER") or os.environ.get("DOAS_USER")
         current_user = getpass.getuser()
 
         if sudo_user and sudo_user != current_user:

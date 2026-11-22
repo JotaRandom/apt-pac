@@ -1,6 +1,6 @@
 [project]
 name = "apt-pac"
-version = "2026.01.17"
+version = "2026.01.28"
 description = "An APT-style wrapper for pacman with beautiful output"
 readme = "README.md"
 authors = [
@@ -33,9 +33,6 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["apt_pac"]
 package-dir = {"" = "src"}
-
-[tool.setuptools.package-data]
-apt_pac = ["../locales/*.mo"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

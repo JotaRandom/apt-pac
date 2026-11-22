@@ -2,6 +2,9 @@
 Helper utilities for pyalpm operations.
 """
 
+import fnmatch
+import re
+import subprocess
 import pyalpm
 from pathlib import Path
 from typing import List, Optional
@@ -9,33 +12,97 @@ from typing import List, Optional
 _handle = None
 
 
+def reset_handle():
+    """Reset the cached pyalpm Handle (e.g. after DB sync)."""
+    global _handle
+    _handle = None
+
+
+def _pacman_conf(key: str) -> List[str]:
+    """Query a directive from /etc/pacman.conf via pacman-conf."""
+    values: List[str] = []
+    try:
+        res = subprocess.run(
+            ["pacman-conf", key],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if res.returncode == 0:
+            values = [line.strip() for line in res.stdout.splitlines() if line.strip()]
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return values
+
+
+def _pacman_conf_repos() -> List[str]:
+    """Return configured sync repository names in /etc/pacman.conf order."""
+    repos: List[str] = []
+    try:
+        res = subprocess.run(
+            ["pacman-conf", "-l"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if res.returncode == 0:
+            repos = [
+                line.strip()
+                for line in res.stdout.splitlines()
+                if re.fullmatch(r"[A-Za-z0-9._+-]+", line.strip())
+            ]
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return repos
+
+
 def get_handle():
     """
-    Get or create a pyalpm Handle with standard configuration.
-    This reuses the same handle for efficiency.
+    Get or create a pyalpm Handle configured from pacman.conf.
+    This reuses the same handle for efficiency until reset_handle() is called.
     """
     global _handle
     if _handle is None:
-        _handle = pyalpm.Handle("/", "/var/lib/pacman")
-        # Register standard sync databases
-        # We read from the actual sync directory to auto-discover DBs
-        sync_dir = Path("/var/lib/pacman/sync")
-        if sync_dir.exists():
-            for dbfile in sync_dir.glob("*.db"):
-                dbname = dbfile.stem  # Remove .db extension
-                try:
-                    _handle.register_syncdb(dbname, pyalpm.SIG_DATABASE_OPTIONAL)
-                except Exception:
-                    pass  # Skip if registration fails
+        root_dirs = _pacman_conf("RootDir")
+        db_paths = _pacman_conf("DBPath")
+        cache_dirs = _pacman_conf("CacheDir")
+
+        root_dir = (
+            root_dirs[0] if (root_dirs and Path(root_dirs[0]).is_dir()) else "/"
+        )
+        db_path = (
+            db_paths[0]
+            if (db_paths and Path(db_paths[0]).is_dir())
+            else "/var/lib/pacman"
+        )
+        cache_dirs = [d for d in cache_dirs if Path(d).is_dir()]
+        if not cache_dirs:
+            cache_dirs = ["/var/cache/pacman/pkg/"]
+
+        _handle = pyalpm.Handle(root_dir, db_path)
+        _handle.cachedirs = cache_dirs
+
+        # Register sync databases in exact /etc/pacman.conf priority order
+        repos = _pacman_conf_repos()
+        if not repos:
+            sync_dir = Path(db_path) / "sync"
+            if sync_dir.exists():
+                repos = [dbfile.stem for dbfile in sorted(sync_dir.glob("*.db"))]
+
+        for dbname in repos:
+            try:
+                _handle.register_syncdb(dbname, pyalpm.SIG_DATABASE_OPTIONAL)
+            except Exception:
+                pass  # Skip if registration fails
     return _handle
 
 
-def search_packages(query: str, repos: Optional[List[str]] = None) -> List:
+def search_packages(query, repos: Optional[List[str]] = None) -> List:
     """
     Search for packages in sync databases using pyalpm.
 
     Args:
-        query: Search term
+        query: Search term string (or sequence of terms)
         repos: Optional list of repo names to search (None = all repos)
 
     Returns:
@@ -43,6 +110,13 @@ def search_packages(query: str, repos: Optional[List[str]] = None) -> List:
     """
     handle = get_handle()
     results = []
+
+    if isinstance(query, str):
+        terms = [t for t in query.split() if t] or [query]
+    else:
+        terms = [str(t) for t in query if str(t)]
+        if not terms:
+            return []
 
     dbs = handle.get_syncdbs()
     if repos:
@@ -52,7 +126,7 @@ def search_packages(query: str, repos: Optional[List[str]] = None) -> List:
 
     for db in dbs:
         # db.search() takes variable args (multiple keywords)
-        results.extend(db.search(query))
+        results.extend(db.search(*terms))
 
     return results
 
@@ -127,7 +201,7 @@ def get_installed_packages(
 
 def get_orphan_packages() -> List:
     """
-    Get orphaned packages (installed as deps but no longer required).
+    Get orphaned packages (installed as deps and not required or optionally required).
 
     Returns:
         List of Package objects
@@ -138,9 +212,14 @@ def get_orphan_packages() -> List:
     orphans = []
     for pkg in localdb.pkgcache:
         if pkg.reason == pyalpm.PKG_REASON_DEPEND:
-            # Check if any package requires this one
+            # Check if any package requires or optionally depends on this one
             rdeps = pkg.compute_requiredby()
-            if not rdeps:
+            optfor = (
+                pkg.compute_optionalfor()
+                if hasattr(pkg, "compute_optionalfor")
+                else []
+            )
+            if not rdeps and not optfor:
                 orphans.append(pkg)
 
     return orphans
@@ -148,16 +227,28 @@ def get_orphan_packages() -> List:
 
 def get_available_updates() -> List[tuple]:
     """
-    Get list of packages with available updates.
+    Get list of packages with available updates (respecting IgnorePkg/IgnoreGroup).
 
     Returns:
         List of tuples: (package_name, current_version, new_version)
     """
     handle = get_handle()
     localdb = handle.get_localdb()
+    ignore_pkgs = [p for line in _pacman_conf("IgnorePkg") for p in line.split()]
+    ignore_groups = [g for line in _pacman_conf("IgnoreGroup") for g in line.split()]
     updates = []
 
     for local_pkg in localdb.pkgcache:
+        if any(fnmatch.fnmatchcase(local_pkg.name, pat) for pat in ignore_pkgs):
+            continue
+        pkg_groups = getattr(local_pkg, "groups", None) or []
+        if ignore_groups and any(
+            fnmatch.fnmatchcase(grp, pat)
+            for grp in pkg_groups
+            for pat in ignore_groups
+        ):
+            continue
+
         # Find this package in sync repos
         new_pkg = None
         for syncdb in handle.get_syncdbs():
@@ -184,8 +275,12 @@ def get_all_repo_packages() -> List:
 
 
 def is_package_installed(pkgname: str) -> bool:
-    """Check if a package is installed."""
-    return get_local_package(pkgname) is not None
+    """Check if a package or a provider for it is installed."""
+    if get_local_package(pkgname) is not None:
+        return True
+    handle = get_handle()
+    localdb = handle.get_localdb()
+    return pyalpm.find_satisfier(localdb.pkgcache, pkgname) is not None
 
 
 def get_cache_dirs() -> List[Path]:
@@ -227,6 +322,7 @@ def clean_cache(keep: int = 3, dry_run: bool = False, verbose: bool = True) -> i
             ".pkg.tar.zst",
             ".pkg.tar.xz",
             ".pkg.tar.gz",
+            ".pkg.tar.bz2",
             ".pkg.tar",
             ".pkg.tar.lzo",
             ".pkg.tar.lz4",

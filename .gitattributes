@@ -1,8 +1,9 @@
 # Set default behavior to automatically normalize line endings.
 * text=auto
 
-# Force bash scripts to have LF line endings.
+# Force bash scripts and PKGBUILDs to have LF line endings.
 *.sh text eol=lf
+PKGBUILD* text eol=lf
 
 # Python files
 *.py text indentation=space indent_size=4

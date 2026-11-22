@@ -10,21 +10,21 @@ license=('MIT')
 depends=('python'
          'python-rich'
          'pyalpm'
-         'devtools')
+         'git')
 makedepends=('python-build'
              'python-installer'
              'python-setuptools'
              'python-wheel'
              'git'
              'gettext')
-optdepends=('man: For apt help command to display package manpages')
-source=("$_pkgname::git+https://github.com/JotaRandom/$pkgname.git#tag=$pkgver")
+checkdepends=('python-pytest'
+              'python-pytest-cov')
+optdepends=('man-db: For apt-pac help command to display package manpages'
+            'devtools: For apt-pac source with official Arch packages (pkgctl)'
+            'pacman-contrib: For apt-pac dotty, scripts, and paclist')
+backup=('etc/apt-pac/config.toml')
+source=("$pkgname::git+https://github.com/JotaRandom/$pkgname.git#tag=$pkgver")
 sha256sums=('SKIP')
-
-pkgver() {
-  cd "$srcdir/$pkgname"
-  git describe --tags --long | sed 's/^v//;s/-/+/g'
-}
 
 build() {
   cd "$srcdir/$pkgname"
@@ -42,12 +42,15 @@ build() {
 check() {
   cd "$srcdir/$pkgname"
   # Dependencies are installed in the build environment
-  python tests/run_tests.py
+  PYTHONPATH=src pytest -v --no-cov
 }
 
 package() {
   cd "$srcdir/$pkgname"
   python -m installer --destdir="$pkgdir" dist/*.whl
+
+  # Install license
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
   
   # Install global configuration
   install -Dm644 config.toml "$pkgdir/etc/apt-pac/config.toml"

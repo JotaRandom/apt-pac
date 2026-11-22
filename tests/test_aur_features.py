@@ -95,6 +95,7 @@ class TestAurFeatures(unittest.TestCase):
         with (
             patch.object(aur.AurResolver, "resolve", return_value=[{"Name": "foo"}]),
             patch("apt_pac.aur.download_aur_source", return_value=True),
+            patch("apt_pac.pkgbuild_review.review_pkgbuild", return_value=True),
             patch("builtins.print"),
             patch("apt_pac.ui.console.input", return_value="y"),
             patch("os.getuid", return_value=1000, create=True),
@@ -123,6 +124,7 @@ class TestAurFeatures(unittest.TestCase):
         with (
             patch.object(aur.AurResolver, "resolve", return_value=[{"Name": "foo"}]),
             patch("apt_pac.aur.download_aur_source", return_value=True),
+            patch("apt_pac.pkgbuild_review.review_pkgbuild", return_value=True),
             patch("builtins.print"),
             patch("apt_pac.ui.console.input", return_value="y"),
             patch("os.getuid", return_value=1000, create=True),
@@ -201,7 +203,12 @@ class TestAurFeatures(unittest.TestCase):
             with (
                 patch("pathlib.Path.iterdir") as mock_iterdir,
                 patch("apt_pac.aur.is_valid_package", return_value=True),
+                patch("apt_pac.pkgbuild_review.review_pkgbuild", return_value=True),
                 patch("apt_pac.commands.run_pacman_with_apt_output", return_value=True),
+                patch(
+                    "apt_pac.aur.AurInstaller._download_source_silent",
+                    return_value=True,
+                ),
             ):
                 mock_pkg = MagicMock()
                 mock_pkg.stem = "package-query-1.9-1-any"
@@ -532,6 +539,7 @@ class TestPrivileges(unittest.TestCase):
                 patch.object(
                     Path, "glob", return_value=[Path("test-pkg-1.0-1-any.pkg.tar.zst")]
                 ),
+                patch("apt_pac.pkgbuild_review.review_pkgbuild", return_value=True),
                 patch("apt_pac.commands.run_pacman_with_apt_output", return_value=True),
             ):
                 installer._build_pkg(pkg_info, verbose=False, auto_confirm=True)
@@ -563,7 +571,14 @@ class TestPrivileges(unittest.TestCase):
 
         with self.assertRaises(SystemExit):
             # Suppress print error
-            with patch("apt_pac.ui.console.print"):
+            with (
+                patch("apt_pac.ui.console.print"),
+                patch(
+                    "apt_pac.aur.AurInstaller._download_source_silent",
+                    return_value=True,
+                ),
+                patch("apt_pac.pkgbuild_review.review_pkgbuild", return_value=True),
+            ):
                 installer._build_pkg(pkg_info, verbose=False, auto_confirm=True)
 
 

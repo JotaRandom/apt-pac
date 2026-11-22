@@ -11,14 +11,28 @@ import apt_pac.commands as commands
 
 
 class TestSearchLogic(unittest.TestCase):
-    def test_aur_rpc_live(self):
-        """Test the actual AUR RPC connection (requires internet)"""
-        print("\nTesting AUR RPC (Live)...")
+    @patch("apt_pac.aur._set_cached")
+    @patch("apt_pac.aur._get_cached", return_value=None)
+    @patch("urllib.request.urlopen")
+    def test_aur_rpc_live(self, mock_urlopen, mock_get_cached, mock_set_cached):
+        """Test AUR RPC search parsing offline with mocked response."""
+        import json
+
+        mock_response = MagicMock()
+        mock_response.status = 200
+        mock_response.read.return_value = json.dumps(
+            {
+                "version": 5,
+                "type": "search",
+                "resultcount": 1,
+                "results": [{"Name": "google-chrome", "Version": "133.0-1"}],
+            }
+        ).encode("utf-8")
+        mock_response.__enter__.return_value = mock_response
+        mock_urlopen.return_value = mock_response
+
         results = aur.search_aur("google-chrome")
         found = any(p["Name"] == "google-chrome" for p in results)
-        print(
-            f"  Search 'google-chrome': Found {len(results)} results. Match found: {found}"
-        )
         self.assertTrue(len(results) > 0)
         self.assertTrue(found)
 

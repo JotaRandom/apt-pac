@@ -74,11 +74,11 @@ Installs the specified packages. It supports hybrid installation from Official R
 - If a local file path (.pkg.tar.zst) is provided, it installs using \fBpacman -U\fR.
 .TP
 .B reinstall \fIPACKAGES\fR...
-(pacman -S --force)
+(pacman -S)
 .br
 Reinstall packages
 .br
-Forces the reinstallation of the specified packages (pacman -S --force). This is useful if files have been corrupted or deleted manually. Use with caution as it overwrites existing files.
+Forces the reinstallation of the specified packages (pacman -S). This is useful if files have been corrupted or deleted manually. Use with caution as it overwrites existing files.
 .TP
 .B remove \fIPACKAGES\fR...
 (pacman -R)

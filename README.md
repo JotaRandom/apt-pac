@@ -49,7 +49,7 @@ The best way to install is essentially "The Arch Way" (building a package), so p
 ```bash
 git clone https://github.com/JotaRandom/apt-pac.git
 cd apt-pac
-makepkg -si
+makepkg -p PKGBUILD-GIT -si
 ```
 
 That's it! This will build and install the package, dependencies, and all documentation.
