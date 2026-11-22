@@ -10,6 +10,8 @@ import os
 import sys
 import shutil
 from pathlib import Path
+from rich.markup import escape
+
 from . import __version__, ui
 from .ui import print_error, print_info, print_transaction_summary
 from .i18n import _
@@ -64,7 +66,8 @@ class CyclicDependencyError(Exception):
 
     def __init__(self, cycle_path: List[str]):
         self.cycle = cycle_path
-        cycle_str = " → ".join(cycle_path)
+        sep = " -> " if ui.is_linux_console(ui.console) else " → "
+        cycle_str = sep.join(cycle_path)
         super().__init__(f"Dependency cycle detected: {cycle_str}")
 
 
@@ -289,7 +292,11 @@ def _get_real_build_user(config=None) -> Optional[str]:
 
 def _confirm_yes_aur(prompt: str) -> bool:
     """Confirm [Y/n] prompt accepting Enter (empty) or yes."""
-    resp = ui.console.input(prompt)
+    try:
+        resp = ui.console.input(prompt)
+    except (EOFError, KeyboardInterrupt):
+        ui.console.print()
+        return False
     if isinstance(resp, str):
         ans = resp.strip().lower()
         return ans == "" or ans.startswith("y")
@@ -339,14 +346,14 @@ def download_aur_source(
             try:
                 subprocess.run(["git", "pull"], cwd=target_dir, check=True)
                 return target_dir
-            except subprocess.CalledProcessError:
+            except (subprocess.CalledProcessError, OSError):
                 ui.console.print(
-                    f"[yellow]{_('Pull failed for')} {package_name}, {_('re-cloning...')}[/yellow]"
+                    f"[yellow]{_('Pull failed for')} {escape(str(package_name))}, {_('re-cloning...')}[/yellow]"
                 )
                 shutil.rmtree(target_dir)
         else:
             ui.console.print(
-                f"[yellow]{_('Removing incomplete directory for')} {package_name}...[/yellow]"
+                f"[yellow]{_('Removing incomplete directory for')} {escape(str(package_name))}...[/yellow]"
             )
             shutil.rmtree(target_dir)
 
@@ -354,8 +361,10 @@ def download_aur_source(
     try:
         subprocess.run(["git", "clone", clone_url, str(target_dir)], check=True)
         return target_dir
-    except subprocess.CalledProcessError:
-        print_error(_("Failed to clone {pkg} from AUR").format(pkg=package_name))
+    except (subprocess.CalledProcessError, OSError):
+        print_error(
+            _("Failed to clone {pkg} from AUR").format(pkg=escape(str(package_name)))
+        )
         return None
 
 
@@ -498,7 +507,7 @@ class AurInstaller:
                         f"  2. {_('Try installing packages individually')}"
                     )
                     ui.console.print(
-                        f"  3. {_('Report this to')} AUR {_('maintainers:')} {', '.join(set(e.cycle))}"
+                        f"  3. {_('Report this to')} AUR {_('maintainers:')} {', '.join(escape(x) for x in set(e.cycle))}"
                     )
                     sys.exit(1)
             official_deps = resolver.official_deps
@@ -684,13 +693,13 @@ class AurInstaller:
         pkg_dir = self.build_dir / base
 
         ui.console.print(
-            f"[bold cyan]Get:[/bold cyan]1 [blue]https://aur.archlinux.org/{base}.git[/blue] {base}-source",
+            f"[bold cyan]Get:[/bold cyan]1 [blue]https://aur.archlinux.org/{escape(str(base))}.git[/blue] {escape(str(base))}-source",
             highlight=False,
         )
 
         if not self._download_source_silent(base, pkg_dir, verbose):
             print_error(
-                _("Failed to download source for {base}").format(base=base)
+                _("Failed to download source for {base}").format(base=escape(str(base)))
             )
             sys.exit(1)
 
@@ -698,9 +707,12 @@ class AurInstaller:
         real_user = _get_real_build_user(config)
 
         if os.getuid() == 0 and real_user:
-            subprocess.run(
-                ["chown", "-R", f"{real_user}:", str(self.build_dir)], check=False
-            )
+            try:
+                subprocess.run(
+                    ["chown", "-R", f"{real_user}:", str(self.build_dir)], check=False
+                )
+            except OSError:
+                pass
 
         # 1.5 Security review of the downloaded PKGBUILD
         from .pkgbuild_review import review_pkgbuild
@@ -738,6 +750,14 @@ class AurInstaller:
             subprocess.run(cmd, cwd=run_cwd, check=True)
             return self._collect_built_packages(pkg_dir, name)
 
+        except OSError as e:
+            print_error(
+                _("Failed to build {pkg}: {error}").format(
+                    pkg=escape(str(name)), error=escape(str(e))
+                )
+            )
+            sys.exit(1)
+
         except subprocess.CalledProcessError as e:
             output = e.stderr.decode("utf-8", errors="ignore") if e.stderr else ""
             if not output and e.stdout:
@@ -747,7 +767,7 @@ class AurInstaller:
             if missing_keys:
                 for key_id in missing_keys:
                     ui.console.print(
-                        f"[yellow]{_('Missing GPG Key detected:')} {key_id}[/yellow]"
+                        f"[yellow]{_('Missing GPG Key detected:')} {escape(str(key_id))}[/yellow]"
                     )
                     ui.console.print(_("Attempting to import key..."))
                     gpg_cmd = ["gpg", "--recv-keys", key_id]
@@ -755,11 +775,11 @@ class AurInstaller:
                         gpg_cmd = get_privilege_command(real_user, gpg_cmd)
                     try:
                         subprocess.run(gpg_cmd, check=True)
-                    except subprocess.CalledProcessError:
+                    except (subprocess.CalledProcessError, OSError):
                         print_error(
                             _(
                                 "Failed to import key {key_id} or rebuild failed."
-                            ).format(key_id=key_id)
+                            ).format(key_id=escape(str(key_id)))
                         )
                         sys.exit(1)
 
@@ -767,15 +787,15 @@ class AurInstaller:
                     ui.console.print(_("Key imported. Retrying build..."))
                     subprocess.run(cmd, cwd=run_cwd, check=True)
                     return self._collect_built_packages(pkg_dir, name)
-                except subprocess.CalledProcessError:
+                except (subprocess.CalledProcessError, OSError):
                     print_error(
                         _("Failed to import key {key_id} or rebuild failed.").format(
-                            key_id=missing_keys[0]
+                            key_id=escape(str(missing_keys[0]))
                         )
                     )
                     sys.exit(1)
 
-            print_error(_("Failed to build {pkg}").format(pkg=name))
+            print_error(_("Failed to build {pkg}").format(pkg=escape(str(name))))
             sys.exit(1)
 
     def _download_source_silent(self, package_name, target_dir, verbose):
@@ -800,7 +820,7 @@ class AurInstaller:
             capture = not verbose
             subprocess.run(cmd, cwd=cwd, check=True, capture_output=capture)
             return True
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, OSError):
             return False
 
 

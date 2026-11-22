@@ -219,23 +219,32 @@ def _show_pkgbuild_preview(pkgbuild_path: Path, max_lines: int = 50) -> None:
         print_error(_("Cannot read PKGBUILD: {error}").format(error=e))
         return
 
+    linux_vt = ui.is_linux_console(ui.console)
+    sep = "-" if linux_vt else "—"
+    pipe = "|" if linux_vt else "│"
+    ellip = "..." if linux_vt else "…"
+    rule_char = "-" if linux_vt else "─"
+
     ui.console.print()
-    ui.console.rule(f"[bold]PKGBUILD[/bold] — {escape(pkgbuild_path.parent.name)}")
+    ui.console.rule(
+        f"[bold]PKGBUILD[/bold] {sep} {escape(pkgbuild_path.parent.name)}",
+        characters=rule_char,
+    )
     shown = lines[:max_lines]
     for i, line in enumerate(shown, 1):
         safe_line = escape(line)
         if line.strip().startswith("#"):
-            ui.console.print(f"[dim]{i:3}│ {safe_line}[/dim]", highlight=False)
+            ui.console.print(f"[dim]{i:3}{pipe} {safe_line}[/dim]", highlight=False)
         elif re.match(r"^[a-zA-Z_]+=", line):
-            ui.console.print(f"[cyan]{i:3}│[/cyan] {safe_line}", highlight=False)
+            ui.console.print(f"[cyan]{i:3}{pipe}[/cyan] {safe_line}", highlight=False)
         else:
-            ui.console.print(f"{i:3}│ {safe_line}", highlight=False)
+            ui.console.print(f"{i:3}{pipe} {safe_line}", highlight=False)
 
     if len(lines) > max_lines:
         ui.console.print(
-            f"[dim]… ({len(lines) - max_lines} more lines — press 'v' to view full)[/dim]"
+            f"[dim]{ellip} ({len(lines) - max_lines} more lines {sep} press 'v' to view full)[/dim]"
         )
-    ui.console.rule()
+    ui.console.rule(characters=rule_char)
 
 
 def review_pkgbuild(
@@ -280,21 +289,28 @@ def review_pkgbuild(
     if mode == "auto" and not findings:
         return True
 
+    linux_vt = ui.is_linux_console(ui.console)
+    sep = "-" if linux_vt else "—"
+    cross = "x" if linux_vt else "✗"
+    ellip = "..." if linux_vt else "…"
+
     # ---------- Present findings ----------
     ui.console.print()
     ui.console.print(
-        f"[bold yellow]{_('PKGBUILD Review')}[/bold yellow] — "
+        f"[bold yellow]{_('PKGBUILD Review')}[/bold yellow] {sep} "
         f"[bold]{escape(package_name)}[/bold]"
     )
 
     if critical:
         ui.console.print(f"[bold red]{_('CRITICAL findings:')}[/bold red]")
         for desc in critical:
-            ui.console.print(f"  [red]✗[/red] {escape(desc)}")
+            safe_desc = escape(desc.replace("…", "...") if linux_vt else desc)
+            ui.console.print(f"  [red]{cross}[/red] {safe_desc}")
     if warnings:
         ui.console.print(f"[bold yellow]{_('Warnings:')}[/bold yellow]")
         for desc in warnings:
-            ui.console.print(f"  [yellow]![/yellow] {escape(desc)}")
+            safe_desc = escape(desc.replace("…", "...") if linux_vt else desc)
+            ui.console.print(f"  [yellow]![/yellow] {safe_desc}")
     if not findings:
         ui.console.print(
             f"[green]{_('No obvious dangerous patterns detected.')}[/green]"
@@ -348,7 +364,7 @@ def review_pkgbuild(
             if os.getuid() == 0 and real_user:
                 editor_cmd = aur.get_privilege_command(real_user, editor_cmd)
             ui.console.print(
-                f"[dim]{_('Opening')} {pkgbuild_path} {_('in')} {editor_cmd[0]}…[/dim]"
+                f"[dim]{_('Opening')} {escape(str(pkgbuild_path))} {_('in')} {escape(str(editor_cmd[0]))}{ellip}[/dim]"
             )
             try:
                 subprocess.run(editor_cmd, check=False)
@@ -365,7 +381,10 @@ def review_pkgbuild(
                         f"[bold red]{_('Still has CRITICAL findings:')}[/bold red]"
                     )
                     for desc in critical:
-                        ui.console.print(f"  [red]✗[/red] {escape(desc)}")
+                        safe_desc = escape(
+                            desc.replace("…", "...") if linux_vt else desc
+                        )
+                        ui.console.print(f"  [red]{cross}[/red] {safe_desc}")
                 elif warnings:
                     ui.console.print(f"[yellow]{_('Still has warnings.')}[/yellow]")
                 else:
@@ -383,7 +402,10 @@ def review_pkgbuild(
             real_user = aur._get_real_build_user(config)
             if os.getuid() == 0 and real_user:
                 pager_cmd = aur.get_privilege_command(real_user, pager_cmd)
-            subprocess.run(pager_cmd, check=False)
+            try:
+                subprocess.run(pager_cmd, check=False)
+            except OSError as e:
+                print_error(_("Failed to launch pager: {error}").format(error=e))
             continue
 
         ui.console.print(

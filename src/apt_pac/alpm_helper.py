@@ -125,8 +125,15 @@ def search_packages(query, repos: Optional[List[str]] = None) -> List:
         dbs = [repo_dict[r] for r in repos if r in repo_dict]
 
     for db in dbs:
-        # db.search() takes variable args (multiple keywords)
-        results.extend(db.search(*terms))
+        # db.search() takes variable args (multiple keywords as regexes)
+        try:
+            results.extend(db.search(*terms))
+        except pyalpm.error:
+            escaped_terms = [re.escape(t) for t in terms]
+            try:
+                results.extend(db.search(*escaped_terms))
+            except pyalpm.error:
+                continue
 
     return results
 
@@ -449,6 +456,8 @@ def is_in_official_repos(pkgname: str) -> bool:
 
 def format_size(bytes_val: int) -> str:
     """Format byte size in human readable format (KiB, MiB, GiB)."""
+    if bytes_val is None:
+        bytes_val = 0
     if bytes_val < 1024:
         return f"{bytes_val} B"
     elif bytes_val < 1024 * 1024:
@@ -465,7 +474,7 @@ def format_timestamp(ts: int) -> str:
 
     try:
         return datetime.fromtimestamp(ts).strftime("%a %d %b %Y %I:%M:%S %p %Z")
-    except (ValueError, OSError):
+    except (TypeError, ValueError, OSError, OverflowError):
         return "Unknown"
 
 

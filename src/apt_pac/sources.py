@@ -12,6 +12,7 @@ import subprocess
 import shutil
 from pathlib import Path
 from typing import Dict, List, Optional
+from rich.markup import escape
 from .config import get_config
 from .ui import print_error, print_info, console, print_showsrc_info
 from .i18n import _
@@ -96,12 +97,15 @@ def get_sources_dir():
 
 def check_package_in_repos(package_name):
     """Check if package exists in official repositories."""
-    result = subprocess.run(
-        ["pacman", "-Si", package_name],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    return result.returncode == 0
+    try:
+        result = subprocess.run(
+            ["pacman", "-Si", package_name],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return result.returncode == 0
+    except OSError:
+        return False
 
 
 def download_source(package_name, verbose=False):
@@ -123,7 +127,7 @@ def download_source(package_name, verbose=False):
     # Check if package exists
     if not check_package_in_repos(package_name):
         print_error(
-            f"[red]{_('E:')}[/red] {_('Unable to find a source package for {pkg}').format(pkg=package_name)}"
+            f"[red]{_('E:')}[/red] {_('Unable to find a source package for {pkg}').format(pkg=escape(str(package_name)))}"
         )
         return None
 
@@ -131,33 +135,39 @@ def download_source(package_name, verbose=False):
 
     # Remove old version if exists
     if pkg_dir.exists():
-        print_info(f"{_('Updating source for')} {package_name}...")
+        print_info(f"{_('Updating source for')} {escape(str(package_name))}...")
         shutil.rmtree(pkg_dir)
     else:
-        print_info(f"{_('Getting source for')} {package_name}...")
+        print_info(f"{_('Getting source for')} {escape(str(package_name))}...")
 
     # Use pkgctl to clone the git repository
-    result = subprocess.run(
-        ["pkgctl", "repo", "clone", "--protocol", "https", package_name],
-        cwd=sources_dir,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["pkgctl", "repo", "clone", "--protocol", "https", package_name],
+            cwd=sources_dir,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as e:
+        print_error(
+            f"[red]{_('E:')}[/red] {_('Failed to download source for {pkg}: {err}').format(pkg=escape(str(package_name)), err=escape(str(e)))}"
+        )
+        return None
 
     if result.returncode != 0:
         print_error(
-            f"[red]{_('E:')}[/red] {_('Failed to download source for {pkg}').format(pkg=package_name)}"
+            f"[red]{_('E:')}[/red] {_('Failed to download source for {pkg}').format(pkg=escape(str(package_name)))}"
         )
         if result.stderr:
-            print_error(result.stderr.strip())
+            print_error(escape(result.stderr.strip()))
         return None
 
     if pkg_dir.exists() and (pkg_dir / "PKGBUILD").exists():
-        console.print(f"{_('Source downloaded to:')} {pkg_dir}")
+        console.print(f"{_('Source downloaded to:')} {escape(str(pkg_dir))}")
         return pkg_dir
     else:
         print_error(
-            f"[red]{_('E:')}[/red] {_('Source download incomplete for {pkg}').format(pkg=package_name)}"
+            f"[red]{_('E:')}[/red] {_('Source download incomplete for {pkg}').format(pkg=escape(str(package_name)))}"
         )
         return None
 
@@ -297,7 +307,9 @@ def parse_pkgbuild_info(pkgbuild_path):
 def handle_apt_source(package_name, extra_args, verbose=False):
     """Handle 'apt source <package>' command."""
     if verbose:
-        console.print(f"[dim]Checking if {package_name} exists in repos...[/dim]")
+        console.print(
+            f"[dim]Checking if {escape(str(package_name))} exists in repos...[/dim]"
+        )
 
     # Download the source
     pkg_dir = download_source(package_name, verbose=verbose)
@@ -307,7 +319,9 @@ def handle_apt_source(package_name, extra_args, verbose=False):
         from .aur import download_aur_source
 
         if verbose:
-            console.print(f"[dim]Checking AUR for {package_name}...[/dim]")
+            console.print(
+                f"[dim]Checking AUR for {escape(str(package_name))}...[/dim]"
+            )
         pkg_dir = download_aur_source(package_name)
 
     if pkg_dir:
@@ -315,13 +329,15 @@ def handle_apt_source(package_name, extra_args, verbose=False):
         print_info(f"  cd {pkg_dir}")
         print_info("  makepkg -si")
         if verbose:
-            console.print(f"[dim]Source directory: {pkg_dir}[/dim]")
-            console.print(f"[dim]PKGBUILD location: {pkg_dir / 'PKGBUILD'}[/dim]")
+            console.print(f"[dim]Source directory: {escape(str(pkg_dir))}[/dim]")
+            console.print(
+                f"[dim]PKGBUILD location: {escape(str(pkg_dir / 'PKGBUILD'))}[/dim]"
+            )
         return True
 
     if verbose:
         print_error(
-            f"[red]{_('E:')}[/red] {_('Failed to find source for {pkg} in').format(pkg=package_name)} ABS or AUR"
+            f"[red]{_('E:')}[/red] {_('Failed to find source for {pkg} in').format(pkg=escape(str(package_name)))} ABS or AUR"
         )
     return False
 
@@ -329,12 +345,16 @@ def handle_apt_source(package_name, extra_args, verbose=False):
 def handle_build_dep(package_name, verbose=False):
     """Handle 'apt build-dep <package>' command."""
     if verbose:
-        console.print(f"[dim]Looking for source package: {package_name}[/dim]")
+        console.print(
+            f"[dim]Looking for source package: {escape(str(package_name))}[/dim]"
+        )
 
     # First, ensure we have the source
     pkg_dir = get_source_dir(package_name)
     if not pkg_dir:
-        print_info(f"{_('Downloading source for')} {package_name}...")
+        print_info(
+            f"{_('Downloading source for')} {escape(str(package_name))}..."
+        )
         pkg_dir = download_source(package_name, verbose=verbose)
         if not pkg_dir:
             # Try AUR
@@ -345,31 +365,31 @@ def handle_build_dep(package_name, verbose=False):
             if not pkg_dir:
                 return False
     elif verbose:
-        console.print(f"[dim]Found cached source at {pkg_dir}[/dim]")
+        console.print(f"[dim]Found cached source at {escape(str(pkg_dir))}[/dim]")
 
     # Parse PKGBUILD for makedepends
     pkgbuild = pkg_dir / "PKGBUILD"
 
     if verbose:
-        console.print(f"[dim]Parsing PKGBUILD: {pkgbuild}[/dim]")
+        console.print(f"[dim]Parsing PKGBUILD: {escape(str(pkgbuild))}[/dim]")
 
     makedepends = parse_pkgbuild_makedepends(pkgbuild)
 
     if not makedepends:
         console.print(
-            f"[green]{_('No build dependencies required for')} {package_name}[/green]"
+            f"[green]{_('No build dependencies required for')} {escape(str(package_name))}[/green]"
         )
         if verbose:
             console.print("[dim]Checked PKGBUILD makedepends array - empty[/dim]")
         return True
 
     console.print(f"\n[bold]{_('The following packages will be installed:')}[/bold]")
-    console.print(f"  {' '.join(makedepends)}\n")
+    console.print(f"  {escape(' '.join(makedepends))}\n")
 
     if verbose:
         console.print(f"[dim]Found {len(makedepends)} build dependencies[/dim]")
         for dep in makedepends:
-            console.print(f"[dim]  - {dep}[/dim]")
+            console.print(f"[dim]  - {escape(str(dep))}[/dim]")
 
     # Install makedepends using apt-pac install
     from .commands import execute_command
@@ -380,21 +400,29 @@ def handle_build_dep(package_name, verbose=False):
         execute_command("install", makedepends)
         return True
     except Exception as e:
-        print_error(_("Failed to install build dependencies: {error}").format(error=e))
+        print_error(
+            _("Failed to install build dependencies: {error}").format(
+                error=escape(str(e))
+            )
+        )
         return False
 
 
 def handle_showsrc(package_name, verbose=False):
     """Handle 'apt-cache showsrc <package>' command."""
     if verbose:
-        console.print(f"[dim]Looking for source info: {package_name}[/dim]")
+        console.print(
+            f"[dim]Looking for source info: {escape(str(package_name))}[/dim]"
+        )
 
     # Try to get existing source
     pkg_dir = get_source_dir(package_name)
 
     if not pkg_dir:
         # Not cached, try to download
-        print_info(f"{_('Source not cached, downloading')} {package_name}...")
+        print_info(
+            f"{_('Source not cached, downloading')} {escape(str(package_name))}..."
+        )
         pkg_dir = download_source(package_name, verbose=verbose)
         if not pkg_dir:
             # Try AUR
@@ -405,7 +433,7 @@ def handle_showsrc(package_name, verbose=False):
             if not pkg_dir:
                 return False
     elif verbose:
-        console.print(f"[dim]Using cached source: {pkg_dir}[/dim]")
+        console.print(f"[dim]Using cached source: {escape(str(pkg_dir))}[/dim]")
 
     # Parse PKGBUILD info
     pkgbuild = pkg_dir / "PKGBUILD"

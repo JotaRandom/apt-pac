@@ -1,23 +1,80 @@
+import contextlib
+import io
+import os
+import re
+import shutil
+import sys
+
+from rich.color import ColorSystem
 from rich.console import Console
 from rich.markup import escape
-from rich.theme import Theme
-from rich.table import Table
 from rich.padding import Padding
-from .i18n import _
+from rich.table import Table
 from rich.text import Text
-import contextlib
+from rich.theme import Theme
 
-custom_theme = Theme(
-    {
-        "info": "bold blue",
-        "error": "bold red",
-        "success": "bold green",
-        "command": "italic cyan",
-        "pkg": "bold white",
-        "desc": "italic grey70",
-        "header": "bold yellow",
-    }
-)
+from .i18n import _
+
+
+def is_linux_console(target_console=None) -> bool:
+    """Return True when running inside a basic Linux virtual console / basic VT."""
+    term = os.environ.get("TERM", "").lower()
+    if term in {"linux", "vt100", "vt102", "vt220", "vt52", "dumb", "ansi"} or term.startswith(
+        "linux"
+    ):
+        return True
+
+    try:
+        tty_name = os.ttyname(sys.stdout.fileno())
+        if re.match(r"^/dev/(?:tty\d+|console)$", tty_name):
+            return True
+    except (OSError, ValueError, AttributeError, io.UnsupportedOperation):
+        pass
+
+    con = target_console if target_console is not None else globals().get("console")
+    enc = getattr(con, "encoding", None) if con is not None else None
+    if isinstance(enc, str) and enc and "utf" not in enc.lower():
+        return True
+
+    return False
+
+
+def get_terminal_width(target_console=None, default=80, minimum=20) -> int:
+    """Return current terminal column width cleanly clamped."""
+    con = target_console if target_console is not None else globals().get("console")
+    w = getattr(getattr(con, "size", None), "width", None)
+    if not isinstance(w, int) or isinstance(w, bool) or w <= 0:
+        try:
+            w = shutil.get_terminal_size((default, 24)).columns
+        except Exception:
+            w = default
+    return max(minimum, int(w))
+
+
+def _safe_cell_len(markup_str: str) -> int:
+    """Compute visible terminal width of a markup string without failing on literals."""
+    try:
+        return Text.from_markup(markup_str).cell_len
+    except Exception:
+        return Text(markup_str).cell_len
+
+
+def _build_theme() -> Theme:
+    linux_vt = is_linux_console(None)
+    return Theme(
+        {
+            "info": "bold blue",
+            "error": "bold red",
+            "success": "bold green",
+            "command": "cyan" if linux_vt else "italic cyan",
+            "pkg": "bold white",
+            "desc": "dim" if linux_vt else "italic grey70",
+            "header": "bold yellow",
+        }
+    )
+
+
+custom_theme = _build_theme()
 
 console = Console(theme=custom_theme, highlight=False)
 
@@ -27,12 +84,18 @@ def set_force_colors(force: bool):
     if force:
         console._force_terminal = True
         console._force_interactive = True
-        console._color_system = console._detect_color_system()
+        if is_linux_console(console):
+            console._color_system = ColorSystem.STANDARD
+        else:
+            console._color_system = console._detect_color_system()
 
 
 def print_info(text):
     """Print info message (no prefix - APT style)."""
-    console.print(text, highlight=False)
+    try:
+        console.print(text, highlight=False)
+    except Exception:
+        console.print(text, highlight=False, markup=False)
 
 
 def print_error(text):
@@ -45,12 +108,15 @@ def print_error(text):
 
 
 def print_command(text):
-    console.print(f"[command]{text}[/command]")
+    console.print(Text(str(text), style="command"), highlight=False)
 
 
 def print_success(text):
     """Print success message."""
-    console.print(f"[success]{text}[/success]")
+    try:
+        console.print(Text(str(text), style="success"), highlight=False)
+    except Exception:
+        console.print(str(text), highlight=False, markup=False)
 
 
 def print_reading_status():
@@ -74,7 +140,10 @@ def status(msg, spinner="dots"):
     Simulates console.status but just prints the message once (no spinner).
     Useful for adhering to 'no ugly spinners' rule.
     """
-    console.print(msg, highlight=False)
+    try:
+        console.print(msg, highlight=False)
+    except Exception:
+        console.print(msg, highlight=False, markup=False)
     yield
 
 
@@ -97,87 +166,132 @@ def print_apt_download_line(index, total, url, filename, size_str="", action="Ge
     )
 
 
+def _format_search_meta(meta: str) -> str:
+    """Format pacman -Ss trailing metadata with green [installed] and safe escaping."""
+    if not meta:
+        return ""
+    tokens = []
+    for tok in meta.split():
+        if tok == "[installed]":
+            tokens.append(f"[green]\\[{_('installed')}][/green]")
+        else:
+            tokens.append(escape(tok))
+    return " " + " ".join(tokens)
+
+
 def format_search_results(output):
     """
     Format pacman -Ss output to look like apt search.
     Pacman: repo/pkgname pkgver (groups) [installed]
     APT:    pkgname/repo pkgver [installed, ...]
     """
-    table = Table(show_header=False, box=None, padding=(0, 1))
     lines = output.strip().split("\n")
 
     for i in range(0, len(lines), 2):
         if i + 1 >= len(lines):
             break
 
-        # Line 1: extra/firefox 120.0-1 (gnome) [installed]
         header_line = lines[i]
 
-        # Split repo from the rest
         try:
             repo_part, rest = header_line.split("/", 1)
-            # rest is 'pkgname pkgver (groups) [installed]'
             parts = rest.split()
             pkgname = parts[0]
             pkgver = parts[1]
-
-            # Reconstruct meta (groups/status)
             meta = " ".join(parts[2:]) if len(parts) > 2 else ""
 
             apt_style_header = (
                 f"[bold green]{escape(pkgname)}[/bold green]/"
                 f"[bold blue]{escape(repo_part)}[/bold blue] "
-                f"[bold]{escape(pkgver)}[/bold] {escape(meta)}"
+                f"[bold]{escape(pkgver)}[/bold]{_format_search_meta(meta)}"
             )
         except (ValueError, IndexError):
-            # Fallback if format is unexpected
             apt_style_header = escape(header_line)
 
-        desc = escape(lines[i + 1].strip())
+        desc = lines[i + 1].strip()
 
-        table.add_row(apt_style_header)
-        table.add_row(f"  {desc}")
-        table.add_row("")  # Spacer
-
-    console.print(table)
+        console.print(apt_style_header, highlight=False, overflow="fold")
+        console.print(Padding(Text(desc, overflow="fold"), (0, 0, 0, 2)), highlight=False)
+        console.print()
 
 
 def format_aur_search_results(results):
     if not results:
         return
 
-    table = Table(show_header=False, box=None, padding=(0, 1))
-
     for pkg in results:
         name = escape(str(pkg.get("Name", "unknown")))
         ver = escape(str(pkg.get("Version", "unknown")))
-        desc = escape(str(pkg.get("Description", "") or "No description"))
+        desc = str(pkg.get("Description", "") or "No description")
         votes = pkg.get("NumVotes", 0)
 
-        # APT Style: pkgname/aur
         apt_style_header = (
             f"[bold green]{name}[/bold green]/[bold magenta]aur[/bold magenta] "
             f"[bold]{ver}[/bold] [desc](Votes: {votes})[/desc]"
         )
 
-        table.add_row(apt_style_header)
-        table.add_row(f"  {desc}")
-        table.add_row("")  # Spacer
+        console.print(apt_style_header, highlight=False, overflow="fold")
+        console.print(Padding(Text(desc, overflow="fold"), (0, 0, 0, 2)), highlight=False)
+        console.print()
 
-    console.print(table)
+
+def _print_kv_fields(fields, indent=0):
+    """Print key-value metadata fields with terminal-width and Linux VT adaptation."""
+    if not fields:
+        return
+
+    normalized = []
+    for label, value in fields:
+        lbl = str(label)
+        if isinstance(value, (list, tuple)):
+            lines = [str(v) for v in value if str(v) != ""]
+        else:
+            lines = [ln for ln in str(value).splitlines() if ln != ""]
+        if not lines:
+            lines = [""]
+        normalized.append((lbl, lines))
+
+    width = get_terminal_width(console)
+    max_label = max((Text(lbl).cell_len for lbl, _ in normalized), default=0)
+
+    if width < 60 or max_label + indent + 22 > width:
+        prefix = " " * indent
+        cont_prefix = " " * (indent + 2)
+        for lbl, lines in normalized:
+            t = Text()
+            t.append(f"{prefix}{lbl}:", style="bold cyan")
+            if len(lines) == 1:
+                if lines[0]:
+                    t.append(f" {lines[0]}")
+                console.print(t, highlight=False, overflow="fold")
+            else:
+                console.print(t, highlight=False, overflow="fold")
+                for item in lines:
+                    console.print(
+                        Text(f"{cont_prefix}{item}", overflow="fold"),
+                        highlight=False,
+                    )
+        return
+
+    grid = Table.grid(padding=(0, 0))
+    grid.add_column(style="bold cyan", no_wrap=True)
+    grid.add_column(style="bold cyan", no_wrap=True)
+    grid.add_column(overflow="fold")
+
+    for lbl, lines in normalized:
+        grid.add_row(lbl, " : ", Text("\n".join(lines), overflow="fold"))
+
+    renderable = Padding(grid, (0, 0, 0, indent)) if indent > 0 else grid
+    console.print(renderable)
 
 
 def format_show(output):
     """
     Format pacman -Si/Qi output to look like apt show.
-    Maps Pacman keys to APT keys.
-    Handles multi-line fields like Optional Deps.
+    Maps Pacman keys to APT keys and adapts column alignment to console width.
     """
     lines = output.strip().split("\n")
-    text = Text()
 
-    # APT Mapping (pacman output forced to English with LC_ALL=C)
-    # APT Mapping (pacman output forced to English with LC_ALL=C)
     key_map = {
         "Name": _("Package"),
         "Version": _("Version"),
@@ -200,80 +314,68 @@ def format_show(output):
         "Install Reason": _("APT-Manual-Installed"),
         "Repository": _("Section"),
     }
+    multiline_keys = {"Optional Deps", "Depends On", "Required By", "Optional For"}
 
     current_key = None
-    current_val = ""
+    val_lines: list[str] = []
+    block_fields: list[tuple[str, list[str]]] = []
+
+    def _flush_field():
+        nonlocal current_key, val_lines
+        if not current_key:
+            return
+        mapped_key = key_map.get(current_key, current_key)
+        cleaned = [ln for ln in val_lines if ln != ""]
+        if current_key == "Install Reason":
+            joined = " ".join(cleaned)
+            cleaned = ["yes" if "Explicitly installed" in joined else "no"]
+        block_fields.append((mapped_key, cleaned or [""]))
+        current_key = None
+        val_lines = []
 
     for line in lines:
-        # Check if line starts with non-whitespace (new field)
         if line and not line[0].isspace() and ":" in line:
-            # Save previous field if exists
-            if current_key:
-                mapped_key = key_map.get(current_key, current_key)
-                # Special value mapping
-                if current_key == "Install Reason":
-                    current_val = (
-                        "yes" if "Explicitly installed" in current_val else "no"
-                    )
-
-                text.append(f"{mapped_key:<20}", style="bold cyan")
-                text.append(f": {current_val}\n")
-
-            # Start new field
+            _flush_field()
             key, val = line.split(":", 1)
             current_key = key.strip()
-            current_val = val.strip()
-        elif line and line[0].isspace():
-            # Continuation line (indented) - part of current field
-            # For multi-line fields like Optional Deps, add newline to preserve formatting
-            if current_key in ["Optional Deps", "Depends On", "Required By"]:
-                current_val += "\n                     " + line.strip()
+            v = val.strip()
+            val_lines = [v] if v else []
+        elif line and line[0].isspace() and current_key:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if current_key in multiline_keys or not val_lines:
+                val_lines.append(stripped)
             else:
-                current_val += " " + line.strip()
+                val_lines[-1] = f"{val_lines[-1]} {stripped}"
         else:
-            # Empty line or other
-            if current_key:
-                # Save current field before empty line
-                mapped_key = key_map.get(current_key, current_key)
-                if current_key == "Install Reason":
-                    current_val = (
-                        "yes" if "Explicitly installed" in current_val else "no"
-                    )
+            _flush_field()
+            if block_fields:
+                _print_kv_fields(block_fields)
+                block_fields = []
+                console.print()
+            elif line.strip():
+                console.print(Text(line, overflow="fold"), highlight=False)
 
-                text.append(f"{mapped_key:<20}", style="bold cyan")
-                text.append(f": {current_val}\n")
-                current_key = None
-                current_val = ""
-            text.append(f"{line}\n")
-
-    # Don't forget last field
-    if current_key:
-        mapped_key = key_map.get(current_key, current_key)
-        if current_key == "Install Reason":
-            current_val = "yes" if "Explicitly installed" in current_val else "no"
-
-        text.append(f"{mapped_key:<20}", style="bold cyan")
-        text.append(f": {current_val}\n")
-
-    console.print(text, highlight=False)
+    _flush_field()
+    if block_fields:
+        _print_kv_fields(block_fields)
 
 
 def format_aur_info(packages):
     if not packages:
         return
 
-    for pkg in packages:
-        text = Text()
+    for idx, pkg in enumerate(packages):
+        fields = []
 
         def add_field(label, value):
             if value:
-                text.append(f"{label:<20}", style="bold cyan")
-                text.append(f": {value}\n")
+                fields.append((label, value))
 
-        # APT-like fields
         add_field(_("Package"), pkg.get("Name"))
         add_field(_("Version"), pkg.get("Version"))
-        add_field(_("Priority"), "optional")  # Dummy
+        add_field(_("Priority"), "optional")
         add_field(_("Section"), "aur")
         add_field(_("Maintainer"), pkg.get("Maintainer"))
         add_field(_("Homepage"), pkg.get("URL"))
@@ -296,54 +398,67 @@ def format_aur_info(packages):
         add_field(_("Vote-Count"), str(pkg.get("NumVotes", 0)))
         add_field(_("Popularity"), str(pkg.get("Popularity", 0)))
 
-        console.print(text, highlight=False)
+        _print_kv_fields(fields)
+        if idx < len(packages) - 1:
+            console.print()
 
 
-def print_columnar_list(pkgs, color_tag="green"):
+def print_columnar_list(pkgs, color_tag="green", indent=2):
     """
-    Prints a list of packages in columns (like ls or apt), adapting to terminal width.
+    Prints a list of packages in columns (like ls or apt), adapting to terminal width
+    with per-column width calculation so long entries only widen their own column.
     """
     if not pkgs:
         return
 
-    width = console.size.width
-    # Determine max length of package names (ignoring markup)
-    # We'll use table padding for spacing, so don't add extra here
-    max_len = max(Text.from_markup(p).cell_len for p in pkgs)
+    width = get_terminal_width(console)
+    available_width = max(1, width - indent)
 
-    # Calculate columns vs width
-    # Account for: indentation (4) + minimal spacing between columns
-    # Table uses padding=(0, 1) which adds 2 spaces per column
-    available_width = width - 4  # Left indent
+    def _to_text(raw: str) -> Text:
+        try:
+            t = Text.from_markup(raw)
+            if color_tag and color_tag != "default":
+                t.stylize(color_tag, 0, len(t))
+            return t
+        except Exception:
+            return Text(raw, style=color_tag if color_tag != "default" else "")
 
-    # Calculate how many columns fit with spacing
-    # Each column takes: max_len + 2 (table padding)
-    col_width = max_len + 2
-    cols = available_width // col_width
-    if cols < 1:
-        cols = 1
+    cell_texts = [_to_text(p) for p in pkgs]
+    lengths = [t.cell_len for t in cell_texts]
+    n = len(cell_texts)
 
-    # Calculate rows
-    # We fill by row for readability? Or by column?
-    # APT fills by row. (a b c d \n e f g h)
+    best_cols = 1
+    min_item = min(lengths) if lengths else 1
+    max_candidate = min(n, max(1, (available_width + 2) // max(1, min_item + 2)))
+    for cols in range(max_candidate, 1, -1):
+        col_widths = [max(lengths[i] for i in range(c, n, cols)) for c in range(cols)]
+        if sum(col_widths) + 2 * (cols - 1) <= available_width:
+            best_cols = cols
+            break
+
+    if best_cols == 1:
+        for t in cell_texts:
+            t.overflow = "fold"
+            console.print(Padding(t, (0, 0, 0, indent)), highlight=False)
+        console.print()
+        return
 
     table = Table(show_header=False, box=None, padding=(0, 1), pad_edge=False)
-    for _idx in range(cols):
-        table.add_column()
+    for _idx in range(best_cols):
+        table.add_column(no_wrap=True)
 
     row_buffer = []
-    for pkg in pkgs:
-        row_buffer.append(f"[{color_tag}]{pkg}[/{color_tag}]")
-        if len(row_buffer) == cols:
+    for t in cell_texts:
+        row_buffer.append(t)
+        if len(row_buffer) == best_cols:
             table.add_row(*row_buffer)
             row_buffer = []
     if row_buffer:
-        while len(row_buffer) < cols:
-            row_buffer.append("")
+        while len(row_buffer) < best_cols:
+            row_buffer.append(Text(""))
         table.add_row(*row_buffer)
 
-    # Indent by 4 spaces
-    console.print(Padding(table, (0, 0, 0, 4)))
+    console.print(Padding(table, (0, 0, 0, indent)))
     console.print()
 
 
@@ -367,27 +482,28 @@ def print_transaction_summary(
         console.print(f"\n{_('The following packages will be REMOVED:')}")
         lines = []
         for name, ver in remove_pkgs:
-            lines.append(f"{name} [bold]{ver}[/bold]" if ver else name)
+            safe_name = escape(str(name))
+            lines.append(
+                f"{safe_name} [bold]{escape(str(ver))}[/bold]" if ver else safe_name
+            )
         print_columnar_list(sorted(lines), "red")
 
     # 2. Upgrades
     if upgraded_pkgs:
-        # Check standard APT message? "The following packages will be upgraded:"
-        # Or simple "Upgrading:" like we had?
-        # Let's stick to rich text similar to APT
         console.print(f"\n[bold]{_('The following packages will be upgraded:')}[/bold]")
         lines = []
         for item in upgraded_pkgs:
-            # Handle both 2-tuple (name, ver) and 3-tuple (name, old_ver, new_ver)
             if len(item) == 3:
                 name, old_ver, ver = item
-                # Display format: pkgname (old -> new) or just new?
-                # APT often just lists them. pacman typically: pkg (1.0 -> 2.0)
-                # Let's show: pkg [bold]1.0 -> 2.0[/bold]
-                lines.append(f"{name} ([dim]{old_ver}[/dim] -> [bold]{ver}[/bold])")
+                lines.append(
+                    f"{escape(str(name))} ([dim]{escape(str(old_ver))}[/dim] -> [bold]{escape(str(ver))}[/bold])"
+                )
             else:
                 name, ver = item
-                lines.append(f"{name} [bold]{ver}[/bold]" if ver else name)
+                safe_name = escape(str(name))
+                lines.append(
+                    f"{safe_name} [bold]{escape(str(ver))}[/bold]" if ver else safe_name
+                )
         print_columnar_list(sorted(lines), "green")
 
     # 3. Installs (Split Explicit vs Extra)
@@ -408,7 +524,10 @@ def print_transaction_summary(
             )
             lines = []
             for name, ver in explicit_list:
-                lines.append(f"{name} [bold]{ver}[/bold]" if ver else name)
+                safe_name = escape(str(name))
+                lines.append(
+                    f"{safe_name} [bold]{escape(str(ver))}[/bold]" if ver else safe_name
+                )
             print_columnar_list(sorted(lines), "green")
 
         # Dependencies Second
@@ -418,7 +537,10 @@ def print_transaction_summary(
             )
             lines = []
             for name, ver in extra_list:
-                lines.append(f"{name} [bold]{ver}[/bold]" if ver else name)
+                safe_name = escape(str(name))
+                lines.append(
+                    f"{safe_name} [bold]{escape(str(ver))}[/bold]" if ver else safe_name
+                )
             print_columnar_list(sorted(lines), "green")
 
 
@@ -438,9 +560,11 @@ def show_help():
         f"{_('It provides an APT-like experience while ensuring system safety.')}\n\n"
     )
 
-    table = Table(show_header=False, box=None, padding=(0, 2))
-    table.add_column(_("Command"), style="success")
-    table.add_column(_("Description"))
+    width = get_terminal_width(console)
+    col_pad = 1 if width < 70 else 2
+    table = Table(show_header=False, box=None, padding=(0, col_pad), pad_edge=False)
+    table.add_column(_("Command"), style="success", no_wrap=True)
+    table.add_column(_("Description"), overflow="fold")
 
     commands = [
         ("update", _("update list of available packages (syncs -Sy and -Fy)")),
@@ -490,9 +614,10 @@ def show_help():
 
     console.print(text)
     console.print(f"[bold]{_('Most used commands:')}[/bold]")
-    console.print(table)
+    console.print(Padding(table, (0, 0, 0, 2)))
+    footer_style = "dim" if is_linux_console(console) else "italic grey70"
     console.print(
-        f"\n[italic grey70]{_('This APT has Super Pacman Powers.')}[/italic grey70]"
+        f"\n[{footer_style}]{_('This APT has Super Pacman Powers.')}[/{footer_style}]"
     )
 
 
@@ -501,13 +626,10 @@ def print_showsrc_info(package_name, info, pkg_dir):
     Format and print source information in APT style.
     Similar to format_show but takes a dictionary from PKGBUILD.
     """
-    text = Text()
-
-    # Map PKGBUILD keys to APT-like labels
-    fields = [
+    fields_spec = [
         ("pkgname", _("Package")),
         ("pkgver", _("Version")),
-        ("pkgrel", None),  # Combined with pkgver
+        ("pkgrel", None),
         ("pkgdesc", _("Description")),
         ("url", _("Homepage")),
         ("license", _("License")),
@@ -516,8 +638,9 @@ def print_showsrc_info(package_name, info, pkg_dir):
         ("makedepends", _("Build-Depends")),
     ]
 
-    for key, label in fields:
-        if key not in info:
+    kv_fields = []
+    for key, label in fields_spec:
+        if key not in info or not label:
             continue
 
         val = info[key]
@@ -528,11 +651,7 @@ def print_showsrc_info(package_name, info, pkg_dir):
             rel = info.get("pkgrel", "1")
             val = f"{val}-{rel}"
 
-        if label:
-            text.append(f"{label + ':':<20}", style="bold cyan")
-            text.append(f" {val}\n")
+        kv_fields.append((label, str(val)))
 
-    text.append(f"\n{_('Source Directory:') + ' ':<20}", style="bold cyan")
-    text.append(f" {pkg_dir}\n")
-
-    console.print(text, highlight=False)
+    kv_fields.append((_("Source Directory"), str(pkg_dir)))
+    _print_kv_fields(kv_fields)

@@ -307,9 +307,15 @@ class Config:
         if "ui" in config and isinstance(config["ui"], dict):
             show_output = config["ui"].get("show_output")
             if show_output and show_output not in ["apt-pac", "apt", "pacman"]:
-                # Invalid value, use default for this key
                 config["ui"]["show_output"] = "apt-pac"
-            
+            if "verbosity" in config["ui"]:
+                v = config["ui"]["verbosity"]
+                if isinstance(v, bool) or not isinstance(v, int):
+                    config["ui"]["verbosity"] = DEFAULT_CONFIG["ui"]["verbosity"]
+            for bkey in ("force_colors", "show_pacman_command"):
+                if bkey in config["ui"] and not isinstance(config["ui"][bkey], bool):
+                    config["ui"][bkey] = DEFAULT_CONFIG["ui"][bkey]
+
         if "tools" in config and isinstance(config["tools"], dict):
             privilege_tool = config["tools"].get("privilege_tool")
             if privilege_tool and privilege_tool not in ["auto", "sudo", "doas", "run0"]:
@@ -321,6 +327,34 @@ class Config:
                 "ask", "auto", "never", "true", "false", "1", "0", "yes", "no"
             ):
                 config["safeguards"]["review_pkgbuild"] = "ask"
+            if "mass_removal_threshold" in config["safeguards"]:
+                t = config["safeguards"]["mass_removal_threshold"]
+                if isinstance(t, bool) or not isinstance(t, int):
+                    config["safeguards"]["mass_removal_threshold"] = DEFAULT_CONFIG[
+                        "safeguards"
+                    ]["mass_removal_threshold"]
+            if "warn_partial_upgrades" in config["safeguards"] and not isinstance(
+                config["safeguards"]["warn_partial_upgrades"], bool
+            ):
+                config["safeguards"]["warn_partial_upgrades"] = DEFAULT_CONFIG[
+                    "safeguards"
+                ]["warn_partial_upgrades"]
+
+        if "defaults" in config and isinstance(config["defaults"], dict):
+            if "always_sync_files" in config["defaults"] and not isinstance(
+                config["defaults"]["always_sync_files"], bool
+            ):
+                config["defaults"]["always_sync_files"] = DEFAULT_CONFIG["defaults"][
+                    "always_sync_files"
+                ]
+
+        if "performance" in config and isinstance(config["performance"], dict):
+            if "rpc_cache_ttl" in config["performance"]:
+                ttl = config["performance"]["rpc_cache_ttl"]
+                if isinstance(ttl, bool) or not isinstance(ttl, int):
+                    config["performance"]["rpc_cache_ttl"] = DEFAULT_CONFIG[
+                        "performance"
+                    ]["rpc_cache_ttl"]
         
         return True
     
