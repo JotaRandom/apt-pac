@@ -1,6 +1,6 @@
+import getpass
 import os
 import time
-import getpass
 from pathlib import Path
 
 

@@ -51,14 +51,6 @@ def get_terminal_width(target_console=None, default=80, minimum=20) -> int:
     return max(minimum, int(w))
 
 
-def _safe_cell_len(markup_str: str) -> int:
-    """Compute visible terminal width of a markup string without failing on literals."""
-    try:
-        return Text.from_markup(markup_str).cell_len
-    except Exception:
-        return Text(markup_str).cell_len
-
-
 def _build_theme() -> Theme:
     linux_vt = is_linux_console(None)
     return Theme(
@@ -82,12 +74,13 @@ console = Console(theme=custom_theme, highlight=False)
 def set_force_colors(force: bool):
     """Update console to force terminal output (colors) if requested."""
     if force:
-        console._force_terminal = True
-        console._force_interactive = True
+        setattr(console, "_force_terminal", True)
         if is_linux_console(console):
-            console._color_system = ColorSystem.STANDARD
+            setattr(console, "_color_system", ColorSystem.STANDARD)
         else:
-            console._color_system = console._detect_color_system()
+            detect = getattr(console, "_detect_color_system", None)
+            if callable(detect):
+                setattr(console, "_color_system", detect())
 
 
 def print_info(text):
@@ -140,6 +133,7 @@ def status(msg, spinner="dots"):
     Simulates console.status but just prints the message once (no spinner).
     Useful for adhering to 'no ugly spinners' rule.
     """
+    del spinner
     try:
         console.print(msg, highlight=False)
     except Exception:
@@ -156,6 +150,7 @@ def print_apt_download_line(index, total, url, filename, size_str="", action="Ge
     - URL in blue
     - Filename and size in default color
     """
+    del total
     safe_action = escape(str(action))
     safe_url = escape(str(url))
     safe_filename = escape(str(filename))
@@ -235,7 +230,7 @@ def format_aur_search_results(results):
         console.print()
 
 
-def _print_kv_fields(fields, indent=0):
+def print_kv_fields(fields, indent=0):
     """Print key-value metadata fields with terminal-width and Linux VT adaptation."""
     if not fields:
         return
@@ -252,7 +247,7 @@ def _print_kv_fields(fields, indent=0):
         normalized.append((lbl, lines))
 
     width = get_terminal_width(console)
-    max_label = max((Text(lbl).cell_len for lbl, _ in normalized), default=0)
+    max_label = max((Text(lbl).cell_len for lbl, _val in normalized), default=0)
 
     if width < 60 or max_label + indent + 22 > width:
         prefix = " " * indent
@@ -283,6 +278,9 @@ def _print_kv_fields(fields, indent=0):
 
     renderable = Padding(grid, (0, 0, 0, indent)) if indent > 0 else grid
     console.print(renderable)
+
+
+_print_kv_fields = print_kv_fields
 
 
 def format_show(output):
@@ -324,7 +322,7 @@ def format_show(output):
         nonlocal current_key, val_lines
         if not current_key:
             return
-        mapped_key = key_map.get(current_key, current_key)
+        mapped_key = str(key_map.get(current_key, current_key) or current_key)
         cleaned = [ln for ln in val_lines if ln != ""]
         if current_key == "Install Reason":
             joined = " ".join(cleaned)
@@ -463,10 +461,10 @@ def print_columnar_list(pkgs, color_tag="green", indent=2):
 
 
 def print_transaction_summary(
-    new_pkgs: list = None,  # List of (name, version)
-    upgraded_pkgs: list = None,  # List of (name, version)
-    remove_pkgs: list = None,  # List of (name, version)
-    explicit_names: set = None,  # Set of package names requested by user
+    new_pkgs: list | None = None,  # List of (name, version)
+    upgraded_pkgs: list | None = None,  # List of (name, version)
+    remove_pkgs: list | None = None,  # List of (name, version)
+    explicit_names: set | None = None,  # Set of package names requested by user
 ):
     """
     Unified function to print transaction summary for installs, upgrades, and removals.
@@ -626,6 +624,7 @@ def print_showsrc_info(package_name, info, pkg_dir):
     Format and print source information in APT style.
     Similar to format_show but takes a dictionary from PKGBUILD.
     """
+    del package_name
     fields_spec = [
         ("pkgname", _("Package")),
         ("pkgver", _("Version")),

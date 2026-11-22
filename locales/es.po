@@ -1,0 +1,1695 @@
+# Spanish translations for apt-pac package.
+# Copyright (C) 2026 apt-pac contributors
+# This file is distributed under the same license as the apt-pac package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: apt-pac 2026.01.28\n"
+"Report-Msgid-Bugs-To: https://github.com/JotaRandom/apt-pac/issues\n"
+"POT-Creation-Date: 2026-11-22 04:23-0300\n"
+"PO-Revision-Date: 2026-11-22 04:25-0300\n"
+"Last-Translator: apt-pac contributors\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/apt_pac/__main__.py:42
+msgid "Usage: apt <command> [arguments]"
+msgstr "Uso: apt <orden> [argumentos]"
+
+#: src/apt_pac/__main__.py:59 src/apt_pac/__main__.py:65 src/apt_pac/aur.py:553
+#: src/apt_pac/commands.py:548 src/apt_pac/commands.py:609
+#: src/apt_pac/commands.py:612 src/apt_pac/commands.py:677
+#: src/apt_pac/commands.py:684 src/apt_pac/commands.py:3632
+#: src/apt_pac/pkgbuild_review.py:351
+msgid "Aborted."
+msgstr "Abortado."
+
+#: src/apt_pac/__main__.py:74 src/apt_pac/commands.py:689
+#: src/apt_pac/commands.py:811 src/apt_pac/commands.py:1798
+#: src/apt_pac/commands.py:1882 src/apt_pac/commands.py:2103
+#: src/apt_pac/commands.py:2117 src/apt_pac/commands.py:2195
+#: src/apt_pac/commands.py:2233 src/apt_pac/commands.py:2247
+#: src/apt_pac/commands.py:2304 src/apt_pac/commands.py:2380
+#: src/apt_pac/commands.py:2398 src/apt_pac/commands.py:2422
+#: src/apt_pac/commands.py:2539 src/apt_pac/commands.py:2554
+#: src/apt_pac/commands.py:2690 src/apt_pac/commands.py:2700
+#: src/apt_pac/commands.py:2810 src/apt_pac/commands.py:2823
+#: src/apt_pac/commands.py:2875 src/apt_pac/commands.py:2883
+#: src/apt_pac/commands.py:3001 src/apt_pac/commands.py:3008
+#: src/apt_pac/commands.py:3015 src/apt_pac/commands.py:3036
+#: src/apt_pac/commands.py:3044 src/apt_pac/commands.py:3053
+#: src/apt_pac/commands.py:3063 src/apt_pac/commands.py:3077
+#: src/apt_pac/commands.py:3097 src/apt_pac/commands.py:3116
+#: src/apt_pac/commands.py:3146 src/apt_pac/commands.py:3191
+#: src/apt_pac/commands.py:3210 src/apt_pac/commands.py:3287
+#: src/apt_pac/commands.py:3313 src/apt_pac/commands.py:3361
+#: src/apt_pac/commands.py:3428 src/apt_pac/commands.py:3485
+#: src/apt_pac/commands.py:3506 src/apt_pac/commands.py:3513
+#: src/apt_pac/commands.py:3719 src/apt_pac/commands.py:3722
+#: src/apt_pac/commands.py:3726 src/apt_pac/commands.py:3729
+#: src/apt_pac/sources.py:77 src/apt_pac/sources.py:87
+#: src/apt_pac/sources.py:130 src/apt_pac/sources.py:153
+#: src/apt_pac/sources.py:159 src/apt_pac/sources.py:170
+#: src/apt_pac/sources.py:343 src/apt_pac/sources.py:457
+msgid "E:"
+msgstr "E:"
+
+#: src/apt_pac/aur.py:254
+msgid "Checking"
+msgstr "Comprobando"
+
+#: src/apt_pac/aur.py:254
+msgid "foreign packages for updates..."
+msgstr "si hay actualizaciones para paquetes externos..."
+
+#: src/apt_pac/aur.py:277
+#, python-brace-format
+msgid "Error checking updates for chunk: {error}"
+msgstr "Error al comprobar actualizaciones del lote: {error}"
+
+#: src/apt_pac/aur.py:343 src/apt_pac/aur.py:469 src/apt_pac/aur.py:474
+#: src/apt_pac/aur.py:479
+msgid "Cache directory is not available."
+msgstr "El directorio de caché no está disponible."
+
+#: src/apt_pac/aur.py:356
+msgid "Pull failed for"
+msgstr "Falló git pull para"
+
+#: src/apt_pac/aur.py:356
+msgid "re-cloning..."
+msgstr "volviendo a clonar..."
+
+#: src/apt_pac/aur.py:361
+msgid "Removing incomplete directory for"
+msgstr "Eliminando directorio incompleto de"
+
+#: src/apt_pac/aur.py:371
+#, python-brace-format
+msgid "Failed to clone {pkg} from AUR"
+msgstr "No se pudo clonar {pkg} desde AUR"
+
+#: src/apt_pac/aur.py:415
+#, python-brace-format
+msgid "Package '{pkg}' not found in AUR or official repos."
+msgstr "No se encontró el paquete '{pkg}' en AUR ni en los repositorios oficiales."
+
+#: src/apt_pac/aur.py:502
+msgid "Resolving AUR dependencies..."
+msgstr "Resolviendo dependencias de AUR..."
+
+#: src/apt_pac/aur.py:507
+msgid "Possible solutions:"
+msgstr "Posibles soluciones:"
+
+#: src/apt_pac/aur.py:509
+msgid "One of these packages may list the other as a dependency incorrectly"
+msgstr "Uno de estos paquetes puede listar incorrectamente al otro como dependencia"
+
+#: src/apt_pac/aur.py:512
+msgid "Try installing packages individually"
+msgstr "Pruebe a instalar los paquetes de forma individual"
+
+#: src/apt_pac/aur.py:515
+msgid "Report this to"
+msgstr "Informe de esto a los"
+
+#: src/apt_pac/aur.py:515
+msgid "maintainers:"
+msgstr "mantenedores de:"
+
+#: src/apt_pac/aur.py:525
+msgid "Nothing to do."
+msgstr "Nada que hacer."
+
+#: src/apt_pac/aur.py:529
+msgid "Building dependency tree... Done"
+msgstr "Creando árbol de dependencias... Hecho"
+
+#: src/apt_pac/aur.py:530
+msgid "Reading state information... Done"
+msgstr "Leyendo la información de estado... Hecho"
+
+#: src/apt_pac/aur.py:543
+#, python-brace-format
+msgid "0 upgraded, {count} newly installed, 0 to remove and 0 not upgraded."
+msgstr "0 actualizados, {count} nuevos se instalarán, 0 para eliminar y 0 no actualizados."
+
+#: src/apt_pac/aur.py:550 src/apt_pac/aur.py:552 src/apt_pac/commands.py:682
+msgid "Do you want to continue?"
+msgstr "¿Desea continuar?"
+
+#: src/apt_pac/aur.py:550
+msgid "Yes"
+msgstr "Sí"
+
+#: src/apt_pac/aur.py:564
+msgid "Failed to install official dependencies"
+msgstr "No se pudieron instalar las dependencias oficiales"
+
+#: src/apt_pac/aur.py:604
+#, python-brace-format
+msgid "Build failed for {pkg}"
+msgstr "Falló la compilación de {pkg}"
+
+#: src/apt_pac/aur.py:617
+#, python-brace-format
+msgid "Failed to install intermediate dependency {pkg}"
+msgstr "No se pudo instalar la dependencia intermedia {pkg}"
+
+#: src/apt_pac/aur.py:633
+msgid "Failed to install final packages"
+msgstr "No se pudieron instalar los paquetes finales"
+
+#: src/apt_pac/aur.py:709
+#, python-brace-format
+msgid "Failed to download source for {base}"
+msgstr "No se pudo descargar la fuente de {base}"
+
+#: src/apt_pac/aur.py:728
+msgid "Build aborted."
+msgstr "Compilación abortada."
+
+#: src/apt_pac/aur.py:745
+msgid "Cannot build as root without SUDO_USER"
+msgstr "No se puede compilar como root sin SUDO_USER"
+
+#: src/apt_pac/aur.py:762
+#, python-brace-format
+msgid "Failed to build {pkg}: {error}"
+msgstr "Error al compilar {pkg}: {error}"
+
+#: src/apt_pac/aur.py:777
+msgid "Missing GPG Key detected:"
+msgstr "Clave GPG faltante detectada:"
+
+#: src/apt_pac/aur.py:779
+msgid "Attempting to import key..."
+msgstr "Intentando importar la clave..."
+
+#: src/apt_pac/aur.py:788 src/apt_pac/aur.py:799
+#, python-brace-format
+msgid "Failed to import key {key_id} or rebuild failed."
+msgstr "No se pudo importar la clave {key_id} o falló la recompilación."
+
+#: src/apt_pac/aur.py:794
+msgid "Key imported. Retrying build..."
+msgstr "Clave importada. Reintentando compilación..."
+
+#: src/apt_pac/aur.py:805
+#, python-brace-format
+msgid "Failed to build {pkg}"
+msgstr "Error al compilar {pkg}"
+
+#: src/apt_pac/cli.py:36
+msgid "Unknown version option:"
+msgstr "Opción de versión desconocida:"
+
+#: src/apt_pac/commands.py:355 src/apt_pac/commands.py:3349
+#: src/apt_pac/commands.py:3352
+msgid "unknown"
+msgstr "desconocido"
+
+#: src/apt_pac/commands.py:361 src/apt_pac/commands.py:3679
+msgid "0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded."
+msgstr "0 actualizados, 0 nuevos se instalarán, 0 para eliminar y 0 no actualizados."
+
+#: src/apt_pac/commands.py:399 src/apt_pac/commands.py:1764
+#: src/apt_pac/commands.py:2026 src/apt_pac/commands.py:2035
+#: src/apt_pac/commands.py:2038 src/apt_pac/commands.py:2041
+#: src/apt_pac/commands.py:2067 src/apt_pac/commands.py:2090
+#: src/apt_pac/commands.py:2137 src/apt_pac/commands.py:2162
+#: src/apt_pac/ui.py:171
+msgid "installed"
+msgstr "instalado"
+
+#: src/apt_pac/commands.py:410
+msgid "Suggested packages:"
+msgstr "Paquetes sugeridos:"
+
+#: src/apt_pac/commands.py:418
+msgid "The following packages are no longer required:"
+msgstr "Los siguientes paquetes ya no son necesarios:"
+
+#: src/apt_pac/commands.py:422
+msgid "Use"
+msgstr "Utilice"
+
+#: src/apt_pac/commands.py:422
+msgid "to remove them."
+msgstr "para eliminarlos."
+
+#: src/apt_pac/commands.py:438
+msgid "Summary:"
+msgstr "Resumen:"
+
+#: src/apt_pac/commands.py:438
+msgid "Upgrading:"
+msgstr "Actualizando:"
+
+#: src/apt_pac/commands.py:438
+msgid "Installing:"
+msgstr "Instalando:"
+
+#: src/apt_pac/commands.py:438
+msgid "Removals:"
+msgstr "Eliminaciones:"
+
+#: src/apt_pac/commands.py:438
+msgid "Not Upgrading:"
+msgstr "Sin actualizar:"
+
+#: src/apt_pac/commands.py:454 src/apt_pac/commands.py:460
+msgid "Unknown"
+msgstr "Desconocido"
+
+#: src/apt_pac/commands.py:471
+msgid "Download Size:"
+msgstr "Tamaño de descarga:"
+
+#: src/apt_pac/commands.py:474
+msgid "Freed Space:"
+msgstr "Espacio liberado:"
+
+#: src/apt_pac/commands.py:478
+msgid "Installed Size:"
+msgstr "Tamaño instalado:"
+
+#: src/apt_pac/commands.py:525
+msgid "Continue?"
+msgstr "¿Continuar?"
+
+#: src/apt_pac/commands.py:532
+msgid "Space needed:"
+msgstr "Espacio necesario:"
+
+#: src/apt_pac/commands.py:532
+msgid "available"
+msgstr "disponibles"
+
+#: src/apt_pac/commands.py:536
+msgid "More space needed in"
+msgstr "Se necesita más espacio en"
+
+#: src/apt_pac/commands.py:536
+msgid "than available"
+msgstr "del disponible"
+
+#: src/apt_pac/commands.py:541
+msgid "Installation may fail, Continue?"
+msgstr "La instalación podría fallar. ¿Desea continuar?"
+
+#: src/apt_pac/commands.py:596
+msgid "You are trying to remove a core system package:"
+msgstr "Está intentando eliminar un paquete esencial del sistema:"
+
+#: src/apt_pac/commands.py:600
+msgid "Removing this package may render your system unbootable."
+msgstr "Eliminar este paquete podría dejar su sistema inarrancable."
+
+#: src/apt_pac/commands.py:602
+msgid "Yes, I know what I am doing"
+msgstr "Sí, sé lo que estoy haciendo"
+
+#: src/apt_pac/commands.py:605
+msgid "To proceed, type"
+msgstr "Para continuar, escriba"
+
+#: src/apt_pac/commands.py:635 src/apt_pac/commands.py:2258
+#: src/apt_pac/commands.py:2312 src/apt_pac/commands.py:2547
+msgid "E"
+msgstr "E"
+
+#: src/apt_pac/commands.py:635 src/apt_pac/commands.py:2258
+#: src/apt_pac/commands.py:2312 src/apt_pac/commands.py:2823
+#: src/apt_pac/commands.py:2883 src/apt_pac/commands.py:3053
+#: src/apt_pac/commands.py:3063 src/apt_pac/commands.py:3161
+msgid "No package specified"
+msgstr "No se especificó ningún paquete"
+
+#: src/apt_pac/commands.py:671 src/apt_pac/commands.py:822
+#: src/apt_pac/commands.py:1785 src/apt_pac/commands.py:1857
+#: src/apt_pac/commands.py:1964 src/apt_pac/commands.py:2272
+#: src/apt_pac/commands.py:2326 src/apt_pac/commands.py:2561
+#: src/apt_pac/commands.py:2571 src/apt_pac/commands.py:2581
+#: src/apt_pac/commands.py:3082 src/apt_pac/commands.py:3614
+#: src/apt_pac/commands.py:3650 src/apt_pac/config.py:237
+#: src/apt_pac/config.py:238 src/apt_pac/pkgbuild_review.py:334
+#: src/apt_pac/sources.py:89
+msgid "W:"
+msgstr "W:"
+
+#: src/apt_pac/commands.py:671
+msgid "You are about to remove"
+msgstr "Está a punto de eliminar"
+
+#: src/apt_pac/commands.py:671
+msgid "packages"
+msgstr "paquetes"
+
+#: src/apt_pac/commands.py:675
+msgid "Are you sure you want to proceed?"
+msgstr "¿Está seguro de que desea continuar?"
+
+#: src/apt_pac/commands.py:689
+msgid "Failed to calculate removal summary: "
+msgstr "No se pudo calcular el resumen de eliminación: "
+
+#: src/apt_pac/commands.py:775
+msgid "Connecting..."
+msgstr "Conectando..."
+
+#: src/apt_pac/commands.py:919
+msgid "Failed to synchronize databases"
+msgstr "No se pudieron sincronizar las bases de datos"
+
+#: src/apt_pac/commands.py:935
+msgid "Failed to run pacman"
+msgstr "No se pudo ejecutar pacman"
+
+#: src/apt_pac/commands.py:983
+msgid "in cache"
+msgstr "en caché"
+
+#: src/apt_pac/commands.py:1383
+msgid "Processing"
+msgstr "Procesando"
+
+#: src/apt_pac/commands.py:1522
+msgid "Downloading"
+msgstr "Descargando"
+
+#: src/apt_pac/commands.py:1576
+msgid "Installing"
+msgstr "Instalando"
+
+#: src/apt_pac/commands.py:1578
+msgid "Upgrading"
+msgstr "Actualizando"
+
+#: src/apt_pac/commands.py:1580 src/apt_pac/commands.py:1703
+msgid "Removing"
+msgstr "Eliminando"
+
+#: src/apt_pac/commands.py:1601
+msgid "Checking keys"
+msgstr "Comprobando claves"
+
+#: src/apt_pac/commands.py:1603
+msgid "Checking integrity"
+msgstr "Comprobando integridad"
+
+#: src/apt_pac/commands.py:1605
+msgid "Checking conflicts"
+msgstr "Comprobando conflictos"
+
+#: src/apt_pac/commands.py:1607
+msgid "Checking disk space"
+msgstr "Comprobando espacio en disco"
+
+#: src/apt_pac/commands.py:1609
+msgid "Loading packages"
+msgstr "Cargando paquetes"
+
+#: src/apt_pac/commands.py:1633
+msgid "Selecting previously unselected package"
+msgstr "Seleccionando el paquete previamente no seleccionado"
+
+#: src/apt_pac/commands.py:1638 src/apt_pac/commands.py:1651
+#: src/apt_pac/commands.py:1682 src/apt_pac/commands.py:1698
+msgid "Reading database"
+msgstr "Leyendo la base de datos"
+
+#: src/apt_pac/commands.py:1638 src/apt_pac/commands.py:1651
+#: src/apt_pac/commands.py:1682 src/apt_pac/commands.py:1698
+msgid "files and directories currently installed"
+msgstr "ficheros y directorios instalados actualmente"
+
+#: src/apt_pac/commands.py:1644 src/apt_pac/commands.py:1670
+#: src/apt_pac/commands.py:1675 src/apt_pac/commands.py:1691
+msgid "Unpacking"
+msgstr "Desempaquetando"
+
+#: src/apt_pac/commands.py:1660 src/apt_pac/commands.py:1687
+msgid "Preparing to unpack"
+msgstr "Preparando para desempaquetar"
+
+#: src/apt_pac/commands.py:1665
+msgid "dpkg: warning: downgrading"
+msgstr "dpkg: aviso: desactualizando"
+
+#: src/apt_pac/commands.py:1665
+msgid "from"
+msgstr "de"
+
+#: src/apt_pac/commands.py:1665
+msgid "to"
+msgstr "a"
+
+#: src/apt_pac/commands.py:1728
+msgid "Processing triggers for"
+msgstr "Procesando disparadores para"
+
+#: src/apt_pac/commands.py:1742
+msgid "Setting up system"
+msgstr "Configurando el sistema"
+
+#: src/apt_pac/commands.py:1767
+msgid "pending"
+msgstr "pendientes"
+
+#: src/apt_pac/commands.py:1857
+msgid "Configuration file updates detected (.pacnew/.pacsave/.pacorig):"
+msgstr "Actualizaciones de archivos de configuración detectadas (.pacnew/.pacsave/.pacorig):"
+
+#: src/apt_pac/commands.py:1863
+msgid "Review these files (e.g. with pacdiff) to merge changes."
+msgstr "Revise estos archivos (p. ej. con pacdiff) para fusionar los cambios."
+
+#: src/apt_pac/commands.py:1882
+msgid "Error running pacman: "
+msgstr "Error al ejecutar pacman: "
+
+#: src/apt_pac/commands.py:1902 src/apt_pac/commands.py:2987
+#: src/apt_pac/ui.py:551
+msgid "Usage:"
+msgstr "Uso:"
+
+#: src/apt_pac/commands.py:1902 src/apt_pac/ui.py:551
+msgid "options"
+msgstr "opciones"
+
+#: src/apt_pac/commands.py:1903
+msgid "Options:"
+msgstr "Opciones:"
+
+#: src/apt_pac/commands.py:1907
+msgid "List installed packages with details"
+msgstr "Listar paquetes instalados con detalles"
+
+#: src/apt_pac/commands.py:1908
+msgid "List upgradable packages"
+msgstr "Listar paquetes actualizables"
+
+#: src/apt_pac/commands.py:1909
+msgid "List manually installed packages"
+msgstr "Listar paquetes instalados manualmente"
+
+#: src/apt_pac/commands.py:1910
+msgid "List all available package versions"
+msgstr "Listar todas las versiones disponibles de los paquetes"
+
+#: src/apt_pac/commands.py:1911
+msgid "List packages in a specific repository"
+msgstr "Listar paquetes de un repositorio específico"
+
+#: src/apt_pac/commands.py:1952
+msgid "Listing"
+msgstr "Listando"
+
+#: src/apt_pac/commands.py:1952 src/apt_pac/commands.py:3240
+#: src/apt_pac/commands.py:3647 src/apt_pac/ui.py:118 src/apt_pac/ui.py:121
+#: src/apt_pac/ui.py:125
+msgid "Done"
+msgstr "Hecho"
+
+#: src/apt_pac/commands.py:1964
+msgid "Partial upgrades are not supported on Arch Linux."
+msgstr "Las actualizaciones parciales no están soportadas en Arch Linux."
+
+#: src/apt_pac/commands.py:1967
+msgid "It is recommended to run a full system upgrade instead."
+msgstr "Se recomienda ejecutar una actualización completa del sistema en su lugar."
+
+#: src/apt_pac/commands.py:1986
+msgid "upgradable from:"
+msgstr "actualizable desde:"
+
+#: src/apt_pac/commands.py:1990
+msgid "All packages are up to date."
+msgstr "Todos los paquetes están actualizados."
+
+#: src/apt_pac/commands.py:2024
+msgid "orphan"
+msgstr "huérfano"
+
+#: src/apt_pac/commands.py:2032
+msgid "installed by"
+msgstr "instalado por"
+
+#: src/apt_pac/commands.py:2038
+msgid "outdated"
+msgstr "desactualizado"
+
+#: src/apt_pac/commands.py:2103
+msgid "No repository specified"
+msgstr "No se especificó ningún repositorio"
+
+#: src/apt_pac/commands.py:2117
+msgid "Repository"
+msgstr "Repositorio"
+
+#: src/apt_pac/commands.py:2117
+msgid "not found"
+msgstr "no encontrado"
+
+#: src/apt_pac/commands.py:2195 src/apt_pac/commands.py:2304
+msgid "Unable to locate package"
+msgstr "No se ha podido localizar el paquete"
+
+#: src/apt_pac/commands.py:2220
+msgid "Installing official packages:"
+msgstr "Instalando paquetes oficiales:"
+
+#: src/apt_pac/commands.py:2233 src/apt_pac/commands.py:2380
+#: src/apt_pac/commands.py:2539 src/apt_pac/commands.py:2554
+#: src/apt_pac/commands.py:3210 src/apt_pac/commands.py:3287
+msgid "Failed to execute pacman: "
+msgstr "No se pudo ejecutar pacman: "
+
+#: src/apt_pac/commands.py:2243
+msgid ""
+"\n"
+"Interrupted."
+msgstr ""
+"\n"
+"Interrumpido."
+
+#: src/apt_pac/commands.py:2247
+msgid "AUR Installation failed: "
+msgstr "Falló la instalación desde AUR: "
+
+#: src/apt_pac/commands.py:2272
+msgid "pactree (pacman-contrib) not found; showing flat dependency list."
+msgstr "No se encontró pactree (pacman-contrib); mostrando lista plana de dependencias."
+
+#: src/apt_pac/commands.py:2292
+msgid "Depends:"
+msgstr "Depende:"
+
+#: src/apt_pac/commands.py:2297
+msgid "Suggests:"
+msgstr "Sugiere:"
+
+#: src/apt_pac/commands.py:2301
+msgid "(no dependencies)"
+msgstr "(sin dependencias)"
+
+#: src/apt_pac/commands.py:2326
+msgid ""
+"pactree (pacman-contrib) not found; showing flat reverse dependency list."
+msgstr ""
+"No se encontró pactree (pacman-contrib); mostrando lista plana de dependencias inversas."
+
+#: src/apt_pac/commands.py:2350
+msgid "Reverse Depends:"
+msgstr "Dependencias inversas:"
+
+#: src/apt_pac/commands.py:2354
+msgid "Optional For:"
+msgstr "Opcional para:"
+
+#: src/apt_pac/commands.py:2359
+msgid "(no reverse dependencies)"
+msgstr "(sin dependencias inversas)"
+
+#: src/apt_pac/commands.py:2362
+msgid "Package not installed:"
+msgstr "Paquete no instalado:"
+
+#: src/apt_pac/commands.py:2387
+msgid "Cleaning apt-pac cache"
+msgstr "Limpiando la caché de apt-pac"
+
+#: src/apt_pac/commands.py:2394
+msgid "Removed"
+msgstr "Eliminado"
+
+#: src/apt_pac/commands.py:2398
+msgid "Failed to remove cache directory: "
+msgstr "No se pudo eliminar el directorio de caché: "
+
+#: src/apt_pac/commands.py:2406
+msgid "Simulation: cleaning up package cache (keeping latest 3 versions)..."
+msgstr "Simulación: limpiando la caché de paquetes (conservando las últimas 3 versiones)..."
+
+#: src/apt_pac/commands.py:2410
+msgid "Cleaning up package cache (keeping latest 3 versions)..."
+msgstr "Limpiando la caché de paquetes (conservando las últimas 3 versiones)..."
+
+#: src/apt_pac/commands.py:2417
+msgid "Simulation: would free"
+msgstr "Simulación: se liberarían"
+
+#: src/apt_pac/commands.py:2419
+msgid "Cleaned up cache."
+msgstr "Caché limpiada."
+
+#: src/apt_pac/commands.py:2419
+msgid "Freed space:"
+msgstr "Espacio liberado:"
+
+#: src/apt_pac/commands.py:2422
+msgid "Failed to clean cache:"
+msgstr "No se pudo limpiar la caché:"
+
+#: src/apt_pac/commands.py:2438
+msgid "Package files:"
+msgstr "Ficheros de paquete:"
+
+#: src/apt_pac/commands.py:2449 src/apt_pac/commands.py:2453
+msgid "Installed:"
+msgstr "Instalados:"
+
+#: src/apt_pac/commands.py:2453 src/apt_pac/commands.py:2501
+msgid "none"
+msgstr "ninguno"
+
+#: src/apt_pac/commands.py:2463 src/apt_pac/commands.py:2501
+msgid "Candidate:"
+msgstr "Candidato:"
+
+#: src/apt_pac/commands.py:2466 src/apt_pac/commands.py:2503
+msgid "Version table:"
+msgstr "Tabla de versiones:"
+
+#: src/apt_pac/commands.py:2513
+msgid "Usage: apt-mark [auto|manual|hold|unhold] [package]"
+msgstr "Uso: apt-mark [auto|manual|hold|unhold] [paquete]"
+
+#: src/apt_pac/commands.py:2522 src/apt_pac/commands.py:2848
+#: src/apt_pac/commands.py:2994 src/apt_pac/commands.py:3245
+#: src/apt_pac/commands.py:3658
+msgid "N:"
+msgstr "N:"
+
+#: src/apt_pac/commands.py:2523
+msgid "Arch handles 'hold' via IgnorePkg in /etc/pacman.conf."
+msgstr "Arch gestiona 'hold' mediante IgnorePkg en /etc/pacman.conf."
+
+#: src/apt_pac/commands.py:2526
+msgid "Consider adding these packages to IgnorePkg manually."
+msgstr "Considere añadir estos paquetes a IgnorePkg manualmente."
+
+#: src/apt_pac/commands.py:2528
+msgid "Subcommand "
+msgstr "El subcomando "
+
+#: src/apt_pac/commands.py:2528
+msgid " not yet implemented."
+msgstr " aún no está implementado."
+
+#: src/apt_pac/commands.py:2544
+msgid "Database integrity:"
+msgstr "Integridad de la base de datos:"
+
+#: src/apt_pac/commands.py:2544 src/apt_pac/commands.py:2563
+#: src/apt_pac/commands.py:2584
+msgid "OK"
+msgstr "CORRECTO"
+
+#: src/apt_pac/commands.py:2547
+msgid "Database errors"
+msgstr "Errores en la base de datos"
+
+#: src/apt_pac/commands.py:2561
+msgid "package warnings found"
+msgstr "avisos de paquetes encontrados"
+
+#: src/apt_pac/commands.py:2563
+msgid "All packages:"
+msgstr "Todos los paquetes:"
+
+#: src/apt_pac/commands.py:2566
+msgid "Library links check skipped."
+msgstr "Comprobación de enlaces de bibliotecas omitida."
+
+#: src/apt_pac/commands.py:2571
+msgid "Checking library links (lddd) can take several minutes."
+msgstr "Comprobar los enlaces de bibliotecas (lddd) puede tardar varios minutos."
+
+#: src/apt_pac/commands.py:2573
+msgid "Use --no-lddd to skip this check."
+msgstr "Use --no-lddd para omitir esta comprobación."
+
+#: src/apt_pac/commands.py:2574
+msgid "Checking library links (lddd)..."
+msgstr "Comprobando enlaces de bibliotecas (lddd)..."
+
+#: src/apt_pac/commands.py:2581
+msgid "Broken libraries detected"
+msgstr "Se detectaron bibliotecas rotas"
+
+#: src/apt_pac/commands.py:2584
+msgid "Library links:"
+msgstr "Enlaces de bibliotecas:"
+
+#: src/apt_pac/commands.py:2609
+msgid "Packages matching search:"
+msgstr "Paquetes que coinciden con la búsqueda:"
+
+#: src/apt_pac/commands.py:2613
+msgid "No packages found matching"
+msgstr "No se encontraron paquetes que coincidan con"
+
+#: src/apt_pac/commands.py:2622
+msgid "No packages found."
+msgstr "No se encontraron paquetes."
+
+#: src/apt_pac/commands.py:2625
+msgid "All available packages:"
+msgstr "Todos los paquetes disponibles:"
+
+#: src/apt_pac/commands.py:2634
+msgid "Package Statistics:"
+msgstr "Estadísticas de paquetes:"
+
+#: src/apt_pac/commands.py:2644
+msgid "Total packages"
+msgstr "Paquetes totales"
+
+#: src/apt_pac/commands.py:2645
+msgid "Installed packages"
+msgstr "Paquetes instalados"
+
+#: src/apt_pac/commands.py:2646
+msgid "Explicitly installed"
+msgstr "Instalados explícitamente"
+
+#: src/apt_pac/commands.py:2647
+msgid "Installed as deps"
+msgstr "Instalados como dependencias"
+
+#: src/apt_pac/commands.py:2648
+msgid "Orphaned packages"
+msgstr "Paquetes huérfanos"
+
+#: src/apt_pac/commands.py:2649
+msgid "Upgradable packages"
+msgstr "Paquetes actualizables"
+
+#: src/apt_pac/commands.py:2675
+msgid "Cached package files"
+msgstr "Paquetes en caché"
+
+#: src/apt_pac/commands.py:2683
+msgid "Fetching Arch Linux news..."
+msgstr "Obteniendo noticias de Arch Linux..."
+
+#: src/apt_pac/commands.py:2690
+msgid "Failed to fetch news:"
+msgstr "No se pudieron obtener las noticias:"
+
+#: src/apt_pac/commands.py:2700
+msgid "Failed to parse news feed:"
+msgstr "No se pudo analizar el canal de noticias:"
+
+#: src/apt_pac/commands.py:2705 src/apt_pac/commands.py:2733
+msgid "No news found."
+msgstr "No se encontraron noticias."
+
+#: src/apt_pac/commands.py:2711
+msgid "Latest Arch Linux News"
+msgstr "Últimas noticias de Arch Linux"
+
+#: src/apt_pac/commands.py:2737
+msgid "No Title"
+msgstr "Sin título"
+
+#: src/apt_pac/commands.py:2800
+msgid "Note: No pager defined, printing to stdout"
+msgstr "Nota: no hay paginador definido, imprimiendo en la salida estándar"
+
+#: src/apt_pac/commands.py:2810
+msgid "No packages specified for source download"
+msgstr "No se especificaron paquetes para descargar las fuentes"
+
+#: src/apt_pac/commands.py:2812
+msgid "Usage: apt source <package>"
+msgstr "Uso: apt source <paquete>"
+
+#: src/apt_pac/commands.py:2824
+msgid "Usage: apt build-dep <package>"
+msgstr "Uso: apt build-dep <paquete>"
+
+#: src/apt_pac/commands.py:2834
+msgid "Adding repositories in Arch Linux differs from Debian/Ubuntu."
+msgstr "Añadir repositorios en Arch Linux difiere de Debian/Ubuntu."
+
+#: src/apt_pac/commands.py:2838
+msgid "You need to edit /etc/pacman.conf and add a [section]."
+msgstr "Debe editar /etc/pacman.conf y añadir una [sección]."
+
+#: src/apt_pac/commands.py:2840
+msgid "Example"
+msgstr "Ejemplo"
+
+#: src/apt_pac/commands.py:2843
+msgid "Example (Generic)"
+msgstr "Ejemplo (genérico)"
+
+#: src/apt_pac/commands.py:2848
+msgid "You may need to import GPG keys first using apt-key (pacman-key)."
+msgstr "Es posible que necesite importar claves GPG primero usando apt-key (pacman-key)."
+
+#: src/apt_pac/commands.py:2856
+msgid "How to add a repository"
+msgstr "Cómo añadir un repositorio"
+
+#: src/apt_pac/commands.py:2862
+msgid "Do you want to edit /etc/pacman.conf now?"
+msgstr "¿Desea editar /etc/pacman.conf ahora?"
+
+#: src/apt_pac/commands.py:2869 src/apt_pac/commands.py:3091
+#: src/apt_pac/commands.py:3884
+msgid "Running:"
+msgstr "Ejecutando:"
+
+#: src/apt_pac/commands.py:2875 src/apt_pac/commands.py:3097
+msgid "Failed to launch editor: "
+msgstr "No se pudo iniciar el editor: "
+
+#: src/apt_pac/commands.py:2967
+msgid "Configuration files for"
+msgstr "Archivos de configuración para"
+
+#: src/apt_pac/commands.py:2973
+msgid "Use your favorite editor to edit them."
+msgstr "Use su editor favorito para editarlos."
+
+#: src/apt_pac/commands.py:2976
+msgid "Program"
+msgstr "El programa"
+
+#: src/apt_pac/commands.py:2976
+msgid "is not installed"
+msgstr "no está instalado"
+
+#: src/apt_pac/commands.py:2980
+msgid "No configuration file found for"
+msgstr "No se encontró archivo de configuración para"
+
+#: src/apt_pac/commands.py:2989
+msgid "Examples:"
+msgstr "Ejemplos:"
+
+#: src/apt_pac/commands.py:2990
+msgid "Import GPG key"
+msgstr "Importar clave GPG"
+
+#: src/apt_pac/commands.py:2991
+msgid "List all keys"
+msgstr "Listar todas las claves"
+
+#: src/apt_pac/commands.py:2992
+msgid "Remove key"
+msgstr "Eliminar clave"
+
+#: src/apt_pac/commands.py:2994
+msgid "This is a wrapper for pacman-key"
+msgstr "Este es un contenedor para pacman-key"
+
+#: src/apt_pac/commands.py:3001
+msgid "No keyfile specified"
+msgstr "No se especificó archivo de clave"
+
+#: src/apt_pac/commands.py:3008
+msgid "No key ID specified"
+msgstr "No se especificó ID de clave"
+
+#: src/apt_pac/commands.py:3015
+msgid "Unknown apt-key command: "
+msgstr "Orden apt-key desconocida: "
+
+#: src/apt_pac/commands.py:3029
+msgid "Error running"
+msgstr "Error al ejecutar"
+
+#: src/apt_pac/commands.py:3036 src/apt_pac/commands.py:3044
+msgid "Failed to execute pacman-key: "
+msgstr "No se pudo ejecutar pacman-key: "
+
+#: src/apt_pac/commands.py:3054
+msgid "Usage: apt-cache showsrc <package>"
+msgstr "Uso: apt-cache showsrc <paquete>"
+
+#: src/apt_pac/commands.py:3064
+msgid "Usage: apt help <package>"
+msgstr "Uso: apt help <paquete>"
+
+#: src/apt_pac/commands.py:3069
+msgid "E: man is not installed"
+msgstr "E: man no está instalado"
+
+#: src/apt_pac/commands.py:3070
+msgid "Install man-db or man-pages to use this feature"
+msgstr "Instale man-db o man-pages para usar esta función"
+
+#: src/apt_pac/commands.py:3077
+msgid "Failed to launch man: "
+msgstr "No se pudo abrir man: "
+
+#: src/apt_pac/commands.py:3082
+msgid "No manual entry for"
+msgstr "No existe entrada de manual para"
+
+#: src/apt_pac/commands.py:3084
+msgid "Try:"
+msgstr "Pruebe:"
+
+#: src/apt_pac/commands.py:3116
+msgid "You must give at least one search pattern"
+msgstr "Debe indicar al menos un patrón de búsqueda"
+
+#: src/apt_pac/commands.py:3146
+msgid "Search error:"
+msgstr "Error de búsqueda:"
+
+#: src/apt_pac/commands.py:3152
+msgid "Searching AUR..."
+msgstr "Buscando en AUR..."
+
+#: src/apt_pac/commands.py:3177
+msgid "Checking AUR..."
+msgstr "Comprobando en AUR..."
+
+#: src/apt_pac/commands.py:3191 src/apt_pac/ui.py:294 src/apt_pac/ui.py:374
+#: src/apt_pac/ui.py:629
+msgid "Package"
+msgstr "Paquete"
+
+#: src/apt_pac/commands.py:3191
+msgid "not found in repositories, local database, or"
+msgstr "no encontrado en repositorios, base de datos local ni en"
+
+#: src/apt_pac/commands.py:3240 src/apt_pac/ui.py:118
+msgid "Reading package lists"
+msgstr "Leyendo lista de paquetes"
+
+#: src/apt_pac/commands.py:3246
+msgid "'update --aur' simply checks official DBs as"
+msgstr "'update --aur' solo comprueba las bases de datos oficiales ya que"
+
+#: src/apt_pac/commands.py:3248
+msgid "has no central DB to sync."
+msgstr "no tiene una base de datos central que sincronizar."
+
+#: src/apt_pac/commands.py:3273
+msgid "Ignoring selective flags for"
+msgstr "Ignorando opciones selectivas para"
+
+#: src/apt_pac/commands.py:3273
+msgid "performing full system upgrade."
+msgstr "realizando una actualización completa del sistema."
+
+#: src/apt_pac/commands.py:3314 src/apt_pac/commands.py:3429
+#, python-brace-format
+msgid "AUR Upgrade failed: {error}"
+msgstr "Falló la actualización de AUR: {error}"
+
+#: src/apt_pac/commands.py:3336
+msgid "Resolving"
+msgstr "Resolviendo en"
+
+#: src/apt_pac/commands.py:3336
+msgid "dependencies..."
+msgstr "las dependencias..."
+
+#: src/apt_pac/commands.py:3358
+msgid "All"
+msgstr "Todos los paquetes de"
+
+#: src/apt_pac/commands.py:3358
+msgid "packages are up to date."
+msgstr "están actualizados."
+
+#: src/apt_pac/commands.py:3361
+msgid "Failed to check"
+msgstr "No se pudieron comprobar en"
+
+#: src/apt_pac/commands.py:3361
+msgid "updates:"
+msgstr "las actualizaciones:"
+
+#: src/apt_pac/commands.py:3407
+msgid "Upgrade failed"
+msgstr "Falló la actualización"
+
+#: src/apt_pac/commands.py:3411
+msgid "Skipping official packages upgrade (--aur provided)"
+msgstr "Omitiendo actualización de paquetes oficiales (se indicó --aur)"
+
+#: src/apt_pac/commands.py:3434 src/apt_pac/commands.py:3674
+msgid "Skipping"
+msgstr "Omitiendo"
+
+#: src/apt_pac/commands.py:3434
+msgid "updates (--official provided)"
+msgstr "(actualizaciones omitidas por --official)"
+
+#: src/apt_pac/commands.py:3439
+msgid "Updating package file list (pacman -Fy)..."
+msgstr "Actualizando lista de ficheros de paquetes (pacman -Fy)..."
+
+#: src/apt_pac/commands.py:3485
+msgid "Failed to execute command: "
+msgstr "No se pudo ejecutar la orden: "
+
+#: src/apt_pac/commands.py:3506 src/apt_pac/commands.py:3513
+msgid "Invalid operation "
+msgstr "Operación no válida "
+
+#: src/apt_pac/commands.py:3509
+msgid "Did you mean:"
+msgstr "¿Quiso decir:"
+
+#: src/apt_pac/commands.py:3575
+msgid "Config dir:"
+msgstr "Directorio de configuración:"
+
+#: src/apt_pac/commands.py:3576
+msgid "Cache dir:"
+msgstr "Directorio de caché:"
+
+#: src/apt_pac/commands.py:3578
+#, python-brace-format
+msgid "Verbosity: {verbosity}, Quiet: {quiet}, Auto-confirm: {auto_confirm}"
+msgstr "Detalle: {verbosity}, Silencioso: {quiet}, Confirmación automática: {auto_confirm}"
+
+#: src/apt_pac/commands.py:3595
+msgid "Simulation mode enabled."
+msgstr "Modo simulación activado."
+
+#: src/apt_pac/commands.py:3614
+#, python-brace-format
+msgid "You have {count} pending system upgrades."
+msgstr "Tiene {count} actualizaciones pendientes del sistema."
+
+#: src/apt_pac/commands.py:3619
+msgid ""
+"Performing partial upgrades is [bold]unsupported[/bold] on Arch Linux and "
+"may break your system."
+msgstr ""
+"Realizar actualizaciones parciales [bold]no está soportado[/bold] en Arch Linux y "
+"puede dañar el sistema."
+
+#: src/apt_pac/commands.py:3623
+msgid "It is recommended to run"
+msgstr "Se recomienda ejecutar"
+
+#: src/apt_pac/commands.py:3623
+msgid "first."
+msgstr "primero."
+
+#: src/apt_pac/commands.py:3628
+msgid "Proceed with partial operation?"
+msgstr "¿Continuar con la operación parcial?"
+
+#: src/apt_pac/commands.py:3639
+msgid "Correcting dependencies..."
+msgstr "Corrigiendo dependencias..."
+
+#: src/apt_pac/commands.py:3643
+msgid "Attempting to resolve broken dependencies via system upgrade..."
+msgstr "Intentando resolver dependencias rotas mediante actualización del sistema..."
+
+#: src/apt_pac/commands.py:3650
+msgid "Run as root to attempt automatic fixes"
+msgstr "Ejecute como root para intentar correcciones automáticas"
+
+#: src/apt_pac/commands.py:3659
+msgid "Pacman doesn't install optional dependencies by default"
+msgstr "Pacman no instala dependencias opcionales de forma predeterminada"
+
+#: src/apt_pac/commands.py:3674
+msgid "not installed"
+msgstr "no instalado"
+
+#: src/apt_pac/commands.py:3695
+msgid "...\"Have you mooed today?\"..."
+msgstr "...\"¿Ha mugido hoy?\"..."
+
+#: src/apt_pac/commands.py:3706
+msgid "...Waka waka!..."
+msgstr "...Waka waka!..."
+
+#: src/apt_pac/commands.py:3719 src/apt_pac/commands.py:3726
+msgid ""
+"Could not open lock file /var/lib/pacman/db.lck - open (13: Permission "
+"denied)"
+msgstr ""
+"No se pudo abrir el fichero de bloqueo /var/lib/pacman/db.lck - open (13: Permiso denegado)"
+
+#: src/apt_pac/commands.py:3722
+msgid "Unable to lock directory /var/lib/pacman/"
+msgstr "No se pudo bloquear el directorio /var/lib/pacman/"
+
+#: src/apt_pac/commands.py:3729
+msgid ""
+"Unable to lock the administration directory (/var/lib/pacman/), are you root?"
+msgstr ""
+"No se pudo bloquear el directorio de administración (/var/lib/pacman/), ¿es usted root?"
+
+#: src/apt_pac/commands.py:3802
+msgid "pactree (pacman-contrib) is required for dotty."
+msgstr "Se requiere pactree (pacman-contrib) para dotty."
+
+#: src/apt_pac/commands.py:3830
+msgid "No orphaned packages to remove."
+msgstr "No hay paquetes huérfanos para eliminar."
+
+#: src/apt_pac/commands.py:3848 src/apt_pac/commands.py:3863
+#: src/apt_pac/commands.py:3865 src/apt_pac/commands.py:3871
+msgid "Simulation:"
+msgstr "Simulación:"
+
+#: src/apt_pac/config.py:237
+msgid "Cannot create cache directory - system appears to be read-only"
+msgstr "No se puede crear el directorio de caché: el sistema parece ser de solo lectura"
+
+#: src/apt_pac/config.py:238
+msgid "features will not be available"
+msgstr "las funciones no estarán disponibles"
+
+#: src/apt_pac/pkgbuild_review.py:217 src/apt_pac/pkgbuild_review.py:281
+#, python-brace-format
+msgid "Cannot read PKGBUILD: {error}"
+msgstr "No se puede leer el PKGBUILD: {error}"
+
+#: src/apt_pac/pkgbuild_review.py:242
+#, python-brace-format
+msgid "{count} more lines"
+msgstr "{count} líneas más"
+
+#: src/apt_pac/pkgbuild_review.py:243
+msgid "press 'v' to view full"
+msgstr "pulse 'v' para verlo completo"
+
+#: src/apt_pac/pkgbuild_review.py:275
+#, python-brace-format
+msgid "PKGBUILD not found in {pkg_dir}"
+msgstr "No se encontró el PKGBUILD en {pkg_dir}"
+
+#: src/apt_pac/pkgbuild_review.py:300
+msgid "PKGBUILD Review"
+msgstr "Revisión de PKGBUILD"
+
+#: src/apt_pac/pkgbuild_review.py:305
+msgid "CRITICAL findings:"
+msgstr "Hallazgos CRÍTICOS:"
+
+#: src/apt_pac/pkgbuild_review.py:310
+msgid "Warnings:"
+msgstr "Avisos:"
+
+#: src/apt_pac/pkgbuild_review.py:316 src/apt_pac/pkgbuild_review.py:392
+msgid "No obvious dangerous patterns detected."
+msgstr "No se detectaron patrones peligrosos evidentes."
+
+#: src/apt_pac/pkgbuild_review.py:326
+msgid ""
+"Critical findings in PKGBUILD and --noconfirm / -y was given. Aborting for "
+"safety. Re-run without -y to review manually."
+msgstr ""
+"Hallazgos críticos en el PKGBUILD y se indicó --noconfirm / -y. Abortando por "
+"seguridad. Vuelva a ejecutar sin -y para revisarlo manualmente."
+
+#: src/apt_pac/pkgbuild_review.py:334
+msgid "Proceeding despite warnings because of --noconfirm."
+msgstr "Continuando a pesar de los avisos debido a --noconfirm."
+
+#: src/apt_pac/pkgbuild_review.py:343
+msgid "Continue building"
+msgstr "¿Continuar con la compilación?"
+
+#: src/apt_pac/pkgbuild_review.py:357
+msgid "Build aborted by user."
+msgstr "Compilación abortada por el usuario."
+
+#: src/apt_pac/pkgbuild_review.py:367
+msgid "Opening"
+msgstr "Abriendo"
+
+#: src/apt_pac/pkgbuild_review.py:367
+msgid "in"
+msgstr "en"
+
+#: src/apt_pac/pkgbuild_review.py:372
+#, python-brace-format
+msgid "Failed to launch editor: {error}"
+msgstr "No se pudo iniciar el editor: {error}"
+
+#: src/apt_pac/pkgbuild_review.py:381
+msgid "Still has CRITICAL findings:"
+msgstr "Aún tiene hallazgos CRÍTICOS:"
+
+#: src/apt_pac/pkgbuild_review.py:389
+msgid "Still has warnings."
+msgstr "Aún tiene avisos."
+
+#: src/apt_pac/pkgbuild_review.py:408
+#, python-brace-format
+msgid "Failed to launch pager: {error}"
+msgstr "No se pudo abrir el paginador: {error}"
+
+#: src/apt_pac/pkgbuild_review.py:412
+msgid "Please answer Y (yes), n (no), e (edit) or v (view full)."
+msgstr "Responda S/Y (sí), n (no), e (editar) o v (ver completo)."
+
+#: src/apt_pac/sources.py:77
+msgid "pkgctl not installed"
+msgstr "pkgctl no está instalado"
+
+#: src/apt_pac/sources.py:78
+msgid "Install with:"
+msgstr "Instale con:"
+
+#: src/apt_pac/sources.py:87
+msgid "Cache directory not available"
+msgstr "Directorio de caché no disponible"
+
+#: src/apt_pac/sources.py:89
+msgid "Cannot download source packages on read-only system"
+msgstr "No se pueden descargar paquetes fuente en un sistema de solo lectura"
+
+#: src/apt_pac/sources.py:118
+msgid "Checking for pkgctl availability..."
+msgstr "Comprobando disponibilidad de pkgctl..."
+
+#: src/apt_pac/sources.py:130
+#, python-brace-format
+msgid "Unable to find a source package for {pkg}"
+msgstr "No se puede encontrar un paquete fuente para {pkg}"
+
+#: src/apt_pac/sources.py:138
+msgid "Updating source for"
+msgstr "Actualizando fuentes de"
+
+#: src/apt_pac/sources.py:141
+msgid "Getting source for"
+msgstr "Descargando fuentes de"
+
+#: src/apt_pac/sources.py:153
+#, python-brace-format
+msgid "Failed to download source for {pkg}: {err}"
+msgstr "No se pudo descargar la fuente de {pkg}: {err}"
+
+#: src/apt_pac/sources.py:159
+#, python-brace-format
+msgid "Failed to download source for {pkg}"
+msgstr "No se pudo descargar la fuente de {pkg}"
+
+#: src/apt_pac/sources.py:166
+msgid "Source downloaded to:"
+msgstr "Fuente descargada en:"
+
+#: src/apt_pac/sources.py:170
+#, python-brace-format
+msgid "Source download incomplete for {pkg}"
+msgstr "Descarga de fuente incompleta para {pkg}"
+
+#: src/apt_pac/sources.py:311
+#, python-brace-format
+msgid "Checking if {pkg} exists in repos..."
+msgstr "Comprobando si {pkg} existe en los repositorios..."
+
+#: src/apt_pac/sources.py:324
+#, python-brace-format
+msgid "Checking AUR for {pkg}..."
+msgstr "Comprobando {pkg} en AUR..."
+
+#: src/apt_pac/sources.py:331
+msgid ""
+"\n"
+"You can build this package with:"
+msgstr ""
+"\n"
+"Puede compilar este paquete con:"
+
+#: src/apt_pac/sources.py:335
+msgid "Source directory:"
+msgstr "Directorio de fuentes:"
+
+#: src/apt_pac/sources.py:337
+msgid "PKGBUILD location:"
+msgstr "Ubicación del PKGBUILD:"
+
+#: src/apt_pac/sources.py:343
+#, python-brace-format
+msgid "Failed to find source for {pkg} in"
+msgstr "No se encontró fuente para {pkg} en"
+
+#: src/apt_pac/sources.py:352
+msgid "Looking for source package:"
+msgstr "Buscando paquete fuente:"
+
+#: src/apt_pac/sources.py:359
+msgid "Downloading source for"
+msgstr "Descargando fuente de"
+
+#: src/apt_pac/sources.py:372
+msgid "Found cached source at"
+msgstr "Se encontró fuente en caché en"
+
+#: src/apt_pac/sources.py:380
+msgid "Parsing PKGBUILD:"
+msgstr "Analizando PKGBUILD:"
+
+#: src/apt_pac/sources.py:387
+msgid "No build dependencies required for"
+msgstr "No se requieren dependencias de compilación para"
+
+#: src/apt_pac/sources.py:391
+msgid "Checked PKGBUILD makedepends array - empty"
+msgstr "Matriz makedepends del PKGBUILD comprobada: vacía"
+
+#: src/apt_pac/sources.py:395
+msgid "The following packages will be installed:"
+msgstr "Se instalarán los siguientes paquetes:"
+
+#: src/apt_pac/sources.py:399
+#, python-brace-format
+msgid "Found {count} build dependencies"
+msgstr "Se encontraron {count} dependencias de compilación"
+
+#: src/apt_pac/sources.py:409
+msgid "Installing build dependencies..."
+msgstr "Instalando dependencias de compilación..."
+
+#: src/apt_pac/sources.py:414
+#, python-brace-format
+msgid "Failed to install build dependencies: {error}"
+msgstr "No se pudieron instalar las dependencias de compilación: {error}"
+
+#: src/apt_pac/sources.py:425
+msgid "Looking for source info:"
+msgstr "Buscando información de fuentes:"
+
+#: src/apt_pac/sources.py:434
+msgid "Source not cached, downloading"
+msgstr "Fuente no en caché, descargando"
+
+#: src/apt_pac/sources.py:446
+msgid "Using cached source:"
+msgstr "Usando fuente en caché:"
+
+#: src/apt_pac/sources.py:452
+msgid "Parsing PKGBUILD info..."
+msgstr "Analizando información del PKGBUILD..."
+
+#: src/apt_pac/sources.py:457
+msgid "Failed to parse PKGBUILD"
+msgstr "No se pudo analizar el PKGBUILD"
+
+#: src/apt_pac/ui.py:121
+msgid "Building dependency tree..."
+msgstr "Creando árbol de dependencias..."
+
+#: src/apt_pac/ui.py:125
+msgid "Reading state information..."
+msgstr "Leyendo la información de estado..."
+
+#: src/apt_pac/ui.py:295 src/apt_pac/ui.py:375 src/apt_pac/ui.py:630
+msgid "Version"
+msgstr "Versión"
+
+#: src/apt_pac/ui.py:296 src/apt_pac/ui.py:380 src/apt_pac/ui.py:565
+#: src/apt_pac/ui.py:632
+msgid "Description"
+msgstr "Descripción"
+
+#: src/apt_pac/ui.py:297 src/apt_pac/ui.py:382 src/apt_pac/ui.py:635
+msgid "Architecture"
+msgstr "Arquitectura"
+
+#: src/apt_pac/ui.py:298 src/apt_pac/ui.py:379 src/apt_pac/ui.py:633
+msgid "Homepage"
+msgstr "Página principal"
+
+#: src/apt_pac/ui.py:299 src/apt_pac/ui.py:634
+msgid "License"
+msgstr "Licencia"
+
+#: src/apt_pac/ui.py:300
+msgid "Tag"
+msgstr "Etiqueta"
+
+#: src/apt_pac/ui.py:301
+msgid "Provides"
+msgstr "Proporciona"
+
+#: src/apt_pac/ui.py:302 src/apt_pac/ui.py:390 src/apt_pac/ui.py:636
+msgid "Depends"
+msgstr "Depende"
+
+#: src/apt_pac/ui.py:303
+msgid "Suggests"
+msgstr "Sugiere"
+
+#: src/apt_pac/ui.py:304
+msgid "Reverse-Depends"
+msgstr "Dependencias-inversas"
+
+#: src/apt_pac/ui.py:305
+msgid "Conflicts"
+msgstr "Entra en conflicto"
+
+#: src/apt_pac/ui.py:306
+msgid "Replaces"
+msgstr "Reemplaza"
+
+#: src/apt_pac/ui.py:307
+msgid "Download-Size"
+msgstr "Tamaño de descarga"
+
+#: src/apt_pac/ui.py:308
+msgid "Installed-Size"
+msgstr "Tamaño instalado"
+
+#: src/apt_pac/ui.py:309 src/apt_pac/ui.py:378
+msgid "Maintainer"
+msgstr "Desarrollador"
+
+#: src/apt_pac/ui.py:310
+msgid "Build-Date"
+msgstr "Fecha de compilación"
+
+#: src/apt_pac/ui.py:311
+msgid "Install-Date"
+msgstr "Fecha de instalación"
+
+#: src/apt_pac/ui.py:312
+msgid "APT-Manual-Installed"
+msgstr "APT-Instalado-manualmente"
+
+#: src/apt_pac/ui.py:313 src/apt_pac/ui.py:377
+msgid "Section"
+msgstr "Sección"
+
+#: src/apt_pac/ui.py:376
+msgid "Priority"
+msgstr "Prioridad"
+
+#: src/apt_pac/ui.py:394 src/apt_pac/ui.py:637
+msgid "Build-Depends"
+msgstr "Dependencias-de-compilación"
+
+#: src/apt_pac/ui.py:396
+msgid "Vote-Count"
+msgstr "Recuento-de-votos"
+
+#: src/apt_pac/ui.py:397
+msgid "Popularity"
+msgstr "Popularidad"
+
+#: src/apt_pac/ui.py:480
+msgid "The following packages will be REMOVED:"
+msgstr "Los siguientes paquetes se ELIMINARÁN:"
+
+#: src/apt_pac/ui.py:491
+msgid "The following packages will be upgraded:"
+msgstr "Se actualizarán los siguientes paquetes:"
+
+#: src/apt_pac/ui.py:521
+msgid "The following NEW packages will be installed:"
+msgstr "Se instalarán los siguientes paquetes NUEVOS:"
+
+#: src/apt_pac/ui.py:534
+msgid "The following extra packages will be installed:"
+msgstr "Se instalarán los siguientes paquetes adicionales:"
+
+#: src/apt_pac/ui.py:551
+msgid "command"
+msgstr "orden"
+
+#: src/apt_pac/ui.py:555
+msgid "apt-pac is a commandline package manager wrapper for pacman."
+msgstr "apt-pac es un gestor de paquetes en línea de comandos sobre pacman."
+
+#: src/apt_pac/ui.py:558
+msgid "It provides an APT-like experience while ensuring system safety."
+msgstr "Ofrece una experiencia similar a APT garantizando la seguridad del sistema."
+
+#: src/apt_pac/ui.py:564
+msgid "Command"
+msgstr "Orden"
+
+#: src/apt_pac/ui.py:568
+msgid "update list of available packages (syncs -Sy and -Fy)"
+msgstr "actualiza la lista de paquetes disponibles (sincroniza -Sy y -Fy)"
+
+#: src/apt_pac/ui.py:569
+msgid "upgrade the system by installing/upgrading packages"
+msgstr "actualiza el sistema instalando o actualizando paquetes"
+
+#: src/apt_pac/ui.py:570
+msgid "same as upgrade"
+msgstr "igual que upgrade"
+
+#: src/apt_pac/ui.py:571
+msgid "install packages (supports local .pkg.tar.zst files)"
+msgstr "instala paquetes (admite archivos locales .pkg.tar.zst)"
+
+#: src/apt_pac/ui.py:572
+msgid "reinstall packages"
+msgstr "reinstala paquetes"
+
+#: src/apt_pac/ui.py:573
+msgid "remove packages"
+msgstr "elimina paquetes"
+
+#: src/apt_pac/ui.py:574
+msgid "remove packages and their configurations"
+msgstr "elimina paquetes y su configuración"
+
+#: src/apt_pac/ui.py:575
+msgid "remove automatically all unused packages"
+msgstr "elimina automáticamente los paquetes no utilizados"
+
+#: src/apt_pac/ui.py:576
+msgid "search in package descriptions (default: Official + AUR)"
+msgstr "busca en descripciones de paquetes (por defecto: Oficial + AUR)"
+
+#: src/apt_pac/ui.py:577
+msgid "show package details"
+msgstr "muestra información detallada del paquete"
+
+#: src/apt_pac/ui.py:581
+msgid ""
+"list packages (--installed, --upgradable, --manual-installed, --all-"
+"versions, --repo)"
+msgstr ""
+"lista paquetes (--installed, --upgradable, --manual-installed, --all-"
+"versions, --repo)"
+
+#: src/apt_pac/ui.py:584
+msgid "show package dependencies (uses pactree if available)"
+msgstr "muestra dependencias del paquete (usa pactree si está disponible)"
+
+#: src/apt_pac/ui.py:585
+msgid "show reverse dependencies"
+msgstr "muestra dependencias inversas"
+
+#: src/apt_pac/ui.py:586
+msgid "show package install/removal scripts"
+msgstr "muestra los scripts de instalación/eliminación del paquete"
+
+#: src/apt_pac/ui.py:587
+msgid "view package changelog"
+msgstr "muestra el registro de cambios del paquete"
+
+#: src/apt_pac/ui.py:588
+msgid "show package version and candidate information"
+msgstr "muestra la versión instalada y candidata del paquete"
+
+#: src/apt_pac/ui.py:589
+msgid "mark/unmark packages as auto/manual"
+msgstr "marca o desmarca paquetes como automáticos/manuales"
+
+#: src/apt_pac/ui.py:590
+msgid "verify package database and system integrity"
+msgstr "verifica la integridad del sistema y la base de datos"
+
+#: src/apt_pac/ui.py:591
+msgid "list all available package names"
+msgstr "lista todos los nombres de paquetes disponibles"
+
+#: src/apt_pac/ui.py:592
+msgid "show package statistics"
+msgstr "muestra estadísticas de paquetes"
+
+#: src/apt_pac/ui.py:593
+msgid "generate dependency graph in GraphViz format"
+msgstr "genera el grafo de dependencias en formato GraphViz"
+
+#: src/apt_pac/ui.py:594
+msgid "show available versions of a package"
+msgstr "muestra las versiones disponibles de un paquete"
+
+#: src/apt_pac/ui.py:595
+msgid "display pacman configuration"
+msgstr "muestra la configuración de pacman"
+
+#: src/apt_pac/ui.py:596
+msgid "manage GPG keys for package verification"
+msgstr "gestiona las claves GPG de verificación de paquetes"
+
+#: src/apt_pac/ui.py:597
+msgid "show how to add repositories"
+msgstr "muestra cómo añadir repositorios"
+
+#: src/apt_pac/ui.py:598
+msgid "download packages without installing (pacman -Sw)"
+msgstr "descarga paquetes sin instalarlos (pacman -Sw)"
+
+#: src/apt_pac/ui.py:599
+msgid "download package source (uses pkgctl)"
+msgstr "descarga las fuentes del paquete (usa pkgctl)"
+
+#: src/apt_pac/ui.py:600
+msgid "show source package information"
+msgstr "muestra información del paquete fuente"
+
+#: src/apt_pac/ui.py:601
+msgid "install build dependencies for a package"
+msgstr "instala las dependencias de compilación de un paquete"
+
+#: src/apt_pac/ui.py:602
+msgid "edit the pacman.conf information file"
+msgstr "edita el archivo de configuración pacman.conf"
+
+#: src/apt_pac/ui.py:603
+msgid "remove all cached package files (pacman -Scc)"
+msgstr "borra todos los archivos de paquetes de la caché (pacman -Scc)"
+
+#: src/apt_pac/ui.py:604
+msgid "erase old downloaded archives (keeps last 3)"
+msgstr "borra paquetes antiguos descargados (conserva los últimos 3)"
+
+#: src/apt_pac/ui.py:605
+msgid "search for packages containing a file"
+msgstr "busca paquetes que contienen un fichero"
+
+#: src/apt_pac/ui.py:606
+msgid "read the latest Arch Linux news"
+msgstr "lee las últimas noticias de Arch Linux"
+
+#: src/apt_pac/ui.py:607
+msgid "show package manual page"
+msgstr "muestra la página de manual del paquete"
+
+#: src/apt_pac/ui.py:614
+msgid "Most used commands:"
+msgstr "Órdenes más usadas:"
+
+#: src/apt_pac/ui.py:618
+msgid "This APT has Super Pacman Powers."
+msgstr "Este APT tiene superpoderes de Pacman."
+
+#: src/apt_pac/ui.py:655
+msgid "Source Directory"
+msgstr "Directorio de fuentes"

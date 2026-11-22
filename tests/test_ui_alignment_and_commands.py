@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from rich.color import ColorSystem
-from rich.console import Console, ConsoleOptions
+from rich.console import Console
 from rich.text import Text
 
 from apt_pac import commands, ui
@@ -26,7 +26,7 @@ def _con(width=80, color=False, encoding="utf-8"):
         highlight=False,
     )
     if encoding:
-        con._file_encoding = encoding
+        setattr(con, "_file_encoding", encoding)
     return buf, con
 
 
@@ -53,7 +53,7 @@ class TestUiAlignmentAndCommands(unittest.TestCase):
         self.assertEqual(ui.get_terminal_width(tiny_con), 20)
 
     def test_set_force_colors_uses_standard_on_linux_console(self):
-        buf, con = _con(width=80, color=False)
+        _buf, con = _con(width=80, color=False)
         with (
             patch("apt_pac.ui.console", con),
             patch.dict(os.environ, {"TERM": "linux"}, clear=False),
@@ -75,6 +75,7 @@ class TestUiAlignmentAndCommands(unittest.TestCase):
                     rendered = list(
                         commands.CandyBar(pct, 100, 1.0).__rich_console__(xterm_con, opts)
                     )[0]
+                    assert isinstance(rendered, Text)
                     self.assertEqual(rendered.cell_len, w, f"width={w}, pct={pct}")
                     if pct in (0, 50):
                         self.assertIn("⚬", rendered.plain)
@@ -86,6 +87,7 @@ class TestUiAlignmentAndCommands(unittest.TestCase):
                     rendered = list(
                         commands.CandyBar(pct, 100, 1.0).__rich_console__(linux_con, opts)
                     )[0]
+                    assert isinstance(rendered, Text)
                     self.assertEqual(rendered.cell_len, w, f"linux width={w}, pct={pct}")
                     self.assertNotIn("⚬", rendered.plain)
                     if pct < 100:
@@ -509,7 +511,7 @@ class TestUiAlignmentAndCommands(unittest.TestCase):
         mock_prog.__exit__.return_value = False
         mock_prog.add_task.return_value = 1
 
-        buf, con = _con(width=80)
+        _buf, con = _con(width=80)
         with (
             patch("subprocess.Popen", return_value=mock_proc),
             patch("subprocess.run"),

@@ -1,7 +1,9 @@
-import pytest
-import sys
 import os
+import sys
 from datetime import datetime
+
+import pytest
+
 
 def main():
     """Run tests with pytest and coverage."""
@@ -13,13 +15,13 @@ def main():
     # Ensure test logs directory
     log_dir = os.path.join(project_root, 'test_logs')
     os.makedirs(log_dir, exist_ok=True)
-    
+
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     log_file = os.path.join(log_dir, f"test_run_{timestamp}.log")
 
     print(f"Running tests at {datetime.now().isoformat()}")
     print(f"Logging detailed output to: {log_file}")
-    
+
     args = [
         "tests",
         "-v",
@@ -30,14 +32,14 @@ def main():
         "--durations=10",
         "--cov-fail-under=50",  # Prevent coverage regressions
     ]
-    
+
     retcode = pytest.main(args)
-    
+
     if retcode == 0:
         print("\n✅ All tests passed successfully!")
     else:
         print("\n❌ Some tests failed. Check the output above.")
-    
+
     sys.exit(retcode)
 
 if __name__ == '__main__':

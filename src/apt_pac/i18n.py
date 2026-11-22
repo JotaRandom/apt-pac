@@ -8,8 +8,8 @@ Falls back to English if no translation is available.
 import gettext
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Optional
 
 _domain = "apt-pac"
 
@@ -36,7 +36,7 @@ def _preferred_languages() -> list[str]:
     return langs
 
 
-def _read_custom_locale_dir() -> Optional[Path]:
+def _read_custom_locale_dir() -> Path | None:
     """Read [directories].locale_dir from user config without importing config.py."""
     config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
     user_config = config_home / "apt-pac" / "config.toml"
@@ -57,7 +57,7 @@ def _read_custom_locale_dir() -> Optional[Path]:
     return None
 
 
-def _get_locale_dir() -> Optional[str]:
+def _get_locale_dir() -> str | None:
     """Locate a directory containing compiled apt-pac translations."""
     candidates: list[Path] = []
 
@@ -102,16 +102,26 @@ def _load_translation():
     return None
 
 
-try:
-    _translation = _load_translation()
-    if _translation is not None:
-        _ = _translation.gettext
-    else:
-        def _(msg):
-            return msg
-except Exception:
-    def _(msg):
-        return msg
+def _identity(message: str) -> str:
+    return message
 
 
-__all__ = ["_"]
+def reload_translations() -> Callable[[str], str]:
+    """Reload gettext translations for the current environment variables."""
+    global _
+    try:
+        translation = _load_translation()
+        if translation is not None:
+            _ = translation.gettext
+        else:
+            _ = _identity
+    except Exception:
+        _ = _identity
+    return _
+
+
+_: Callable[[str], str] = _identity
+reload_translations()
+
+
+__all__ = ["_", "reload_translations"]

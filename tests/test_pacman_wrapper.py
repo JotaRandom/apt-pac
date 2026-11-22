@@ -10,7 +10,8 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from rich.console import Console
-from apt_pac import commands, ui
+
+from apt_pac import commands
 
 
 def _capture_console():

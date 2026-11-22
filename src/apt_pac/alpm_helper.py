@@ -5,9 +5,9 @@ Helper utilities for pyalpm operations.
 import fnmatch
 import re
 import subprocess
-import pyalpm
 from pathlib import Path
-from typing import List, Optional
+
+import pyalpm
 
 _handle = None
 
@@ -18,9 +18,9 @@ def reset_handle():
     _handle = None
 
 
-def _pacman_conf(key: str) -> List[str]:
+def _pacman_conf(key: str) -> list[str]:
     """Query a directive from /etc/pacman.conf via pacman-conf."""
-    values: List[str] = []
+    values: list[str] = []
     try:
         res = subprocess.run(
             ["pacman-conf", key],
@@ -35,9 +35,14 @@ def _pacman_conf(key: str) -> List[str]:
     return values
 
 
-def _pacman_conf_repos() -> List[str]:
+def get_pacman_conf(key: str) -> list[str]:
+    """Public wrapper around _pacman_conf for querying /etc/pacman.conf."""
+    return _pacman_conf(key)
+
+
+def _pacman_conf_repos() -> list[str]:
     """Return configured sync repository names in /etc/pacman.conf order."""
-    repos: List[str] = []
+    repos: list[str] = []
     try:
         res = subprocess.run(
             ["pacman-conf", "-l"],
@@ -97,7 +102,7 @@ def get_handle():
     return _handle
 
 
-def search_packages(query, repos: Optional[List[str]] = None) -> List:
+def search_packages(query, repos: list[str] | None = None) -> list:
     """
     Search for packages in sync databases using pyalpm.
 
@@ -138,7 +143,7 @@ def search_packages(query, repos: Optional[List[str]] = None) -> List:
     return results
 
 
-def get_package(pkgname: str, repo: Optional[str] = None):
+def get_package(pkgname: str, repo: str | None = None):
     """
     Get a package by name, optionally from a specific repo.
 
@@ -174,7 +179,7 @@ def get_local_package(pkgname: str):
 
 def get_installed_packages(
     foreign_only=False, explicit_only=False, deps_only=False
-) -> List:
+) -> list:
     """
     Get list of installed packages.
 
@@ -206,7 +211,7 @@ def get_installed_packages(
     return packages
 
 
-def get_orphan_packages() -> List:
+def get_orphan_packages() -> list:
     """
     Get orphaned packages (installed as deps and not required or optionally required).
 
@@ -232,7 +237,7 @@ def get_orphan_packages() -> List:
     return orphans
 
 
-def get_available_updates() -> List[tuple]:
+def get_available_updates() -> list[tuple]:
     """
     Get list of packages with available updates (respecting IgnorePkg/IgnoreGroup).
 
@@ -272,7 +277,7 @@ def get_available_updates() -> List[tuple]:
     return updates
 
 
-def get_all_repo_packages() -> List:
+def get_all_repo_packages() -> list:
     """Get all packages available in sync repos."""
     handle = get_handle()
     packages = []
@@ -290,7 +295,7 @@ def is_package_installed(pkgname: str) -> bool:
     return pyalpm.find_satisfier(localdb.pkgcache, pkgname) is not None
 
 
-def get_cache_dirs() -> List[Path]:
+def get_cache_dirs() -> list[Path]:
     """Get list of cache directories from pyalpm."""
     handle = get_handle()
     return [Path(p) for p in handle.cachedirs]
@@ -454,7 +459,7 @@ def is_in_official_repos(pkgname: str) -> bool:
 # =============================================================================
 
 
-def format_size(bytes_val: int) -> str:
+def format_size(bytes_val: int | None) -> str:
     """Format byte size in human readable format (KiB, MiB, GiB)."""
     if bytes_val is None:
         bytes_val = 0
@@ -468,10 +473,12 @@ def format_size(bytes_val: int) -> str:
         return f"{bytes_val / (1024 * 1024 * 1024):.2f} GiB"
 
 
-def format_timestamp(ts: int) -> str:
+def format_timestamp(ts: int | None) -> str:
     """Format unix timestamp to readable date."""
     from datetime import datetime
 
+    if ts is None:
+        return "Unknown"
     try:
         return datetime.fromtimestamp(ts).strftime("%a %d %b %Y %I:%M:%S %p %Z")
     except (TypeError, ValueError, OSError, OverflowError):
@@ -630,7 +637,7 @@ def format_local_package(pkg) -> str:
     return "\n".join(lines)
 
 
-def get_package_info_formatted(pkgname: str) -> tuple:
+def get_package_info_formatted(pkgname: str) -> tuple[str | None, str | None]:
     """
     Get package info formatted as pacman -Si/Qi.
 

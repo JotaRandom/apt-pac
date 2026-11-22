@@ -1,8 +1,8 @@
-import unittest
-from unittest.mock import patch, MagicMock, call
-import sys
 import os
+import sys
+import unittest
 from pathlib import Path
+from unittest.mock import MagicMock, call, patch
 
 # Add src to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
@@ -63,7 +63,7 @@ class TestRecursiveAur(unittest.TestCase):
         # Return a mock package file
         mock_pkg = MagicMock()
         mock_pkg.stem = "test-pkg-1.0-1-any"
-        mock_pkg.__str__.return_value = (
+        getattr(mock_pkg, "__str__").return_value = (
             "/tmp/mock_build/pkg/test-pkg-1.0-1-any.pkg.tar.zst"
         )
         self.mock_glob.return_value = [mock_pkg]

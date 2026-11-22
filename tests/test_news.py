@@ -1,8 +1,8 @@
-import unittest
-from unittest.mock import patch, MagicMock
-import sys
 import os
-from datetime import datetime, timedelta, timezone
+import sys
+import unittest
+from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.abspath("src"))
 from apt_pac.commands import execute_command
@@ -32,7 +32,7 @@ class TestNewsCommand(unittest.TestCase):
     @patch("apt_pac.commands.urllib.request.urlopen")
     def test_news_fetch_success_filtering(self, mock_urlopen, mock_console):
         # 1. Setup mock response
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         recent_date = (now - timedelta(days=5)).strftime("%a, %d %b %Y %H:%M:%S %z")
         old_date = (now - timedelta(days=200)).strftime("%a, %d %b %Y %H:%M:%S %z")
 
@@ -88,7 +88,7 @@ class TestNewsCommand(unittest.TestCase):
     @patch("apt_pac.commands.urllib.request.urlopen")
     def test_news_fallback_to_latest(self, mock_urlopen, mock_console):
         # Scenario: Only old news exist. Should show the latest one.
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         # Both are old, but one is newer than the other
         old_date_1 = (now - timedelta(days=200)).strftime(
             "%a, %d %b %Y %H:%M:%S %z"

@@ -1,7 +1,7 @@
+import os
+import sys
 import unittest
 from unittest.mock import patch
-import sys
-import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
@@ -48,7 +48,7 @@ class TestAurInstall(unittest.TestCase):
             # Assuming basic (name, ver) tuples.
             expected_pkgs = [("aur-pkg", "1.2-3"), ("dep-pkg", "0.9")]
             self.mock_print_summary.assert_called()
-            args, kwargs = self.mock_print_summary.call_args
+            _args, kwargs = self.mock_print_summary.call_args
             # Verify the list of packages passed to new_pkgs matches our expected data
             # The order might vary depending on implementation, but likely stable.
             self.assertEqual(sorted(kwargs["new_pkgs"]), sorted(expected_pkgs))

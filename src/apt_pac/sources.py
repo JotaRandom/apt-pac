@@ -8,15 +8,15 @@ Handles downloading and managing PKGBUILDs from official Arch repositories
 using the Arch Build System (ABS) and the AUR.
 """
 
-import subprocess
 import shutil
+import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional
-from rich.markup import escape
-from .config import get_config
-from .ui import print_error, print_info, console, print_showsrc_info
-from .i18n import _
 
+from rich.markup import escape
+
+from .config import get_config
+from .i18n import _
+from .ui import console, print_error, print_info, print_showsrc_info
 
 _SRCINFO_LIST_KEYS = {
     "pkgname",
@@ -35,7 +35,7 @@ _SRCINFO_LIST_KEYS = {
 _SRCINFO_SCALAR_KEYS = {"pkgbase", "pkgver", "pkgrel", "epoch", "pkgdesc", "url"}
 
 
-def _parse_srcinfo(srcinfo_path: Path) -> Optional[Dict]:
+def _parse_srcinfo(srcinfo_path: Path) -> dict | None:
     """
     Parse a .SRCINFO file safely in pure Python without executing bash.
     Returns parsed metadata dict or None if missing/unreadable/empty.
@@ -47,7 +47,7 @@ def _parse_srcinfo(srcinfo_path: Path) -> Optional[Dict]:
     except OSError:
         return None
 
-    info: Dict = {}
+    info: dict = {}
     for raw_line in text.splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
@@ -115,7 +115,7 @@ def download_source(package_name, verbose=False):
     Returns the path to the downloaded source directory, or None on failure.
     """
     if verbose:
-        console.print("[dim]Checking for pkgctl availability...[/dim]")
+        console.print(f"[dim]{_('Checking for pkgctl availability...')}[/dim]")
 
     if not check_pkgctl_available():
         return None
@@ -185,7 +185,7 @@ def get_source_dir(package_name):
     return None
 
 
-def parse_pkgbuild_makedepends(pkgbuild_path) -> List[str]:
+def parse_pkgbuild_makedepends(pkgbuild_path) -> list[str]:
     """
     Extract makedepends from .SRCINFO (safe) or PKGBUILD fallback.
     """
@@ -306,10 +306,12 @@ def parse_pkgbuild_info(pkgbuild_path):
 
 def handle_apt_source(package_name, extra_args, verbose=False):
     """Handle 'apt source <package>' command."""
+    del extra_args
     if verbose:
-        console.print(
-            f"[dim]Checking if {escape(str(package_name))} exists in repos...[/dim]"
+        msg = _("Checking if {pkg} exists in repos...").format(
+            pkg=escape(str(package_name))
         )
+        console.print(f"[dim]{msg}[/dim]")
 
     # Download the source
     pkg_dir = download_source(package_name, verbose=verbose)
@@ -319,9 +321,10 @@ def handle_apt_source(package_name, extra_args, verbose=False):
         from .aur import download_aur_source
 
         if verbose:
-            console.print(
-                f"[dim]Checking AUR for {escape(str(package_name))}...[/dim]"
+            msg = _("Checking AUR for {pkg}...").format(
+                pkg=escape(str(package_name))
             )
+            console.print(f"[dim]{msg}[/dim]")
         pkg_dir = download_aur_source(package_name)
 
     if pkg_dir:
@@ -329,9 +332,9 @@ def handle_apt_source(package_name, extra_args, verbose=False):
         print_info(f"  cd {pkg_dir}")
         print_info("  makepkg -si")
         if verbose:
-            console.print(f"[dim]Source directory: {escape(str(pkg_dir))}[/dim]")
+            console.print(f"[dim]{_('Source directory:')} {escape(str(pkg_dir))}[/dim]")
             console.print(
-                f"[dim]PKGBUILD location: {escape(str(pkg_dir / 'PKGBUILD'))}[/dim]"
+                f"[dim]{_('PKGBUILD location:')} {escape(str(pkg_dir / 'PKGBUILD'))}[/dim]"
             )
         return True
 
@@ -346,7 +349,7 @@ def handle_build_dep(package_name, verbose=False):
     """Handle 'apt build-dep <package>' command."""
     if verbose:
         console.print(
-            f"[dim]Looking for source package: {escape(str(package_name))}[/dim]"
+            f"[dim]{_('Looking for source package:')} {escape(str(package_name))}[/dim]"
         )
 
     # First, ensure we have the source
@@ -365,13 +368,17 @@ def handle_build_dep(package_name, verbose=False):
             if not pkg_dir:
                 return False
     elif verbose:
-        console.print(f"[dim]Found cached source at {escape(str(pkg_dir))}[/dim]")
+        console.print(
+            f"[dim]{_('Found cached source at')} {escape(str(pkg_dir))}[/dim]"
+        )
 
     # Parse PKGBUILD for makedepends
     pkgbuild = pkg_dir / "PKGBUILD"
 
     if verbose:
-        console.print(f"[dim]Parsing PKGBUILD: {escape(str(pkgbuild))}[/dim]")
+        console.print(
+            f"[dim]{_('Parsing PKGBUILD:')} {escape(str(pkgbuild))}[/dim]"
+        )
 
     makedepends = parse_pkgbuild_makedepends(pkgbuild)
 
@@ -380,14 +387,17 @@ def handle_build_dep(package_name, verbose=False):
             f"[green]{_('No build dependencies required for')} {escape(str(package_name))}[/green]"
         )
         if verbose:
-            console.print("[dim]Checked PKGBUILD makedepends array - empty[/dim]")
+            console.print(
+                f"[dim]{_('Checked PKGBUILD makedepends array - empty')}[/dim]"
+            )
         return True
 
     console.print(f"\n[bold]{_('The following packages will be installed:')}[/bold]")
     console.print(f"  {escape(' '.join(makedepends))}\n")
 
     if verbose:
-        console.print(f"[dim]Found {len(makedepends)} build dependencies[/dim]")
+        msg = _("Found {count} build dependencies").format(count=len(makedepends))
+        console.print(f"[dim]{msg}[/dim]")
         for dep in makedepends:
             console.print(f"[dim]  - {escape(str(dep))}[/dim]")
 
@@ -396,7 +406,7 @@ def handle_build_dep(package_name, verbose=False):
 
     try:
         if verbose:
-            console.print("[dim]Installing build dependencies...[/dim]")
+            console.print(f"[dim]{_('Installing build dependencies...')}[/dim]")
         execute_command("install", makedepends)
         return True
     except Exception as e:
@@ -412,7 +422,7 @@ def handle_showsrc(package_name, verbose=False):
     """Handle 'apt-cache showsrc <package>' command."""
     if verbose:
         console.print(
-            f"[dim]Looking for source info: {escape(str(package_name))}[/dim]"
+            f"[dim]{_('Looking for source info:')} {escape(str(package_name))}[/dim]"
         )
 
     # Try to get existing source
@@ -433,13 +443,13 @@ def handle_showsrc(package_name, verbose=False):
             if not pkg_dir:
                 return False
     elif verbose:
-        console.print(f"[dim]Using cached source: {escape(str(pkg_dir))}[/dim]")
+        console.print(f"[dim]{_('Using cached source:')} {escape(str(pkg_dir))}[/dim]")
 
     # Parse PKGBUILD info
     pkgbuild = pkg_dir / "PKGBUILD"
 
     if verbose:
-        console.print("[dim]Parsing PKGBUILD info...[/dim]")
+        console.print(f"[dim]{_('Parsing PKGBUILD info...')}[/dim]")
 
     info = parse_pkgbuild_info(pkgbuild)
 

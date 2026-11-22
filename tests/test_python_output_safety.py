@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from rich.console import Console
+
 from apt_pac import __main__ as entry
 from apt_pac import alpm_helper, aur, commands, config, pkgbuild_review, ui
 

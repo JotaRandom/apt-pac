@@ -1,13 +1,14 @@
-import unittest
-from unittest.mock import MagicMock, patch, ANY
-import sys
-import os
 import io
+import os
+import sys
+import unittest
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-from apt_pac import commands
 from rich.console import Console
+
+from apt_pac import commands
 
 
 class TestProgressBar(unittest.TestCase):
@@ -62,7 +63,7 @@ class TestProgressBar(unittest.TestCase):
 
             # Verify Progress initialized with correct columns
             # TextColumn(desc), TotalCountColumn, CandyBarColumn, TextColumn(pct)
-            args, kwargs = MockProgress.call_args
+            args, _kwargs = MockProgress.call_args
             self.assertTrue(len(args) >= 4)
 
             # Verify add_task called with total=2

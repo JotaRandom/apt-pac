@@ -1,6 +1,6 @@
 import argparse
-import sys
 import subprocess
+import sys
 
 
 def _print_version(version_option: str):

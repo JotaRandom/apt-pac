@@ -1,9 +1,9 @@
 import io
-import unittest
-from unittest.mock import patch, MagicMock
-import sys
 import os
+import sys
+import unittest
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
@@ -160,8 +160,9 @@ class TestAurFeatures(unittest.TestCase):
     def test_gpg_import(self, mock_input):
         # Patch subprocess.run specifically where it is used
         with patch("apt_pac.aur.subprocess.run") as mock_run:
-            from apt_pac.aur import AurInstaller
             import subprocess
+
+            from apt_pac.aur import AurInstaller
 
             # Mock download success
             with patch("apt_pac.aur.download_aur_source", return_value=True):
@@ -332,9 +333,10 @@ class TestAurFeatures(unittest.TestCase):
     @patch("apt_pac.aur.get_config")
     @patch("urllib.request.urlopen")
     def test_rpc_caching(self, mock_urlopen, mock_config):
-        from apt_pac import aur
         import json
         import os
+
+        from apt_pac import aur
 
         # Mock Default Config (30 min)
         mock_conf_obj = MagicMock()
@@ -387,9 +389,10 @@ class TestAurFeatures(unittest.TestCase):
     @patch("apt_pac.aur.get_config")
     @patch("urllib.request.urlopen")
     def test_rpc_cache_expiry(self, mock_urlopen, mock_config, mock_time):
-        from apt_pac import aur
         import json
         import os
+
+        from apt_pac import aur
 
         # Mock Config with SHORT TTL (1 minute)
         mock_conf_obj = MagicMock()

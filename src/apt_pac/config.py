@@ -16,7 +16,7 @@ If user config has errors, falls back to global gracefully.
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Default configuration values (used as ultimate fallback)
 DEFAULT_CONFIG = {
@@ -110,10 +110,10 @@ locale_dir = ""
 rpc_cache_ttl = 30
 """
 
-def _get_config_dir() -> Optional[Path]:
+def _get_config_dir() -> Path | None:
     """
     Get config directory with fallback logic.
-    
+
     Priority:
     1. $XDG_CONFIG_HOME/apt-pac
     2. ~/.config/apt-pac
@@ -126,26 +126,26 @@ def _get_config_dir() -> Optional[Path]:
         config_dir = Path(xdg_config) / "apt-pac"
         if _try_create_dir(config_dir):
             return config_dir
-    
+
     # Try ~/.config/apt-pac
     home = os.environ.get("HOME")
     if home:
         config_dir = Path(home) / ".config" / "apt-pac"
         if _try_create_dir(config_dir):
             return config_dir
-        
+
         # Try ~/.apt-pac
         config_dir = Path(home) / ".apt-pac"
         if _try_create_dir(config_dir):
             return config_dir
-    
+
     # Last resort: /etc/apt-pac (read-only)
     return Path("/etc/apt-pac")
 
-def _get_cache_dir(custom_path: Optional[str] = None) -> Optional[Path]:
+def _get_cache_dir(custom_path: str | None = None) -> Path | None:
     """
     Get cache directory with fallback logic.
-    
+
     Priority:
     0. Custom path from config (if provided)
     1. $XDG_CACHE_HOME/apt-pac
@@ -160,40 +160,40 @@ def _get_cache_dir(custom_path: Optional[str] = None) -> Optional[Path]:
         cache_dir = Path(custom_path)
         if _try_create_dir(cache_dir):
             return cache_dir
-    
+
     # 1. Try XDG_CACHE_HOME
     xdg_cache = os.environ.get("XDG_CACHE_HOME")
     if xdg_cache:
         cache_dir = Path(xdg_cache) / "apt-pac"
         if _try_create_dir(cache_dir):
             return cache_dir
-    
+
     # 2. Try ~/.cache/apt-pac
     home = os.environ.get("HOME")
     if home:
         cache_dir = Path(home) / ".cache" / "apt-pac"
         if _try_create_dir(cache_dir):
             return cache_dir
-    
+
     # 3. Try XDG_RUNTIME_DIR (systemd user runtime)
     xdg_runtime = os.environ.get("XDG_RUNTIME_DIR")
     if xdg_runtime:
         cache_dir = Path(xdg_runtime) / "apt-pac"
         if _try_create_dir(cache_dir):
             return cache_dir
-    
+
     # 4. Try systemd runtime directory fallback
     uid = os.getuid() if hasattr(os, 'getuid') else None
     if uid is not None:
         cache_dir = Path(f"/run/user/{uid}/apt-pac")
         if _try_create_dir(cache_dir):
             return cache_dir
-    
+
     # 5. Try /tmp/apt-pac-cache
     cache_dir = Path("/tmp") / "apt-pac-cache"
     if _try_create_dir(cache_dir):
         return cache_dir
-    
+
     # 6. All failed - critical error
     return None
 
@@ -206,7 +206,7 @@ def _try_create_dir(path: Path) -> bool:
         test_file.touch()
         test_file.unlink()
         return True
-    except (OSError, IOError, PermissionError):
+    except (OSError, PermissionError):
         return False
 
 class Config:
@@ -214,13 +214,13 @@ class Config:
         # Determine config directory with fallback logic
         self.global_config_path = Path("/etc/apt-pac/config.toml")
         self.config_dir = _get_config_dir()
-        
+
         # Determine user config file path
         if self.config_dir and self.config_dir != Path("/etc/apt-pac"):
             self.user_config_path = self.config_dir / "config.toml"
         else:
             self.user_config_path = None
-        
+
         # Load configuration hierarchy: defaults -> global -> user
         self.data = self._deep_copy(DEFAULT_CONFIG)
         self._load()
@@ -232,11 +232,12 @@ class Config:
         # Warn if cache is unavailable
         if self.cache_dir is None:
             import sys
+
             from .i18n import _
             print(f"{_('W:')} {_('Cannot create cache directory - system appears to be read-only')}", file=sys.stderr)
             print(f"{_('W:')} ABS/AUR {_('features will not be available')}", file=sys.stderr)
 
-    def _deep_copy(self, d: Dict) -> Dict:
+    def _deep_copy(self, d: dict) -> dict:
         """Deep copy a dictionary."""
         import copy
         return copy.deepcopy(d)
@@ -264,27 +265,27 @@ class Config:
             try:
                 shutil.copy2(self.global_config_path, self.user_config_path)
                 return
-            except (OSError, IOError):
+            except OSError:
                 pass  # Fall through to create from defaults
 
         # Create from defaults
         try:
             with open(self.user_config_path, "w", encoding="utf-8") as f:
                 f.write(DEFAULT_CONFIG_TOML)
-        except (OSError, IOError):
+        except OSError:
             pass  # Can't create config, will use defaults
-    
+
     def _try_load_config(self, config_path: Path) -> bool:
         """Try to load a config file. Returns True if successful."""
         if not config_path or not config_path.exists():
             return False
-        
+
         try:
             import tomllib
-            
+
             with open(config_path, "rb") as f:
                 loaded_config = tomllib.load(f)
-                
+
                 # Validate and merge with defaults
                 if self._validate_config(loaded_config):
                     self._deep_merge(self.data, loaded_config)
@@ -292,17 +293,17 @@ class Config:
                 else:
                     # Invalid config, don't use it
                     return False
-                    
+
         except Exception:
             # Parse error or other issue
             return False
-    
-    def _validate_config(self, config: Dict) -> bool:
+
+    def _validate_config(self, config: Any) -> bool:
         """Validate config structure and values."""
         # Basic structure check
         if not isinstance(config, dict):
             return False
-        
+
         # Validate specific options
         if "ui" in config and isinstance(config["ui"], dict):
             show_output = config["ui"].get("show_output")
@@ -355,22 +356,22 @@ class Config:
                     config["performance"]["rpc_cache_ttl"] = DEFAULT_CONFIG[
                         "performance"
                     ]["rpc_cache_ttl"]
-        
+
         return True
-    
-    def _deep_merge(self, base: Dict, update: Dict):
+
+    def _deep_merge(self, base: dict, update: dict):
         """Deep merge update dict into base dict."""
         for key, value in update.items():
             if key in base and isinstance(base[key], dict) and isinstance(value, dict):
                 self._deep_merge(base[key], value)
             else:
                 base[key] = value
-    
+
     def get(self, section: str, key: str, default: Any = None) -> Any:
         """Get configuration value."""
         return self.data.get(section, {}).get(key, default)
-    
-    def get_cache_dir(self) -> Optional[Path]:
+
+    def get_cache_dir(self) -> Path | None:
         """Get cache directory path. Returns None if unavailable."""
         return self.cache_dir
 

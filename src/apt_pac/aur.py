@@ -1,22 +1,22 @@
 import json
+import os
 import re
 import shlex
-import time
-import urllib.request
-import urllib.parse
-from typing import List, Dict, Optional
-import subprocess
-import os
-import sys
 import shutil
+import subprocess
+import sys
+import tarfile
+import time
+import urllib.parse
+import urllib.request
 from pathlib import Path
+
 from rich.markup import escape
 
 from . import __version__, ui
-from .ui import print_error, print_info, print_transaction_summary
-from .i18n import _
 from .config import get_config
-import tarfile
+from .i18n import _
+from .ui import print_error, print_info, print_transaction_summary
 
 
 def is_valid_package(path: str) -> bool:
@@ -64,7 +64,7 @@ def is_valid_package(path: str) -> bool:
 class CyclicDependencyError(Exception):
     """Raised when a circular dependency is detected in AUR packages."""
 
-    def __init__(self, cycle_path: List[str]):
+    def __init__(self, cycle_path: list[str]):
         self.cycle = cycle_path
         sep = " -> " if ui.is_linux_console(ui.console) else " → "
         cycle_str = sep.join(cycle_path)
@@ -79,17 +79,17 @@ CACHE_FILE = (
 )
 
 
-def _load_cache() -> Dict:
+def _load_cache() -> dict:
     if not CACHE_FILE.exists():
         return {}
     try:
-        with open(CACHE_FILE, "r", encoding="utf-8") as f:
+        with open(CACHE_FILE, encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {}
 
 
-def _save_cache(cache: Dict):
+def _save_cache(cache: dict):
     try:
         CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
         with open(CACHE_FILE, "w", encoding="utf-8") as f:
@@ -109,7 +109,7 @@ def _save_cache(cache: Dict):
         pass
 
 
-def _get_cached(key: str) -> Optional[List[Dict]]:
+def _get_cached(key: str) -> list[dict] | None:
     config = get_config()
     ttl_minutes = config.get("performance", "rpc_cache_ttl", 30)
     if ttl_minutes <= 0:
@@ -127,7 +127,7 @@ def _get_cached(key: str) -> Optional[List[Dict]]:
     return None
 
 
-def _set_cached(key: str, data: List[Dict]):
+def _set_cached(key: str, data: list[dict]):
     config = get_config()
     if config.get("performance", "rpc_cache_ttl", 30) <= 0:
         return
@@ -136,7 +136,7 @@ def _set_cached(key: str, data: List[Dict]):
     _save_cache(cache)
 
 
-def search_aur(query: str) -> List[Dict]:
+def search_aur(query: str) -> list[dict]:
     try:
         safe_query = urllib.parse.quote(query)
         cache_key = f"search:{safe_query}"
@@ -167,7 +167,7 @@ def search_aur(query: str) -> List[Dict]:
     return []
 
 
-def get_aur_info(package_names: List[str]) -> List[Dict]:
+def get_aur_info(package_names: list[str]) -> list[dict]:
     if not package_names:
         return []
 
@@ -217,7 +217,7 @@ def is_in_official_repos(package: str) -> bool:
     return alpm_helper.is_in_official_repos(package)
 
 
-def get_installed_packages() -> Dict[str, str]:
+def get_installed_packages() -> dict[str, str]:
     from . import alpm_helper
     try:
         packages = {}
@@ -228,7 +228,7 @@ def get_installed_packages() -> Dict[str, str]:
         return {}
 
 
-def get_installed_aur_packages() -> List[str]:
+def get_installed_aur_packages() -> list[str]:
     from . import alpm_helper
     try:
         packages = [
@@ -244,7 +244,7 @@ def version_compare(ver1: str, ver2: str) -> int:
     return pyalpm.vercmp(ver1, ver2)
 
 
-def check_updates(verbose=False) -> List[Dict]:
+def check_updates(verbose=False) -> list[dict]:
     installed_aur = get_installed_aur_packages()
     if not installed_aur:
         return []
@@ -280,7 +280,7 @@ def check_updates(verbose=False) -> List[Dict]:
     return updates
 
 
-def _get_real_build_user(config=None) -> Optional[str]:
+def _get_real_build_user(config=None) -> str | None:
     """Return the unprivileged user to build AUR packages as."""
     if config is None:
         config = get_config()
@@ -288,6 +288,11 @@ def _get_real_build_user(config=None) -> Optional[str]:
     if build_user_config and build_user_config != "auto":
         return build_user_config
     return os.environ.get("SUDO_USER") or os.environ.get("DOAS_USER")
+
+
+def get_real_build_user(config=None) -> str | None:
+    """Return the unprivileged user to build AUR packages as."""
+    return _get_real_build_user(config)
 
 
 def _confirm_yes_aur(prompt: str) -> bool:
@@ -303,7 +308,7 @@ def _confirm_yes_aur(prompt: str) -> bool:
     return bool(resp)
 
 
-def get_privilege_command(target_user: str, cmd: List[str]) -> List[str]:
+def get_privilege_command(target_user: str, cmd: list[str]) -> list[str]:
     config = get_config()
     tool = config.get("tools", "privilege_tool", "auto")
 
@@ -327,8 +332,8 @@ def get_privilege_command(target_user: str, cmd: List[str]) -> List[str]:
 
 
 def download_aur_source(
-    package_name: str, target_dir: Optional[Path] = None, force=False
-) -> Optional[Path]:
+    package_name: str, target_dir: Path | None = None, force=False
+) -> Path | None:
     base_url = "https://aur.archlinux.org"
     clone_url = f"{base_url}/{package_name}.git"
 
@@ -378,7 +383,7 @@ class AurResolver:
         self.package_bases = {}
         self.base_to_info = {}
 
-    def resolve(self, packages: List[str]) -> List[Dict]:
+    def resolve(self, packages: list[str]) -> list[dict]:
         for pkg in packages:
             self._visit(pkg, force_visit=True)
         return self.queue
@@ -482,19 +487,19 @@ class AurInstaller:
 
     def install(
         self,
-        packages: List[str],
+        packages: list[str],
         verbose=False,
         auto_confirm=False,
         build_queue=None,
         official_deps=None,
         skip_summary=False,
-        confirm_pacman: Optional[bool] = None,
+        confirm_pacman: bool | None = None,
     ):
         pacman_noconfirm = auto_confirm if confirm_pacman is None else confirm_pacman
 
         if build_queue is None:
             resolver = AurResolver()
-            with ui.status("[blue]Resolving AUR dependencies...[/blue]"):
+            with ui.status(f"[blue]{_('Resolving AUR dependencies...')}[/blue]"):
                 try:
                     build_queue = resolver.resolve(packages)
                 except CyclicDependencyError as e:
@@ -534,7 +539,9 @@ class AurInstaller:
             count = len(install_info)
             count_str = f"[bold]{count}[/bold]" if count > 0 else "0"
             ui.console.print(
-                f"0 upgraded, {count_str} newly installed, 0 to remove and 0 not upgraded.",
+                _(
+                    "0 upgraded, {count} newly installed, 0 to remove and 0 not upgraded."
+                ).format(count=count_str),
                 highlight=False,
             )
 
@@ -626,7 +633,7 @@ class AurInstaller:
                 print_error(_("Failed to install final packages"))
                 sys.exit(1)
 
-    def _collect_built_packages(self, pkg_dir: Path, name: str) -> List[Path]:
+    def _collect_built_packages(self, pkg_dir: Path, name: str) -> list[Path]:
         all_pkg_files = list(pkg_dir.glob("*.pkg.tar.*"))
         valid_pkg_files = []
         for f in all_pkg_files:
@@ -640,14 +647,14 @@ class AurInstaller:
         return valid_pkg_files
 
     def _detect_missing_gpg_keys(
-        self, output: str, pkg_dir: Path, real_user: Optional[str]
-    ) -> List[str]:
+        self, output: str, pkg_dir: Path, real_user: str | None
+    ) -> list[str]:
         keys = list(dict.fromkeys(re.findall(r"unknown public key ([0-9A-F]+)", output)))
         if keys:
             return keys
 
         # When makepkg output goes directly to TTY (uncaptured), check validpgpkeys
-        valid_keys: List[str] = []
+        valid_keys: list[str] = []
         srcinfo_path = pkg_dir / ".SRCINFO"
         if srcinfo_path.is_file():
             try:
@@ -672,7 +679,7 @@ class AurInstaller:
                 except OSError:
                     pass
 
-        missing: List[str] = []
+        missing: list[str] = []
         for key in valid_keys:
             check_cmd = ["gpg", "--list-keys", key]
             if os.getuid() == 0 and real_user:
@@ -686,8 +693,8 @@ class AurInstaller:
         return missing
 
     def _build_pkg(
-        self, pkg_info: Dict, verbose: bool, auto_confirm: bool
-    ) -> List[Path]:
+        self, pkg_info: dict, verbose: bool, auto_confirm: bool
+    ) -> list[Path]:
         base = pkg_info.get("PackageBase", pkg_info["Name"])
         name = pkg_info["Name"]
         pkg_dir = self.build_dir / base
@@ -825,8 +832,8 @@ class AurInstaller:
 
 
 def get_resolved_package_info(
-    build_queue: List[Dict], official_deps: set
-) -> List[tuple]:
+    build_queue: list[dict], official_deps: set
+) -> list[tuple]:
     install_info = []
 
     for p in build_queue:

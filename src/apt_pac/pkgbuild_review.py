@@ -16,7 +16,6 @@ import shlex
 import shutil
 import subprocess
 from pathlib import Path
-from typing import List, Tuple
 
 from rich.markup import escape
 
@@ -25,14 +24,13 @@ from .config import get_config
 from .i18n import _
 from .ui import print_error, print_info
 
-
 # ---------------------------------------------------------------------------
 # Dangerous / suspicious patterns (regex, case-insensitive where noted)
 # Each entry: (compiled_regex, severity, human description)
 # severity: "critical" | "warning"
 # ---------------------------------------------------------------------------
 
-_PATTERNS: List[Tuple[re.Pattern, str, str]] = [
+_PATTERNS: list[tuple[re.Pattern, str, str]] = [
     # Critical – almost certainly malicious or extremely dangerous
     (
         re.compile(r"curl\s+[^|\n]*\|\s*(?:ba)?sh", re.I),
@@ -168,12 +166,12 @@ _PATTERNS: List[Tuple[re.Pattern, str, str]] = [
 ]
 
 
-def analyze_pkgbuild(content: str) -> List[Tuple[str, str]]:
+def analyze_pkgbuild(content: str) -> list[tuple[str, str]]:
     """
     Run static analysis on PKGBUILD content.
     Returns list of (severity, description).
     """
-    findings: List[Tuple[str, str]] = []
+    findings: list[tuple[str, str]] = []
     seen = set()
 
     # Ignore full-line comments so commented instructions/notes do not false-positive
@@ -191,7 +189,7 @@ def analyze_pkgbuild(content: str) -> List[Tuple[str, str]]:
     return findings
 
 
-def _get_editor() -> List[str]:
+def _get_editor() -> list[str]:
     config = get_config()
     editor = (
         config.get("tools", "editor", "")
@@ -241,8 +239,10 @@ def _show_pkgbuild_preview(pkgbuild_path: Path, max_lines: int = 50) -> None:
             ui.console.print(f"{i:3}{pipe} {safe_line}", highlight=False)
 
     if len(lines) > max_lines:
+        more_txt = _("{count} more lines").format(count=len(lines) - max_lines)
+        view_txt = _("press 'v' to view full")
         ui.console.print(
-            f"[dim]{ellip} ({len(lines) - max_lines} more lines {sep} press 'v' to view full)[/dim]"
+            f"[dim]{ellip} ({more_txt} {sep} {view_txt})[/dim]"
         )
     ui.console.rule(characters=rule_char)
 
@@ -360,7 +360,7 @@ def review_pkgbuild(
             editor_cmd = _get_editor() + [str(pkgbuild_path)]
             from . import aur
 
-            real_user = aur._get_real_build_user(config)
+            real_user = aur.get_real_build_user(config)
             if os.getuid() == 0 and real_user:
                 editor_cmd = aur.get_privilege_command(real_user, editor_cmd)
             ui.console.print(
@@ -399,7 +399,7 @@ def review_pkgbuild(
             pager_cmd = [pager, str(pkgbuild_path)]
             from . import aur
 
-            real_user = aur._get_real_build_user(config)
+            real_user = aur.get_real_build_user(config)
             if os.getuid() == 0 and real_user:
                 pager_cmd = aur.get_privilege_command(real_user, pager_cmd)
             try:

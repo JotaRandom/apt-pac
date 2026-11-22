@@ -49,3 +49,21 @@ include = '\.pyi?$'
 [tool.isort]
 profile = "black"
 line_length = 80
+
+[tool.pyright]
+pythonVersion = "3.11"
+pythonPlatform = "Linux"
+typeCheckingMode = "basic"
+include = ["src", "tests"]
+extraPaths = ["src"]
+stubPath = "typings"
+reportMissingModuleSource = "none"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 80
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = ["E501"]

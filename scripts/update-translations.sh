@@ -21,6 +21,10 @@ fi
 # Change to repo root to ensure relative paths
 cd "$REPO_ROOT"
 
+# Extract package version cleanly from source
+PKG_VERSION=$(grep -oE '__version__\s*=\s*"[^"]+"' src/apt_pac/__init__.py | head -n1 | cut -d'"' -f2 || true)
+PKG_VERSION="${PKG_VERSION:-2026.01.28}"
+
 # Extract translatable strings from source code
 echo "==> Extracting translatable strings..."
 xgettext \
@@ -29,10 +33,12 @@ xgettext \
     --keyword=_ \
     --output="$POT_FILE" \
     --package-name=apt-pac \
-    --package-version=1.0 \
+    --package-version="$PKG_VERSION" \
     --msgid-bugs-address="https://github.com/JotaRandom/apt-pac/issues" \
     --directory="$REPO_ROOT" \
     src/apt_pac/*.py
+
+sed -i 's/charset=CHARSET/charset=UTF-8/' "$POT_FILE"
 
 echo "Template file updated: $POT_FILE"
 echo
@@ -74,6 +80,8 @@ for lang in $LOCALES; do
         echo "==> Updating locale: $lang"
         msgmerge --update --backup=none "$PO_FILE" "$POT_FILE"
     fi
+
+    sed -i -E 's/charset=(ASCII|CHARSET)/charset=UTF-8/' "$PO_FILE"
 done
 
 echo
@@ -85,7 +93,7 @@ for lang in $LOCALES; do
     if [ -f "$PO_FILE" ]; then
         mo_file="${PO_FILE%.po}.mo"
         echo "Compiling: $PO_FILE -> $mo_file"
-        msgfmt -o "$mo_file" "$PO_FILE"
+        msgfmt --check --statistics -o "$mo_file" "$PO_FILE"
     else
         echo "Warning: $PO_FILE not found, skipping compilation."
     fi

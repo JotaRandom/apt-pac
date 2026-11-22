@@ -1,10 +1,12 @@
 
-import unittest
-from unittest.mock import patch, MagicMock
-import sys
 import os
+import sys
+import unittest
+from unittest.mock import MagicMock, patch
+
 sys.path.insert(0, os.path.abspath('src'))
 from apt_pac.commands import execute_command
+
 
 class TestCommandsUsage(unittest.TestCase):
     @patch("apt_pac.commands.console")
@@ -12,7 +14,7 @@ class TestCommandsUsage(unittest.TestCase):
     def test_rdepends_no_args(self, mock_print_error, mock_console):
         with self.assertRaises(SystemExit) as cm:
             execute_command("rdepends", [])
-        
+
         self.assertEqual(cm.exception.code, 1)
         mock_print_error.assert_called_with("[bold red]E[/bold red]: No package specified")
 
@@ -21,7 +23,7 @@ class TestCommandsUsage(unittest.TestCase):
     def test_depends_no_args(self, mock_print_error, mock_console):
         with self.assertRaises(SystemExit) as cm:
             execute_command("depends", [])
-        
+
         self.assertEqual(cm.exception.code, 1)
         mock_print_error.assert_called_with("[bold red]E[/bold red]: No package specified")
 
@@ -33,7 +35,7 @@ class TestCommandsUsage(unittest.TestCase):
         mock_pkg.name = 'pkgname'
         mock_pkg.compute_requiredby.return_value = ['dep1', 'dep2']
         mock_get_local.return_value = mock_pkg
-        
+
         execute_command("rdepends", ["pkgname"])
         # Should print package name and deps
         self.assertTrue(mock_console.print.called)
@@ -48,7 +50,7 @@ class TestCommandsUsage(unittest.TestCase):
             'depends': ['bash', 'coreutils']
         })()
         mock_get_local.return_value = mock_pkg
-        
+
         execute_command("depends", ["pkgname"])
         # Should print package name and deps
         self.assertTrue(mock_console.print.called)
