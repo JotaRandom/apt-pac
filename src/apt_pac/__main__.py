@@ -18,7 +18,6 @@ def main():
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
     try:
-        # pyrefly: ignore[missing-import]
         from rich.markup import escape
 
         from .cli import parse_args

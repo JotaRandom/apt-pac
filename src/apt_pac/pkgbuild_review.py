@@ -364,7 +364,7 @@ def review_pkgbuild(
             if os.getuid() == 0 and real_user:
                 editor_cmd = aur.get_privilege_command(real_user, editor_cmd)
             ui.console.print(
-                f"[dim]{_('Opening')} {escape(str(pkgbuild_path))} {_('in')} {escape(str(editor_cmd[0]))}{ellip}[/dim]"
+                f"[dim]{_('Opening')} {escape(str(pkgbuild_path))} {_('in')} {escape(editor_cmd[0])}{ellip}[/dim]"
             )
             try:
                 subprocess.run(editor_cmd, check=False)

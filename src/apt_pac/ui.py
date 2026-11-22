@@ -1,5 +1,4 @@
 import contextlib
-import io
 import os
 import re
 import shutil
@@ -28,7 +27,7 @@ def is_linux_console(target_console=None) -> bool:
         tty_name = os.ttyname(sys.stdout.fileno())
         if re.match(r"^/dev/(?:tty\d+|console)$", tty_name):
             return True
-    except (OSError, ValueError, AttributeError, io.UnsupportedOperation):
+    except (OSError, ValueError, AttributeError):
         pass
 
     con = target_console if target_console is not None else globals().get("console")

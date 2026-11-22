@@ -206,7 +206,7 @@ def _try_create_dir(path: Path) -> bool:
         test_file.touch()
         test_file.unlink()
         return True
-    except (OSError, PermissionError):
+    except OSError:
         return False
 
 class Config:

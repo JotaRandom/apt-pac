@@ -180,12 +180,15 @@ class TestAurFeatures(unittest.TestCase):
             )
 
             # Mock subprocess.run behaviors sequentially
+            failed_once = False
+
             def side_effect(*args, **kwargs):
+                nonlocal failed_once
                 cmd = args[0]
                 if "makepkg" in cmd:
                     # Check if it's the retry (how to distinguish? just state)
-                    if not hasattr(side_effect, "failed_once"):
-                        side_effect.failed_once = True
+                    if not failed_once:
+                        failed_once = True
                         raise subprocess.CalledProcessError(
                             1, cmd, output=b"", stderr=error_output
                         )

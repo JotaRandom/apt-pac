@@ -63,8 +63,8 @@ class TestRecursiveAur(unittest.TestCase):
         # Return a mock package file
         mock_pkg = MagicMock()
         mock_pkg.stem = "test-pkg-1.0-1-any"
-        getattr(mock_pkg, "__str__").return_value = (
-            "/tmp/mock_build/pkg/test-pkg-1.0-1-any.pkg.tar.zst"
+        mock_pkg.configure_mock(
+            **{"__str__.return_value": "/tmp/mock_build/pkg/test-pkg-1.0-1-any.pkg.tar.zst"}
         )
         self.mock_glob.return_value = [mock_pkg]
 

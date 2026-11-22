@@ -399,7 +399,7 @@ def handle_build_dep(package_name, verbose=False):
         msg = _("Found {count} build dependencies").format(count=len(makedepends))
         console.print(f"[dim]{msg}[/dim]")
         for dep in makedepends:
-            console.print(f"[dim]  - {escape(str(dep))}[/dim]")
+            console.print(f"[dim]  - {escape(dep)}[/dim]")
 
     # Install makedepends using apt-pac install
     from .commands import execute_command

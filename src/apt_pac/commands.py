@@ -756,7 +756,7 @@ def sync_databases(cmd=None, quiet=0, include_aur=True):
         re.I,
     )
 
-    show_connecting = quiet == 0 and bool(getattr(console, "is_terminal", False))
+    show_connecting = quiet == 0 and getattr(console, "is_terminal", False)
     cleared_connecting = False
 
     def _clear_connecting():
@@ -2289,12 +2289,12 @@ def _cmd_depends(extra_args) -> None:
             )
             for dep in deps_list:
                 console.print(
-                    f"  [cyan]{_('Depends:')}[/cyan] {escape(str(dep))}",
+                    f"  [cyan]{_('Depends:')}[/cyan] {escape(dep)}",
                     highlight=False,
                 )
             for optdep in optdeps_list:
                 console.print(
-                    f"  [dim]{_('Suggests:')}[/dim] {escape(str(optdep))}",
+                    f"  [dim]{_('Suggests:')}[/dim] {escape(optdep)}",
                     highlight=False,
                 )
             if not deps_list and not optdeps_list:
@@ -2349,11 +2349,11 @@ def _cmd_rdepends(extra_args) -> None:
             if rdeps:
                 console.print(f"  {_('Reverse Depends:')}", highlight=False)
                 for r in rdeps:
-                    console.print(f"    {escape(str(r))}", highlight=False)
+                    console.print(f"    {escape(r)}", highlight=False)
             if optfor:
                 console.print(f"  [dim]{_('Optional For:')}[/dim]", highlight=False)
                 for opt in optfor:
-                    console.print(f"    {escape(str(opt))}", highlight=False)
+                    console.print(f"    {escape(opt)}", highlight=False)
             if not rdeps and not optfor:
                 console.print(
                     f"  {_('(no reverse dependencies)')}", highlight=False

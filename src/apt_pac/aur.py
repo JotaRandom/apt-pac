@@ -37,7 +37,7 @@ def is_valid_package(path: str) -> bool:
         if shutil.which("bsdtar"):
             try:
                 res = subprocess.run(
-                    ["bsdtar", "-tf", str(path), ".PKGINFO"],
+                    ["bsdtar", "-tf", path, ".PKGINFO"],
                     capture_output=True,
                     text=True,
                     timeout=10,
@@ -48,7 +48,7 @@ def is_valid_package(path: str) -> bool:
         if shutil.which("pacman"):
             try:
                 res = subprocess.run(
-                    ["pacman", "-Qp", str(path)],
+                    ["pacman", "-Qp", path],
                     capture_output=True,
                     text=True,
                     timeout=10,
@@ -353,12 +353,12 @@ def download_aur_source(
                 return target_dir
             except (subprocess.CalledProcessError, OSError):
                 ui.console.print(
-                    f"[yellow]{_('Pull failed for')} {escape(str(package_name))}, {_('re-cloning...')}[/yellow]"
+                    f"[yellow]{_('Pull failed for')} {escape(package_name)}, {_('re-cloning...')}[/yellow]"
                 )
                 shutil.rmtree(target_dir)
         else:
             ui.console.print(
-                f"[yellow]{_('Removing incomplete directory for')} {escape(str(package_name))}...[/yellow]"
+                f"[yellow]{_('Removing incomplete directory for')} {escape(package_name)}...[/yellow]"
             )
             shutil.rmtree(target_dir)
 
@@ -368,7 +368,7 @@ def download_aur_source(
         return target_dir
     except (subprocess.CalledProcessError, OSError):
         print_error(
-            _("Failed to clone {pkg} from AUR").format(pkg=escape(str(package_name)))
+            _("Failed to clone {pkg} from AUR").format(pkg=escape(package_name))
         )
         return None
 
@@ -774,7 +774,7 @@ class AurInstaller:
             if missing_keys:
                 for key_id in missing_keys:
                     ui.console.print(
-                        f"[yellow]{_('Missing GPG Key detected:')} {escape(str(key_id))}[/yellow]"
+                        f"[yellow]{_('Missing GPG Key detected:')} {escape(key_id)}[/yellow]"
                     )
                     ui.console.print(_("Attempting to import key..."))
                     gpg_cmd = ["gpg", "--recv-keys", key_id]
@@ -786,7 +786,7 @@ class AurInstaller:
                         print_error(
                             _(
                                 "Failed to import key {key_id} or rebuild failed."
-                            ).format(key_id=escape(str(key_id)))
+                            ).format(key_id=escape(key_id))
                         )
                         sys.exit(1)
 
@@ -797,7 +797,7 @@ class AurInstaller:
                 except (subprocess.CalledProcessError, OSError):
                     print_error(
                         _("Failed to import key {key_id} or rebuild failed.").format(
-                            key_id=escape(str(missing_keys[0]))
+                            key_id=escape(missing_keys[0])
                         )
                     )
                     sys.exit(1)

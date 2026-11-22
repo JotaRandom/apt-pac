@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-from apt_pac import aur
+from apt_pac import alpm_helper, aur
 
 
 class TestComplexAurDeps(unittest.TestCase):
@@ -116,18 +116,19 @@ class TestComplexAurDeps(unittest.TestCase):
 
         # Execute
         installer = aur.AurInstaller()
-        with patch("sys.exit"), patch("apt_pac.alpm_helper") as mock_alpm:
-            # Setup alpm repository check logic
-            def side_effect_repo(pkg):
-                if pkg in ["target-pkg", "aur-lib"]:
-                    return False
-                return True  # official-lib, base-devel
 
-            mock_alpm.is_in_official_repos.side_effect = side_effect_repo
+        def side_effect_repo(pkg):
+            if pkg in ["target-pkg", "aur-lib"]:
+                return False
+            return True  # official-lib, base-devel
 
-            # Setup is_installed check (simulate none installed)
-            mock_alpm.is_package_installed.return_value = False
-
+        with (
+            patch("sys.exit"),
+            patch.object(
+                alpm_helper, "is_in_official_repos", side_effect=side_effect_repo
+            ),
+            patch.object(alpm_helper, "is_package_installed", return_value=False),
+        ):
             installer.install(["target-pkg"])
         # VERIFICATION
         # It may be called multiple times (once for plan, once per package build)
